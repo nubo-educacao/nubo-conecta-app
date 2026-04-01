@@ -16,12 +16,10 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
+    // Figma: bg rgba(255,255,255,0.8), shadow 0px -2px 20px rgba(0,0,0,0.06)
     <nav
-      className={cn(
-        "fixed bottom-0 left-0 right-0 z-40",
-        "bg-white border-t border-gray-100",
-        "pb-safe" // safe area iOS
-      )}
+      className="fixed bottom-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-sm pb-safe"
+      style={{ boxShadow: "0px -2px 20px 0px rgba(0,0,0,0.06)" }}
     >
       <div className="flex items-stretch h-16">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
@@ -30,29 +28,23 @@ export default function BottomNav() {
             <Link
               key={href}
               href={href}
-              className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-1 transition-colors",
-                isActive
-                  ? "text-nubo-primary"
-                  : "text-nubo-nav-inactive hover:text-nubo-text-secondary"
-              )}
+              className="flex flex-1 flex-col items-center justify-center gap-[2px] transition-colors"
             >
+              {/* Figma: ativo #048FAD Bold, inativo #707A7E Medium */}
               <Icon
-                className={cn("h-6 w-6", isActive && "stroke-[2.5px]")}
+                className="h-6 w-6"
+                style={{ color: isActive ? "#048FAD" : "#707A7E" }}
                 strokeWidth={isActive ? 2.5 : 1.5}
               />
               <span
-                className={cn(
-                  "text-[10px] leading-tight",
-                  isActive ? "font-semibold" : "font-normal"
-                )}
+                className="text-[9px] leading-tight"
+                style={{
+                  color: isActive ? "#048FAD" : "#707A7E",
+                  fontWeight: isActive ? 700 : 500,
+                }}
               >
                 {label}
               </span>
-              {/* Indicador ativo */}
-              {isActive && (
-                <span className="absolute bottom-0 w-8 h-0.5 bg-nubo-primary rounded-full" />
-              )}
             </Link>
           );
         })}
