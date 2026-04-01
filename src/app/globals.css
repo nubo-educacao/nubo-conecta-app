@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --nubo-primary: #5B47E0;
+    --nubo-secondary: #7C6EF5;
+    --nubo-accent: #FF6B35;
+    --nubo-background: #F8F7FF;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-nubo-background text-nubo-text-primary;
+    /* Impede scroll horizontal em mobile */
+    overflow-x: hidden;
+  }
+}
+
+@layer utilities {
+  /* Safe area para Bottom Nav no iOS */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
