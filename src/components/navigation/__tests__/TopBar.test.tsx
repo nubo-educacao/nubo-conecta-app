@@ -1,15 +1,16 @@
 // @vitest-environment jsdom
-// TDD — Issue #2: TopBar Navigation Unification
+// TDD — Issue #2: TopBar Navigation — Desktop inline nav
+// Arquitetura: BottomNav gerencia mobile; TopBar expõe nav apenas no desktop (md+).
 // Contratos críticos:
-//   1. Desktop: 4 nav items renderizados no <nav> principal
-//   2. Mobile: botão hamburger presente (aria-label "Abrir menu")
-//   3. Clicar no hamburger abre o menu mobile (aria-label "Menu mobile")
-//   4. Menu mobile contém todos os 4 itens de navegação
-//   5. Clicar num link do menu mobile fecha o menu
-//   6. Item ativo usa cor #048FAD
+//   1. Desktop nav renderiza os 4 itens de navegação
+//   2. Nav contém links para todas as rotas canônicas
+//   3. Item ativo usa cor #048FAD (Nav Active token)
+//   4. Item inativo usa cor #707A7E (Nav Inactive token)
+//   5. Logo padrão "Nubo Conecta" e prop title customizada
+//   6. Botão de usuário está presente
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import { expect as vitestExpect } from 'vitest';
 import * as jestDomMatchers from '@testing-library/jest-dom/matchers';
 vitestExpect.extend(jestDomMatchers);
@@ -31,16 +32,14 @@ vi.mock('next/link', () => ({
     href,
     children,
     className,
-    onClick,
     style,
   }: {
     href: string;
     children: React.ReactNode;
     className?: string;
-    onClick?: () => void;
     style?: React.CSSProperties;
   }) => (
-    <a href={href} className={className} onClick={onClick} style={style}>
+    <a href={href} className={className} style={style}>
       {children}
     </a>
   ),
@@ -52,7 +51,7 @@ import TopBar from '../TopBar';
 
 // ─── Suite ───────────────────────────────────────────────────────────────────
 
-describe('TopBar — navegação unificada', () => {
+describe('TopBar — desktop navigation', () => {
   beforeEach(() => {
     mockPathname = '/';
     vi.clearAllMocks();
@@ -62,7 +61,7 @@ describe('TopBar — navegação unificada', () => {
     cleanup();
   });
 
-  // ── Desktop nav ───────────────────────────────────────────────────────────
+  // ── Desktop nav estrutura ─────────────────────────────────────────────────
 
   it('renderiza os 4 itens de navegação no nav desktop', () => {
     render(<TopBar />);
@@ -74,7 +73,7 @@ describe('TopBar — navegação unificada', () => {
     expect(links).toHaveLength(4);
   });
 
-  it('nav desktop contém links para todas as rotas', () => {
+  it('nav desktop contém links para todas as rotas canônicas', () => {
     render(<TopBar />);
 
     const desktopNav = screen.getByRole('navigation', { name: 'Navegação principal' });
@@ -86,87 +85,30 @@ describe('TopBar — navegação unificada', () => {
     expect(hrefs).toContain('/candidaturas');
   });
 
-  // ── Mobile hamburger ─────────────────────────────────────────────────────
+  // ── Active / inactive state ───────────────────────────────────────────────
 
-  it('exibe botão hamburger (aria-label "Abrir menu")', () => {
-    render(<TopBar />);
-
-    const hamburger = screen.getByRole('button', { name: 'Abrir menu' });
-    expect(hamburger).toBeDefined();
-  });
-
-  it('menu mobile NÃO está visível antes de clicar no hamburger', () => {
-    render(<TopBar />);
-
-    const mobileNav = screen.queryByRole('navigation', { name: 'Menu mobile' });
-    expect(mobileNav).toBeNull();
-  });
-
-  it('clicar no hamburger abre o menu mobile', () => {
-    render(<TopBar />);
-
-    const hamburger = screen.getByRole('button', { name: 'Abrir menu' });
-    fireEvent.click(hamburger);
-
-    const mobileNav = screen.getByRole('navigation', { name: 'Menu mobile' });
-    expect(mobileNav).toBeDefined();
-  });
-
-  it('menu mobile aberto contém os 4 itens de navegação', () => {
-    render(<TopBar />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir menu' }));
-
-    const mobileNav = screen.getByRole('navigation', { name: 'Menu mobile' });
-    const links = mobileNav.querySelectorAll('a');
-    expect(links).toHaveLength(4);
-  });
-
-  it('clicar num link do menu mobile fecha o menu', () => {
-    render(<TopBar />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir menu' }));
-    expect(screen.getByRole('navigation', { name: 'Menu mobile' })).toBeDefined();
-
-    const mobileNav = screen.getByRole('navigation', { name: 'Menu mobile' });
-    const firstLink = mobileNav.querySelector('a')!;
-    fireEvent.click(firstLink);
-
-    expect(screen.queryByRole('navigation', { name: 'Menu mobile' })).toBeNull();
-  });
-
-  it('após abrir o menu o botão muda para aria-label "Fechar menu"', () => {
-    render(<TopBar />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir menu' }));
-    expect(screen.getByRole('button', { name: 'Fechar menu' })).toBeDefined();
-  });
-
-  // ── Active state ─────────────────────────────────────────────────────────
-
-  it('link ativo no desktop usa cor #048FAD', () => {
+  it('link ativo usa cor Nav Active #048FAD', () => {
     mockPathname = '/oportunidades';
     render(<TopBar />);
 
     const desktopNav = screen.getByRole('navigation', { name: 'Navegação principal' });
     const activeLink = desktopNav.querySelector('a[href="/oportunidades"]') as HTMLElement;
 
+    // JSDOM normaliza hex → rgb
     expect(activeLink.style.color).toBe('rgb(4, 143, 173)');
   });
 
-  it('link ativo no mobile usa cor #048FAD', () => {
-    mockPathname = '/candidaturas';
+  it('link inativo usa cor Nav Inactive #707A7E', () => {
+    mockPathname = '/';
     render(<TopBar />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir menu' }));
+    const desktopNav = screen.getByRole('navigation', { name: 'Navegação principal' });
+    const inactiveLink = desktopNav.querySelector('a[href="/oportunidades"]') as HTMLElement;
 
-    const mobileNav = screen.getByRole('navigation', { name: 'Menu mobile' });
-    const activeLink = mobileNav.querySelector('a[href="/candidaturas"]') as HTMLElement;
-
-    expect(activeLink.style.color).toBe('rgb(4, 143, 173)');
+    expect(inactiveLink.style.color).toBe('rgb(112, 122, 126)');
   });
 
-  // ── Logo ─────────────────────────────────────────────────────────────────
+  // ── Logo e título ─────────────────────────────────────────────────────────
 
   it('exibe "Nubo Conecta" como logo padrão', () => {
     render(<TopBar />);
@@ -176,5 +118,22 @@ describe('TopBar — navegação unificada', () => {
   it('exibe título customizado quando prop title é fornecida', () => {
     render(<TopBar title="Oportunidades" />);
     expect(screen.getByRole('heading', { name: 'Oportunidades' })).toBeDefined();
+  });
+
+  // ── Botão de usuário ──────────────────────────────────────────────────────
+
+  it('botão de usuário está presente com aria-label "Entrar" quando não autenticado', () => {
+    render(<TopBar />);
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeDefined();
+  });
+
+  // ── Contrato de dualidade mobile/desktop ──────────────────────────────────
+
+  it('NÃO renderiza menu mobile (mobile nav é responsabilidade do BottomNav)', () => {
+    render(<TopBar />);
+
+    // Se qualquer elemento com aria-label "Menu mobile" existir, a arquitetura foi violada
+    const mobileNav = screen.queryByRole('navigation', { name: 'Menu mobile' });
+    expect(mobileNav).toBeNull();
   });
 });

@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState } from "react";
-import { ChevronDown, User, Menu, X, Home, Search, BookOpen, FileText } from "lucide-react";
+import { ChevronDown, User, Home, Search, BookOpen, FileText } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", icon: Home },
@@ -20,7 +19,6 @@ interface TopBarProps {
 export default function TopBar({ title }: TopBarProps) {
   const { user, setShowAuthModal } = useAuth();
   const pathname = usePathname();
-  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     // Figma: bg rgba(255,255,255,0.3) glassmorphism, shadow dupla
@@ -33,7 +31,7 @@ export default function TopBar({ title }: TopBarProps) {
         boxShadow: "0px 10px 15px 0px rgba(0,0,0,0.1), 0px 4px 6px 0px rgba(0,0,0,0.1)",
       }}
     >
-      <div className="flex items-center justify-between h-14 px-4 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between h-14 px-4 max-w-[1200px] mx-auto">
         {/* Logo — Figma: "Nubo Conecta" Montserrat Bold #024F86 16px */}
         <div className="flex items-center gap-2">
           {title ? (
@@ -69,7 +67,7 @@ export default function TopBar({ title }: TopBarProps) {
           })}
         </nav>
 
-        {/* Right: user pill + mobile hamburger */}
+        {/* Right: user pill */}
         <div className="flex items-center gap-2">
           {/* User pill — Figma: glassmorphism, gradient avatar #38B1E4→#024F86 */}
           <button
@@ -90,52 +88,8 @@ export default function TopBar({ title }: TopBarProps) {
             </span>
             <ChevronDown className="h-3.5 w-3.5" style={{ color: "#3A424E" }} strokeWidth={2} />
           </button>
-
-          {/* Hamburger — mobile only (hidden on md+) */}
-          <button
-            className="md:hidden flex items-center justify-center h-9 w-9 rounded-full border"
-            style={{
-              background: "rgba(255,255,255,0.6)",
-              borderColor: "rgba(255,255,255,0.4)",
-            }}
-            aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((prev) => !prev)}
-          >
-            {menuOpen
-              ? <X className="h-5 w-5" style={{ color: "#3A424E" }} />
-              : <Menu className="h-5 w-5" style={{ color: "#3A424E" }} />
-            }
-          </button>
         </div>
       </div>
-
-      {/* Mobile dropdown — rendered below header row */}
-      {menuOpen && (
-        <nav
-          className="md:hidden border-t border-black/10 py-2 px-4"
-          style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(12px)" }}
-          aria-label="Menu mobile"
-        >
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-3 py-3 px-2 rounded-lg transition-colors"
-                style={{ color: isActive ? "#048FAD" : "#707A7E" }}
-              >
-                <Icon className="h-5 w-5" strokeWidth={isActive ? 2.5 : 1.5} />
-                <span className="text-sm" style={{ fontWeight: isActive ? 700 : 500 }}>
-                  {label}
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
-      )}
     </header>
   );
 }
