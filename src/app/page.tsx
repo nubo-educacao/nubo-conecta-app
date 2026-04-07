@@ -1,34 +1,35 @@
-"use client";
+// Home Dashboard — Sprint 03 Épico 1A
+// Server Component: fetches seed data for carousels server-side.
+// Interactive logic (auth, match, CTAs) delegated to HomeClient.
 
-import { useAuth } from "@/contexts/AuthContext";
-import AppShell from "@/components/layout/AppShell";
-import AuthModal from "@/components/auth/AuthModal";
+import AppShell from '@/components/layout/AppShell';
+import HomeClient from './HomeClient';
+import { getUnifiedOpportunities } from '@/services/opportunities';
+import type { IUnifiedOpportunity } from '@/types/opportunities';
 
-export default function HomePage() {
-  const { user, showAuthModal, setShowAuthModal } = useAuth();
+export default async function HomePage() {
+  // Fetch carousels server-side for instant render — fail gracefully on errors
+  let recentOpportunities: IUnifiedOpportunity[] = [];
+  let partnerOpportunities: IUnifiedOpportunity[] = [];
+
+  try {
+    const [recent, partners] = await Promise.all([
+      getUnifiedOpportunities({ mode: 'explorar', page: 0, limit: 8 }),
+      getUnifiedOpportunities({ mode: 'para-voce', page: 0, limit: 8 }),
+    ]);
+    recentOpportunities = recent;
+    // Filter to partners only for "em destaque" carousel
+    partnerOpportunities = partners.filter((o) => o.is_partner);
+  } catch {
+    // Fail gracefully — carousels will render empty, CTA remains functional
+  }
 
   return (
-    <>
-      <AppShell>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
-          <h1 className="text-2xl font-bold text-nubo-text-primary mb-2">
-            Bem-vindo ao Nubo Conecta
-          </h1>
-          <p className="text-nubo-text-secondary text-center">
-            Sua ponte para oportunidades educacionais.
-          </p>
-          {!user && (
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="mt-6 px-6 py-3 bg-nubo-primary text-white rounded-xl font-medium"
-            >
-              Entrar
-            </button>
-          )}
-        </div>
-      </AppShell>
-
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
-    </>
+    <AppShell>
+      <HomeClient
+        recentOpportunities={recentOpportunities}
+        partnerOpportunities={partnerOpportunities}
+      />
+    </AppShell>
   );
 }
