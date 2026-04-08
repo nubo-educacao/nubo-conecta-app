@@ -8,14 +8,17 @@ interface AppShellProps {
 
 export default function AppShell({ children, title }: AppShellProps) {
   return (
-    <div className="flex flex-col min-h-screen bg-nubo-background">
+    <div className="flex flex-col min-h-screen bg-transparent">
       <TopBar title={title} />
 
-      {/* Conteúdo com padding para não ficar embaixo do BottomNav */}
-      <main className="flex-1 pb-20">
-        {children}
+      <main className="flex-1 flex flex-col px-0 pb-16 md:px-6 md:py-8 relative">
+        <div
+          className="flex-1 max-w-[1200px] w-full mx-auto backdrop-blur-md border border-white/20 rounded-t-3xl md:rounded-3xl shadow-2xl"
+          style={{ background: "rgba(255,255,255,0.30)" }}
+        >
+          {children}
+        </div>
       </main>
-
       <BottomNav />
     </div>
   );

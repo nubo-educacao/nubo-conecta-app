@@ -4,10 +4,9 @@
 
 @layer base {
   :root {
-    --nubo-primary: #5B47E0;
-    --nubo-secondary: #7C6EF5;
-    --nubo-accent: #FF6B35;
-    --nubo-background: #F8F7FF;
+    --nubo-primary: #38B1E4;
+    --nubo-primary-dark: #024F86;
+    --nubo-warning: #FFB800;
   }
 
   html {
@@ -15,7 +14,7 @@
   }
 
   body {
-    @apply bg-nubo-background text-nubo-text-primary;
+    @apply text-nubo-text-head;
     /* Impede scroll horizontal em mobile */
     overflow-x: hidden;
   }
