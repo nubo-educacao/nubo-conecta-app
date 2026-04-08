@@ -1,44 +1,48 @@
 'use client';
 
-// HomeClient — Sprint 03 Épico 1A
-// Interactive shell of the Home Dashboard.
-// Handles auth state, CTA transitions, and match generation.
+// HomeClient — Sprint 03 Épico 1A / atualizado Sprint 3.5
+// Shell interativa da Home Dashboard.
+// Ordem de renderização (Sprint 3.5):
+//   HeroSearch → CTA → Match Section → Oportunidades Destaque →
+//   Novidades → Instituições Parceiras → Avisos e Datas (último)
 
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DynamicCTA, { type CTAState } from '@/components/home/DynamicCTA';
-import SmartSearch from '@/components/home/SmartSearch';
+import HeroSearch from '@/components/home/HeroSearch';
 import OpportunityCarousel from '@/components/home/OpportunityCarousel';
 import InstitutionCarousel from '@/components/home/InstitutionCarousel';
+import ImportantDates from '@/components/home/ImportantDates';
 import MatchOnboarding from '@/components/match/MatchOnboarding';
 import MatchResults from '@/components/match/MatchResults';
 import { useMatchResults } from '@/hooks/useMatchResults';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
+import type { IImportantDate } from '@/services/importantDates';
+import type { IPartnerInstitution } from '@/services/institutions';
 
 interface HomeClientProps {
   recentOpportunities: IUnifiedOpportunity[];
   partnerOpportunities: IUnifiedOpportunity[];
+  importantDates: IImportantDate[];
+  partnerInstitutions: IPartnerInstitution[];
 }
 
 export default function HomeClient({
   recentOpportunities,
   partnerOpportunities,
+  importantDates,
+  partnerInstitutions,
 }: HomeClientProps) {
   const { user, loading, setShowAuthModal } = useAuth();
 
-  // Use user ID as profile ID (1:1 mapping for simplest case)
   const { results, matchState, error: matchError, runMatch, loadExisting } = useMatchResults(
     user?.id ?? null,
   );
 
-  // Load existing matches when user is authenticated
   useEffect(() => {
-    if (user) {
-      loadExisting();
-    }
+    if (user) loadExisting();
   }, [user, loadExisting]);
 
-  // Derive CTA state
   let ctaState: CTAState = 'loading';
   if (!loading) {
     if (!user) {
@@ -55,106 +59,95 @@ export default function HomeClient({
   const showMatchSection = !!user;
 
   return (
-    <div className="flex flex-col gap-6 py-5">
-      {/* Greeting */}
-      <div className="px-4">
-        {user ? (
-          <h1
-            className="text-2xl font-bold"
-            style={{ color: '#3a424e', fontFamily: 'Montserrat, sans-serif' }}
-          >
-            Olá! 👋
-          </h1>
-        ) : (
-          <h1
-            className="text-2xl font-bold"
-            style={{ color: '#3a424e', fontFamily: 'Montserrat, sans-serif' }}
-          >
-            Bem-vindo ao{' '}
-            <span style={{ color: '#38B1E4' }}>Nubo Conecta</span>
-          </h1>
-        )}
-        <p
-          className="text-sm mt-1"
-          style={{ color: '#636e7c', fontFamily: 'Montserrat, sans-serif' }}
-        >
-          Sua ponte para oportunidades educacionais.
-        </p>
-      </div>
+    <div className="flex flex-col gap-6 pb-5">
+      {/* 1. Hero Buscador */}
+      <HeroSearch />
 
-      {/* Smart Search */}
-      <div className="px-4">
-        <SmartSearch />
-      </div>
-
-      {/* Dynamic CTA */}
-      <div className="px-4">
-        <DynamicCTA
-          state={ctaState}
-          matchCount={results.length}
-          onOpenAuth={() => setShowAuthModal(true)}
-          onGenerateMatch={runMatch}
-        />
-        {matchError && (
-          <p
-            className="mt-2 text-xs text-center"
-            style={{ color: '#dc2626', fontFamily: 'Montserrat, sans-serif' }}
-          >
-            {matchError}
-          </p>
-        )}
-      </div>
-
-      {/* Match Section */}
-      {showMatchSection && (
-        <section
-          className="mx-4 rounded-2xl overflow-hidden"
-          style={{
-            background: 'rgba(255,255,255,0.5)',
-            border: '1px solid rgba(56,177,228,0.15)',
-          }}
-        >
-          <div
-            className="px-4 pt-4 pb-1 text-sm font-bold"
-            style={{ color: '#38B1E4', fontFamily: 'Montserrat, sans-serif' }}
-          >
-            Para Você
-          </div>
-
-          {matchState === 'done' && results.length > 0 ? (
-            <MatchResults
-              results={results}
-              onRegenerate={runMatch}
-              isLoading={false}
-            />
-          ) : (
-            <MatchOnboarding
-              onGenerate={runMatch}
-              isLoading={matchState === 'loading'}
-            />
+      {/* Container com margens */}
+      <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full px-4 lg:px-8">
+        {/* 2. Dynamic CTA */}
+        <div>
+          <DynamicCTA
+            state={ctaState}
+            matchCount={results.length}
+            onOpenAuth={() => setShowAuthModal(true)}
+            onGenerateMatch={runMatch}
+          />
+          {matchError && (
+            <p
+              className="mt-2 text-xs text-center"
+              style={{ color: '#dc2626', fontFamily: 'Montserrat, sans-serif' }}
+            >
+              {matchError}
+            </p>
           )}
-        </section>
-      )}
+        </div>
 
-      {/* Partner opportunities carousel */}
+        {/* 3. Match Section — Para Você */}
+        {showMatchSection && (
+          <section
+            className="rounded-2xl overflow-hidden"
+            style={{
+              background: 'rgba(255,255,255,0.5)',
+              border: '1px solid rgba(56,177,228,0.15)',
+            }}
+          >
+            <div
+              className="px-4 pt-4 pb-1 text-sm font-bold"
+              style={{ color: '#38B1E4', fontFamily: 'Montserrat, sans-serif' }}
+            >
+              Para Você
+            </div>
+            {matchState === 'done' && results.length > 0 ? (
+              <MatchResults results={results} onRegenerate={runMatch} isLoading={false} />
+            ) : (
+              <MatchOnboarding onGenerate={runMatch} isLoading={matchState === 'loading'} />
+            )}
+          </section>
+        )}
+      </div>
+
+      {/* 4. Oportunidades em Destaque — Regra Grid-3 no desktop */}
       {partnerOpportunities.length > 0 && (
-        <OpportunityCarousel
-          title="Oportunidades em destaque"
-          opportunities={partnerOpportunities}
-          seeAllHref="/oportunidades"
-        />
+        <div className="max-w-7xl mx-auto w-full">
+          <OpportunityCarousel
+            title="Oportunidades em destaque"
+            opportunities={partnerOpportunities}
+            seeAllHref="/oportunidades"
+            desktopGridMode
+          />
+        </div>
       )}
 
-      {/* Recent opportunities carousel */}
+      {/* 5. Novidades */}
       {recentOpportunities.length > 0 && (
-        <OpportunityCarousel
-          title="Novidades"
-          opportunities={recentOpportunities}
-          seeAllHref="/oportunidades?tab=explore"
-        />
+        <div className="max-w-7xl mx-auto w-full">
+          <OpportunityCarousel
+            title="Novidades"
+            opportunities={recentOpportunities}
+            seeAllHref="/oportunidades?tab=explore"
+          />
+        </div>
       )}
 
-      {/* Bottom padding for BottomNav */}
+      {/* 6. Instituições Parceiras */}
+      {partnerInstitutions.length > 0 && (
+        <div className="max-w-7xl mx-auto w-full">
+          <InstitutionCarousel
+            institutions={partnerInstitutions}
+            seeAllHref="/instituicoes"
+          />
+        </div>
+      )}
+
+      {/* 7. Avisos e Datas Importantes — ÚLTIMO elemento */}
+      {importantDates.length > 0 && (
+        <div className="max-w-7xl mx-auto w-full px-0">
+          <ImportantDates dates={importantDates} />
+        </div>
+      )}
+
+      {/* Espaço para BottomNav */}
       <div className="h-4" />
     </div>
   );

@@ -18,7 +18,7 @@ export default function BottomNav() {
   return (
     // Figma: bg rgba(255,255,255,0.8), shadow 0px -2px 20px rgba(0,0,0,0.06)
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-sm pb-safe"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-sm pb-safe md:hidden"
       style={{ boxShadow: "0px -2px 20px 0px rgba(0,0,0,0.06)" }}
     >
       <div className="flex items-stretch h-16">

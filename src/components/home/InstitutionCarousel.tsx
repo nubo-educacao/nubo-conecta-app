@@ -1,7 +1,8 @@
 'use client';
 
-// InstitutionCarousel — Sprint 03 Épico 1A
-// Horizontal scrollable list of institution pills/cards.
+// InstitutionCarousel — Sprint 3.8
+// Premium horizontal scrollable carousel with logo/cover cards.
+// Uses App shadow system and Montserrat typography.
 
 import { useRef } from 'react';
 import { BookOpen } from 'lucide-react';
@@ -10,7 +11,10 @@ interface Institution {
   id: string;
   name: string;
   location: string;
-  opportunityCount?: number;
+  logo_url?: string | null;
+  cover_url?: string | null;
+  description?: string | null;
+  brand_color?: string | null;
 }
 
 interface InstitutionCarouselProps {
@@ -53,41 +57,70 @@ export default function InstitutionCarousel({
           <a
             key={inst.id}
             href={`/instituicoes/${inst.id}`}
-            className="flex-shrink-0 snap-start flex flex-col gap-2 p-4 rounded-2xl transition-all hover:shadow-md"
+            className="flex-shrink-0 snap-start flex flex-col rounded-[16px] overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg"
             style={{
-              width: 180,
-              background: 'rgba(255,255,255,0.7)',
-              border: '1px solid rgba(56,177,228,0.15)',
+              width: 200,
+              boxShadow: '0px 8px 24px -4px rgba(181,183,192,0.3)',
+              background: '#fff',
             }}
           >
+            {/* Cover / Brand Color header */}
             <div
-              className="flex items-center justify-center w-10 h-10 rounded-xl"
-              style={{ background: 'rgba(56,177,228,0.1)' }}
+              className="relative w-full h-[80px]"
+              style={{
+                background: inst.cover_url
+                  ? undefined
+                  : inst.brand_color
+                    ? inst.brand_color
+                    : 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)',
+              }}
             >
-              <BookOpen size={18} style={{ color: '#38B1E4' }} />
+              {inst.cover_url && (
+                <img
+                  src={inst.cover_url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              )}
+              {/* Logo overlay */}
+              {inst.logo_url ? (
+                <div
+                  className="absolute -bottom-4 left-3 w-[36px] h-[36px] rounded-full bg-white border-2 border-white flex items-center justify-center overflow-hidden"
+                  style={{
+                    boxShadow: '0px 2px 8px rgba(0,0,0,0.12)',
+                  }}
+                >
+                  <img src={inst.logo_url} alt={inst.name} className="w-full h-full object-contain p-0.5" />
+                </div>
+              ) : (
+                <div
+                  className="absolute -bottom-4 left-3 w-[36px] h-[36px] rounded-full bg-white border-2 border-white flex items-center justify-center"
+                  style={{
+                    boxShadow: '0px 2px 8px rgba(0,0,0,0.12)',
+                  }}
+                >
+                  <BookOpen size={14} style={{ color: '#38B1E4' }} />
+                </div>
+              )}
             </div>
-            <div>
+
+            {/* Body */}
+            <div className="px-3 pt-6 pb-3 flex flex-col gap-1">
               <p
                 className="text-xs font-bold line-clamp-2 leading-tight"
                 style={{ color: '#3a424e', fontFamily: 'Montserrat, sans-serif' }}
               >
                 {inst.name}
               </p>
-              <p
-                className="text-[10px] mt-0.5"
-                style={{ color: '#707A7E', fontFamily: 'Montserrat, sans-serif' }}
-              >
-                {inst.location}
-              </p>
+              {inst.location && (
+                <p
+                  className="text-[10px]"
+                  style={{ color: '#707A7E', fontFamily: 'Montserrat, sans-serif' }}
+                >
+                  {inst.location}
+                </p>
+              )}
             </div>
-            {inst.opportunityCount !== undefined && (
-              <span
-                className="text-[10px] font-semibold"
-                style={{ color: '#38B1E4', fontFamily: 'Montserrat, sans-serif' }}
-              >
-                {inst.opportunityCount} oportunidade{inst.opportunityCount !== 1 ? 's' : ''}
-              </span>
-            )}
           </a>
         ))}
       </div>

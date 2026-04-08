@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import CloudBackground from "@/components/CloudBackground";
 import ChatFAB from "@/components/chat/ChatFAB";
+import GlobalAuthModal from "@/components/auth/GlobalAuthModal";
 
 const montserrat = Montserrat({ subsets: ["latin"] });
 
@@ -27,6 +28,7 @@ export default function RootLayout({
             {children}
           </div>
           <ChatFAB />
+          <GlobalAuthModal />
         </AuthProvider>
       </body>
     </html>

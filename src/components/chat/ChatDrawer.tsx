@@ -2,12 +2,13 @@
 
 // ChatDrawer — Sprint 03 Épico 1C
 // Responsive chat interface:
-//   Mobile: bottom sheet that slides up from 40% height, expandable to full
+//   Mobile: bottom sheet that slides up from the bottom
 //   Desktop: fixed side panel (right, 380px)
 
 import { useEffect, useRef } from 'react';
 import { X, CloudLightning } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import ChatMessageList from './ChatMessageList';
 import ChatInput from './ChatInput';
 import ConversationStarters from './ConversationStarters';
@@ -15,6 +16,7 @@ import ToolBadge from './ToolBadge';
 import { useChat } from '@/hooks/useChat';
 import { useConversationStarters } from '@/hooks/useConversationStarters';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 
 interface ChatDrawerProps {
   onClose: () => void;
@@ -73,108 +75,106 @@ export default function ChatDrawer({ onClose }: ChatDrawerProps) {
   const showSuggestions = hasMessages && !isStreaming && suggestions.length > 0;
 
   return (
-    <>
-      {/* Backdrop — mobile only */}
-      <div
-        className="fixed inset-0 z-40 bg-black/30 md:hidden backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 pointer-events-none">
+        {/* Backdrop — mobile only */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 bg-black/30 backdrop-blur-sm md:hidden pointer-events-auto"
+          onClick={onClose}
+        />
 
-      {/* Panel */}
-      <div
-        className={[
-          'fixed z-50 flex flex-col',
-          // Mobile: bottom sheet
-          'bottom-0 left-0 right-0 rounded-t-3xl max-h-[85vh]',
-          // Desktop: right side panel
-          'md:bottom-6 md:right-6 md:left-auto md:w-[380px] md:rounded-3xl md:max-h-[600px] md:h-[600px]',
-        ].join(' ')}
-        style={{
-          background: 'rgba(245,250,255,0.97)',
-          backdropFilter: 'blur(16px)',
-          boxShadow: '0 24px 60px rgba(0,0,0,0.18)',
-          border: '1px solid rgba(56,177,228,0.2)',
-        }}
-      >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-4 py-3 border-b"
-          style={{ borderColor: 'rgba(56,177,228,0.15)' }}
+        {/* Panel Wrapper for Animation */}
+        <motion.div
+          initial={{ opacity: 0, y: "100%" }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: "100%" }}
+          className={cn(
+            "absolute z-50 flex flex-col pointer-events-auto",
+            // Mobile: bottom sheet
+            "bottom-0 left-0 right-0 rounded-t-[32px] max-h-[85vh]",
+            // Desktop: right side panel
+            "md:bottom-6 md:right-6 md:left-auto md:w-[380px] md:max-h-[600px] md:h-[600px] md:rounded-[24px]",
+            "bg-white/95 backdrop-blur-xl shadow-2xl border border-nubo-primary/10 overflow-hidden"
+          )}
         >
-          <div className="flex items-center gap-2.5">
-            <div
-              className="flex items-center justify-center w-8 h-8 rounded-xl"
-              style={{ background: 'linear-gradient(135deg, #38B1E4, #024F86)' }}
-            >
-              <CloudLightning size={16} color="white" />
-            </div>
-            <div>
-              <p
-                className="text-sm font-bold leading-none"
-                style={{ color: '#3a424e', fontFamily: 'Montserrat, sans-serif' }}
-              >
-                Cloudinha
-              </p>
-              <p
-                className="text-[10px]"
-                style={{ color: isStreaming ? '#38B1E4' : '#16a34a', fontFamily: 'Montserrat, sans-serif' }}
-              >
-                {isStreaming ? 'Pensando...' : 'Online'}
-              </p>
-            </div>
+          {/* Mobile Drag Indicator */}
+          <div className="w-full flex justify-center py-3 md:hidden">
+            <div className="w-12 h-1.5 bg-nubo-line rounded-full" />
           </div>
-          <button
-            onClick={onClose}
-            className="flex items-center justify-center w-8 h-8 rounded-xl transition-all hover:bg-black/5"
-            aria-label="Fechar chat"
-          >
-            <X size={18} style={{ color: '#707A7E' }} />
-          </button>
-        </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
-          {hasMessages && (
-            <ChatMessageList messages={messages} isStreaming={isStreaming} />
-          )}
-
-          {activeTool && <ToolBadge toolName={activeTool} />}
-
-          {showStarters && (
-            <div className="mt-auto">
-              <ConversationStarters
-                starters={starters}
-                introMessage={intro_message}
-                onSelect={handleSend}
-              />
-            </div>
-          )}
-
-          {showSuggestions && (
-            <div className="px-4 pb-3">
-              <p
-                className="text-[10px] mb-2 font-medium"
-                style={{ color: '#707A7E', fontFamily: 'Montserrat, sans-serif' }}
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-nubo-line/50">
+            <div className="flex items-center gap-2.5">
+              <div
+                className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-nubo-primary to-nubo-primary-dark shadow-sm"
               >
-                Sugestões:
-              </p>
-              <ConversationStarters
-                starters={suggestions}
-                onSelect={handleSend}
-              />
+                <CloudLightning size={16} color="white" />
+              </div>
+              <div className="flex flex-col">
+                <p className="text-sm font-bold leading-tight text-nubo-text-head font-sans">
+                  Cloudinha
+                </p>
+                <p className={cn(
+                  "text-[10px] font-sans font-medium",
+                  isStreaming ? 'text-nubo-primary' : 'text-green-600'
+                )}>
+                  {isStreaming ? 'Pensando...' : 'Online'}
+                </p>
+              </div>
             </div>
-          )}
-        </div>
+            <button
+              onClick={onClose}
+              className="flex items-center justify-center w-8 h-8 rounded-xl transition-all hover:bg-black/5 text-nubo-nav-inactive hover:text-nubo-text-head"
+              aria-label="Fechar chat"
+            >
+              <X size={18} />
+            </button>
+          </div>
 
-        {/* Input */}
-        <div className="flex-shrink-0 pt-2">
-          <ChatInput
-            onSend={handleSend}
-            disabled={isStreaming}
-            placeholder={user ? 'Digite sua mensagem...' : 'Entre para conversar com a Cloudinha...'}
-          />
-        </div>
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto flex flex-col min-h-0 bg-slate-50/30">
+            {hasMessages && (
+              <ChatMessageList messages={messages} isStreaming={isStreaming} />
+            )}
+
+            {activeTool && <ToolBadge toolName={activeTool} />}
+
+            {showStarters && (
+              <div className="mt-auto">
+                <ConversationStarters
+                  starters={starters}
+                  introMessage={intro_message}
+                  onSelect={handleSend}
+                />
+              </div>
+            )}
+
+            {showSuggestions && (
+              <div className="px-4 pb-3">
+                <p className="text-[10px] mb-2 font-semibold text-nubo-nav-inactive font-sans uppercase tracking-wider">
+                  Sugestões:
+                </p>
+                <ConversationStarters
+                  starters={suggestions}
+                  onSelect={handleSend}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Input */}
+          <div className="flex-shrink-0 pt-2 bg-white/80 border-t border-nubo-line/30 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-3">
+            <ChatInput
+              onSend={handleSend}
+              disabled={isStreaming}
+              placeholder={user ? 'Digite sua mensagem...' : 'Entre para conversar com a Cloudinha...'}
+            />
+          </div>
+        </motion.div>
       </div>
-    </>
+    </AnimatePresence>
   );
 }
