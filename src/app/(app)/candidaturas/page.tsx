@@ -15,8 +15,8 @@ interface ApplicationCard {
   created_at: string;
   updated_at: string;
   eligibility_score: number | null;
-  partner_name: string | null;
-  partner_logo_url: string | null;
+  opportunity_name: string | null;
+  logo_url: string | null;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -64,22 +64,27 @@ export default function CandidaturasPage() {
       .from("student_applications")
       .select(`
         id, partner_id, status, created_at, updated_at, eligibility_score,
-        partners:partner_id ( name, logo_url )
+        partner_opportunities:partner_id (
+          name,
+          institutions:institution_id ( name ),
+          partner_institutions:institution_id ( logo_url )
+        )
       `)
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false })
       .then(({ data }) => {
         const mapped = (data || []).map((row: Record<string, unknown>) => {
-          const partner = (row.partners as Record<string, string> | null) ?? {};
+          const opp = (row.partner_opportunities as Record<string, unknown> | null) ?? {};
+          const pi  = (opp.partner_institutions as Record<string, string> | null) ?? {};
           return {
-            id: row.id as string,
-            partner_id: row.partner_id as string,
-            status: row.status as string,
-            created_at: row.created_at as string,
-            updated_at: row.updated_at as string,
+            id:               row.id as string,
+            partner_id:       row.partner_id as string,
+            status:           row.status as string,
+            created_at:       row.created_at as string,
+            updated_at:       row.updated_at as string,
             eligibility_score: row.eligibility_score as number | null,
-            partner_name: partner.name ?? null,
-            partner_logo_url: partner.logo_url ?? null,
+            opportunity_name: (opp.name as string) ?? null,
+            logo_url:         pi.logo_url ?? null,
           };
         });
         setApplications(mapped);
@@ -87,6 +92,7 @@ export default function CandidaturasPage() {
       });
   }, [user]);
 
+  // partner_id is now partner_opportunities.id — route directly
   const handleCardClick = (app: ApplicationCard) => {
     router.push(`/new-application/${app.partner_id}`);
   };
@@ -104,7 +110,7 @@ export default function CandidaturasPage() {
             </p>
           </div>
           <button
-            onClick={() => router.push("/oportunidades")}
+            onClick={() => router.push("/new-application")}
             className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-gradient-to-r from-[#024F86] to-[#38B1E4] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all"
           >
             <Plus size={14} /> Nova
@@ -134,7 +140,7 @@ export default function CandidaturasPage() {
             <p className="text-sm font-semibold text-[#024F86]">Nenhuma candidatura ainda</p>
             <p className="text-xs text-[#3A424E]/60 mt-1">Explore oportunidades e inicie sua primeira candidatura</p>
             <button
-              onClick={() => router.push("/oportunidades")}
+              onClick={() => router.push("/new-application")}
               className="mt-4 px-6 py-2.5 rounded-full bg-gradient-to-r from-[#024F86] to-[#38B1E4] text-white text-xs font-bold shadow"
             >
               Explorar oportunidades
@@ -160,8 +166,8 @@ export default function CandidaturasPage() {
                   className="w-full text-left flex items-center gap-4 p-4 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/40 shadow-sm hover:shadow-md hover:bg-white/80 transition-all group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-[#024F86]/10 flex items-center justify-center shrink-0">
-                    {app.partner_logo_url ? (
-                      <img src={app.partner_logo_url} alt="" className="w-6 h-6 object-contain" />
+                    {app.logo_url ? (
+                      <img src={app.logo_url} alt="" className="w-6 h-6 object-contain" />
                     ) : (
                       <FileText size={18} className="text-[#024F86]" />
                     )}
@@ -169,7 +175,7 @@ export default function CandidaturasPage() {
 
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-[#024F86] truncate">
-                      {app.partner_name ?? "Parceiro"}
+                      {app.opportunity_name ?? "Programa parceiro"}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusCfg.color}`}>

@@ -11,6 +11,7 @@ import AppShell from '@/components/layout/AppShell';
 import { MapPin, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import RedirectButton from './RedirectButton';
+import ApplyButton from './ApplyButton';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 
 interface PageProps {
@@ -61,7 +62,15 @@ async function getOpportunity(unifiedId: string): Promise<IUnifiedOpportunity | 
   };
 }
 
-async function getPartnerBranding(institutionName: string) {
+interface PartnerBranding {
+  id:          string;
+  logo_url:    string | null;
+  cover_url:   string | null;
+  description: string | null;
+  brand_color: string | null;
+}
+
+async function getPartnerBranding(institutionName: string): Promise<PartnerBranding | null> {
   const supabase = await createSupabaseServerClient();
 
   const { data } = await supabase
@@ -70,7 +79,49 @@ async function getPartnerBranding(institutionName: string) {
     .eq('name', institutionName)
     .single();
 
-  return (data as any)?.partner_institutions ?? null;
+  if (!data) return null;
+  const d = data as any;
+  return {
+    id:          d.id,
+    logo_url:    d.partner_institutions?.logo_url    ?? null,
+    cover_url:   d.partner_institutions?.cover_url   ?? null,
+    description: d.partner_institutions?.description ?? null,
+    brand_color: d.partner_institutions?.brand_color ?? null,
+  };
+}
+
+async function hasPartnerForm(institutionId: string): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  const { count } = await supabase
+    .from('partner_steps')
+    .select('id', { count: 'exact', head: true })
+    .eq('partner_id', institutionId);
+  return (count ?? 0) > 0;
+}
+
+interface RedirectModalConfig {
+  title:       string;
+  message:     string;
+  buttonText:  string;
+  type:        'external' | 'whatsapp';
+}
+
+async function getRedirectModalConfig(partnerOpportunityId: string): Promise<RedirectModalConfig> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from('partner_opportunities')
+    .select('external_redirect_config')
+    .eq('id', partnerOpportunityId)
+    .single();
+
+  const cfg = (data?.external_redirect_config ?? {}) as Record<string, string>;
+
+  return {
+    title:      cfg.title       || 'Candidatura Externa',
+    message:    cfg.message     || 'A inscrição não é realizada diretamente pela Nubo Conecta. Você será redirecionado para o site da instituição parceira.',
+    buttonText: cfg.button_text || (cfg.type === 'whatsapp' ? 'Ir para o WhatsApp' : 'Ir para o site'),
+    type:       (cfg.type as 'external' | 'whatsapp') || 'external',
+  };
 }
 
 export default async function OpportunityDetailPage({ params }: PageProps) {
@@ -83,6 +134,27 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
   const partnerBranding = opportunity.is_partner
     ? await getPartnerBranding(opportunity.institution_name)
     : null;
+
+  const institutionId = partnerBranding?.id ?? null;
+
+  // Strip 'partner_' prefix from unified_id to get the raw partner_opportunities UUID
+  const partnerOppId = opportunity.is_partner
+    ? opportunity.id.replace('partner_', '')
+    : null;
+
+  // Fetch full redirect modal config only when redirect is active
+  const redirectModalConfig =
+    opportunity.is_partner && opportunity.external_redirect?.enabled && partnerOppId
+      ? await getRedirectModalConfig(partnerOppId)
+      : null;
+
+  // Only query partner_steps when there is no external redirect — avoids unnecessary DB call
+  const showApplyButton =
+    opportunity.is_partner &&
+    !opportunity.external_redirect?.enabled &&
+    institutionId != null
+      ? await hasPartnerForm(institutionId)
+      : false;
 
   return (
     <AppShell>
@@ -182,16 +254,31 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
             </div>
           )}
 
-          {/* Client-side redirect button — extracted to separate component (no inline 'use client') */}
+          {/* External redirect — partner with external_redirect enabled */}
           {opportunity.is_partner &&
             opportunity.external_redirect?.enabled &&
-            opportunity.external_redirect.url && (
+            opportunity.external_redirect.url &&
+            institutionId &&
+            redirectModalConfig && (
               <RedirectButton
                 opportunityId={opportunity.id}
+                partnerId={institutionId}
                 redirectUrl={opportunity.external_redirect.url}
                 institutionName={opportunity.institution_name}
+                modalTitle={redirectModalConfig.title}
+                modalMessage={redirectModalConfig.message}
+                modalButtonText={redirectModalConfig.buttonText}
+                redirectType={redirectModalConfig.type}
               />
             )}
+
+          {/* Internal form (Nubo Form Engine) — partner with partner_steps configured */}
+          {showApplyButton && (
+            <ApplyButton
+              opportunityId={opportunity.id}
+              institutionName={opportunity.institution_name}
+            />
+          )}
         </div>
       </div>
     </AppShell>

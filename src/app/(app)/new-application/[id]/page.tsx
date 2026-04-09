@@ -3,162 +3,181 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, User, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Loader2, ArrowLeft, User, Users, MapPin } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
-import PartnerFormEngine, { type PartnerStep } from "@/components/forms/PartnerFormEngine";
-import { type PartnerFormField } from "@/components/forms/FormFieldRenderer";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import CardOportunidadeParceira from "@/components/opportunities/CardOportunidadeParceira";
+import type { IUnifiedOpportunity } from "@/types/opportunities";
 
 interface PartnerMeta {
   id: string;
   name: string;
+  opportunity_type: string;
+  institution_name: string;
   logo_url: string | null;
+  cover_url: string | null;
+  location: string | null;
 }
 
-interface ApplicationState {
+interface UserProfile {
   id: string;
-  status: string;
-  answers: Record<string, unknown>;
+  full_name: string;
+  isdependent: boolean;
 }
 
-type PagePhase = "loading" | "confirm" | "form" | "submitted" | "error";
-
-export default function NewApplicationPage() {
-  const { id: partnerId } = useParams<{ id: string }>();
+export default function CheckoutCandidaturaPage() {
+  const { id: partnerOppId } = useParams<{ id: string }>();
   const router = useRouter();
   const { user, setShowAuthModal } = useAuth();
 
-  const [phase, setPhase] = useState<PagePhase>("loading");
+  const [loading, setLoading] = useState(true);
   const [partner, setPartner] = useState<PartnerMeta | null>(null);
-  const [steps, setSteps] = useState<PartnerStep[]>([]);
-  const [fields, setFields] = useState<PartnerFormField[]>([]);
-  const [application, setApplication] = useState<ApplicationState | null>(null);
-  const [profileName, setProfileName] = useState<string>("");
+  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<string>("");
+  const [similarOpps, setSimilarOpps] = useState<IUnifiedOpportunity[]>([]);
+  const [creating, setCreating] = useState(false);
 
-  const localStorageKey = `nubo_draft_${partnerId}_${user?.id ?? "anon"}`;
-
-  // ── Bootstrap ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!user) { setPhase("error"); return; }
+    if (!user) return;
 
     const boot = async () => {
-      const [partnerRes, stepsRes, fieldsRes, appRes, profileRes] = await Promise.allSettled([
-        supabase
-          .from("partners")
-          .select("id, name, logo_url")
-          .eq("id", partnerId)
-          .single(),
-        supabase
-          .from("partner_steps")
-          .select("*")
-          .eq("partner_id", partnerId)
-          .order("sort_order"),
-        supabase
-          .from("partner_forms")
-          .select("*")
-          .eq("partner_id", partnerId)
-          .order("sort_order"),
-        supabase
-          .from("student_applications")
-          .select("id, status, answers")
-          .eq("partner_id", partnerId)
-          .eq("user_id", user.id)
-          .maybeSingle(),
-        supabase
-          .from("user_profiles")
-          .select("full_name")
-          .eq("id", user.id)
-          .single(),
-      ]);
+      // 1. Fetch current opportunity
+      const oppRes = await supabase
+        .from("partner_opportunities")
+        .select(`
+          id, name, opportunity_type,
+          institutions:institution_id ( 
+            name,
+            partner_institutions ( logo_url, cover_url, location )
+          )
+        `)
+        .eq("id", partnerOppId)
+        .single();
 
-      if (partnerRes.status === "fulfilled" && partnerRes.value.data) {
-        setPartner(partnerRes.value.data as PartnerMeta);
-      }
-      if (stepsRes.status === "fulfilled") {
-        setSteps((stepsRes.value.data as PartnerStep[]) ?? []);
-      }
-      if (fieldsRes.status === "fulfilled") {
-        setFields((fieldsRes.value.data as PartnerFormField[]) ?? []);
-      }
-      if (profileRes.status === "fulfilled" && profileRes.value.data) {
-        setProfileName((profileRes.value.data as { full_name: string }).full_name ?? "");
-      }
-
-      const existingApp =
-        appRes.status === "fulfilled" ? (appRes.value.data as ApplicationState | null) : null;
-
-      if (existingApp) {
-        setApplication(existingApp);
-        // Submitted apps → show result screen
-        if (existingApp.status === "SUBMITTED" || existingApp.status === "APPROVED") {
-          setPhase("submitted");
-          return;
+      if (oppRes.data) {
+        const o = oppRes.data as Record<string, unknown>;
+        const inst = (o.institutions as Record<string, any>) ?? {};
+        let pi: Record<string, string | null> = {};
+        if (Array.isArray(inst.partner_institutions) && inst.partner_institutions.length > 0) {
+            pi = inst.partner_institutions[0];
+        } else if (inst.partner_institutions && !Array.isArray(inst.partner_institutions)) {
+            pi = inst.partner_institutions;
         }
-        // Draft → go directly to form
-        setPhase("form");
-      } else {
-        // No application yet → show confirmation modal
-        setPhase("confirm");
+        setPartner({
+          id: o.id as string,
+          name: o.name as string,
+          opportunity_type: o.opportunity_type as string,
+          institution_name: inst.name ?? "Instituição Parceira",
+          logo_url: pi.logo_url ?? null,
+          cover_url: pi.cover_url ?? null,
+          location: pi.location ?? "Nacional",
+        });
       }
+
+      // 2. Fetch User & Dependents
+      const profilesRes = await supabase
+        .from("user_profiles")
+        .select("id, full_name, isdependent, parent_user_id")
+        .or(`id.eq.${user.id},parent_user_id.eq.${user.id}`);
+
+      if (profilesRes.data) {
+        setProfiles(profilesRes.data as UserProfile[]);
+        const mainProfile = profilesRes.data.find(p => p.id === user.id);
+        if (mainProfile) setSelectedProfileId(mainProfile.id);
+      }
+
+      // 3. Fetch similar opportunities
+      const similarRes = await supabase
+        .from("partner_opportunities")
+        .select(`
+          id, name, opportunity_type, created_at,
+          institutions:institution_id ( 
+            name,
+            partner_institutions ( logo_url, location )
+          ),
+          partner_steps ( id )
+        `)
+        .eq("status", "approved")
+        .neq("id", partnerOppId)
+        .limit(3);
+
+      if (similarRes.data) {
+        const mapped = similarRes.data
+          .filter((o: Record<string, unknown>) => Array.isArray(o.partner_steps) && o.partner_steps.length > 0)
+          .map((o: Record<string, unknown>) => {
+            const inst = (o.institutions as Record<string, any>) ?? {};
+            let pi: Record<string, string | null> = {};
+            if (Array.isArray(inst.partner_institutions) && inst.partner_institutions.length > 0) {
+                pi = inst.partner_institutions[0];
+            } else if (inst.partner_institutions && !Array.isArray(inst.partner_institutions)) {
+                pi = inst.partner_institutions;
+            }
+            return {
+              id: o.id as string,
+              title: o.name as string,
+              institution_name: inst.name ?? "Instituição Parceira",
+              category_label: "Programas Educacionais",
+              category: "educational_programs",
+              is_partner: true,
+              type: "partner_opportunities" as const,
+              opportunity_type: o.opportunity_type as string,
+              location: pi.location ?? "Nacional",
+              created_at: o.created_at as string,
+            } as IUnifiedOpportunity;
+          });
+        setSimilarOpps(mapped);
+      }
+
+      setLoading(false);
     };
 
     boot();
-  }, [user, partnerId]);
+  }, [user, partnerOppId]);
 
-  // ── Create application on confirm ─────────────────────────────────────────
   const handleConfirm = async () => {
-    if (!user) return;
-    setPhase("loading");
+    if (!user || !partner) return;
+    setCreating(true);
 
+    // Creates the draft application for the selected profile (could be dependent)
+    // NOTE: If using dependent, we set user_id to the selected profile ID.
     const { data, error } = await supabase
       .from("student_applications")
-      .insert({ user_id: user.id, partner_id: partnerId, status: "DRAFT", answers: {} })
-      .select("id, status, answers")
+      .insert({ 
+        user_id: selectedProfileId, 
+        partner_id: partnerOppId, 
+        status: "DRAFT", 
+        answers: {} 
+      })
+      .select("id")
       .single();
 
-    if (error || !data) { setPhase("error"); return; }
-    setApplication(data as ApplicationState);
-    setPhase("form");
-  };
-
-  // ── Draft save (step transition) ───────────────────────────────────────────
-  const handleSaveDraft = async (data: Record<string, unknown>) => {
-    if (!application) return;
-    await supabase.rpc("update_student_application_answers", {
-      p_application_id: application.id,
-      p_answers: data,
-    });
-  };
-
-  // ── Final submit ───────────────────────────────────────────────────────────
-  const handleSubmitForm = async (data: Record<string, unknown>) => {
-    if (!application) return { success: false };
-
-    const { data: result, error } = await supabase.rpc("submit_application_v1", {
-      p_application_id: application.id,
-      p_answers: data,
-    });
-
-    if (error || !result?.success) return { success: false };
-
-    setPhase("submitted");
-    return { success: true };
-  };
-
-  // ── Merge localStorage draft into default values ───────────────────────────
-  const defaultValues = (() => {
-    const dbAnswers = application?.answers ?? {};
-    try {
-      const lsDraft = JSON.parse(localStorage.getItem(localStorageKey) ?? "{}");
-      return { ...dbAnswers, ...lsDraft };
-    } catch {
-      return dbAnswers;
+    if (error || !data) {
+      alert("Erro ao iniciar candidatura. Tente novamente.");
+      setCreating(false);
+      return;
     }
-  })();
 
-  // ── Render phases ──────────────────────────────────────────────────────────
-  if (phase === "loading") {
+    router.push(`/partner-forms/${data.id}`);
+  };
+
+  if (!user) {
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+          <p className="text-sm font-semibold text-[#024F86] mb-3">Faça login para continuar</p>
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="px-6 py-2.5 rounded-full bg-[#024F86] text-white text-xs font-bold"
+          >
+            Entrar
+          </button>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (loading) {
     return (
       <AppShell>
         <div className="flex items-center justify-center py-24">
@@ -168,140 +187,170 @@ export default function NewApplicationPage() {
     );
   }
 
-  if (phase === "error" || !user) {
-    return (
-      <AppShell>
-        <div className="flex flex-col items-center justify-center py-20 text-center px-6">
-          <p className="text-sm font-semibold text-[#024F86] mb-3">
-            {!user ? "Faça login para continuar" : "Não foi possível carregar o formulário"}
-          </p>
-          {!user && (
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#024F86] to-[#38B1E4] text-white text-xs font-bold shadow"
-            >
-              Entrar
-            </button>
-          )}
-        </div>
-      </AppShell>
-    );
-  }
+  const mainProfile = profiles.find(p => p.id === user.id);
+  const dependents = profiles.filter(p => p.isdependent);
 
-  if (phase === "submitted") {
-    return (
-      <AppShell title="Candidatura enviada">
-        <div className="flex flex-col items-center justify-center py-20 text-center px-6">
-          <motion.div
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4"
-          >
-            <CheckCircle2 size={32} className="text-green-500" />
-          </motion.div>
-          <h2 className="text-lg font-bold text-[#024F86] mb-1">Candidatura enviada!</h2>
-          <p className="text-xs text-[#3A424E]/60 mb-6">
-            Sua candidatura para <strong>{partner?.name}</strong> foi registrada e seu match foi atualizado.
-          </p>
-          <button
-            onClick={() => router.push("/candidaturas")}
-            className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#024F86] to-[#38B1E4] text-white text-xs font-bold shadow"
-          >
-            Ver minhas candidaturas
+  // Helper for capitalization
+  const oppTypeLabel = partner?.opportunity_type 
+    ? partner.opportunity_type.charAt(0).toUpperCase() + partner.opportunity_type.slice(1)
+    : "Programa";
+
+  return (
+    <AppShell title="Nova Candidatura">
+      <div className="pb-24">
+        {/* Header Title */}
+        <div className="px-6 pt-6 mb-6">
+          <button onClick={() => router.back()} className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 mb-4">
+            <ArrowLeft size={16} /> Voltar
           </button>
+          <h1 className="text-2xl font-bold text-[#024F86]">Nova Candidatura</h1>
+          <p className="text-sm text-gray-500">Revisão e confirmação</p>
         </div>
-      </AppShell>
-    );
-  }
 
-  if (phase === "confirm") {
-    return (
-      <AppShell title={partner?.name ?? "Nova candidatura"}>
-        <AnimatePresence>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="px-4 pt-6 pb-8"
-          >
-            {/* Back */}
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-1 text-xs text-[#3A424E]/60 mb-6 hover:text-[#024F86] transition-colors"
-            >
-              <ArrowLeft size={14} /> Voltar
-            </button>
-
-            {/* Partner card */}
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-12 h-12 rounded-xl bg-[#024F86]/10 flex items-center justify-center shrink-0">
-                {partner?.logo_url ? (
-                  <img src={partner.logo_url} alt="" className="w-8 h-8 object-contain" />
-                ) : (
-                  <span className="text-[#024F86] font-black text-lg">
-                    {partner?.name?.[0] ?? "P"}
-                  </span>
-                )}
-              </div>
-              <div>
-                <p className="text-base font-bold text-[#024F86]">{partner?.name}</p>
-                <p className="text-xs text-[#3A424E]/60">Nova candidatura</p>
-              </div>
-            </div>
-
-            {/* Profile confirmation */}
-            <div className="p-4 rounded-2xl bg-white/60 border border-white/40 backdrop-blur-sm mb-6">
-              <p className="text-xs font-bold text-[#024F86] mb-1">Candidatura como</p>
-              <div className="flex items-center gap-2 mt-2">
-                <div className="w-8 h-8 rounded-full bg-[#38B1E4]/20 flex items-center justify-center">
-                  <User size={14} className="text-[#024F86]" />
+        <div className="px-6 space-y-8">
+          
+          {/* SECTION 1: Titularidade */}
+          <section>
+            <h2 className="text-md font-bold text-gray-800 mb-3">1. Titularidade</h2>
+            <p className="text-xs text-gray-500 mb-4">Para quem é esta candidatura?</p>
+            <div className="flex flex-col md:flex-row gap-4">
+              
+              <button
+                onClick={() => setSelectedProfileId(user.id)}
+                className={`flex-1 flex items-center p-4 rounded-xl border-2 text-left transition-all ${
+                  selectedProfileId === user.id 
+                    ? "border-[#38B1E4] bg-blue-50/50" 
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 shrink-0 ${
+                  selectedProfileId === user.id ? "bg-[#38B1E4]/20 text-[#024F86]" : "bg-gray-100 text-gray-400"
+                }`}>
+                  <User size={20} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-[#3A424E]">{profileName || user.email}</p>
-                  <p className="text-[10px] text-[#3A424E]/50">Perfil principal</p>
+                  <p className={`text-sm font-bold ${selectedProfileId === user.id ? "text-[#024F86]" : "text-gray-700"}`}>
+                    Para mim
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">{mainProfile?.full_name || user.email}</p>
+                </div>
+              </button>
+
+              <div className={`flex-1 flex items-center p-4 rounded-xl border-2 text-left transition-all ${
+                  selectedProfileId !== user.id && selectedProfileId !== ""
+                    ? "border-[#38B1E4] bg-blue-50/50" 
+                    : "border-gray-200"
+                }`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 shrink-0 ${
+                  selectedProfileId !== user.id && selectedProfileId !== "" ? "bg-[#38B1E4]/20 text-[#024F86]" : "bg-gray-100 text-gray-400"
+                }`}>
+                  <Users size={20} />
+                </div>
+                <div className="flex-1 w-full min-w-0">
+                  <p className={`text-sm font-bold ${selectedProfileId !== user.id && selectedProfileId !== "" ? "text-[#024F86]" : "text-gray-700"}`}>
+                    Dependente
+                  </p>
+                  {dependents.length > 0 ? (
+                    <select 
+                      className="w-full bg-transparent text-xs text-gray-600 outline-none mt-1"
+                      value={selectedProfileId === user.id ? "" : selectedProfileId}
+                      onChange={(e) => setSelectedProfileId(e.target.value)}
+                    >
+                      <option value="" disabled>Selecionar...</option>
+                      {dependents.map(d => (
+                        <option key={d.id} value={d.id}>{d.full_name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-xs text-gray-400 mt-1">Nenhum dependente</p>
+                  )}
                 </div>
               </div>
+
             </div>
+          </section>
 
-            <p className="text-xs text-[#3A424E]/60 text-center mb-6">
-              Você será direcionado ao formulário de candidatura. Suas respostas são salvas automaticamente a cada etapa.
-            </p>
+          {/* SECTION 2: Resumo da Vaga */}
+          {partner && (
+            <section>
+              <h2 className="text-md font-bold text-gray-800 mb-4">2. Resumo da Vaga</h2>
+              
+              <div className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm bg-white">
+                {/* Cover Area */}
+                <div 
+                  className="h-28 w-full relative"
+                  style={{ 
+                    backgroundColor: "#024F86", 
+                    backgroundImage: partner.cover_url ? `url(${partner.cover_url})` : "none",
+                    backgroundSize: "cover",
+                    backgroundPosition: "center"
+                  }}
+                >
+                  <div className="absolute top-3 right-3 bg-[#FF9900] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide">
+                    Parceiro
+                  </div>
+                </div>
 
+                {/* Content Area */}
+                <div className="p-5 flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-full border border-gray-100 p-1 flex items-center justify-center shrink-0 bg-white -mt-10 overflow-hidden shadow-sm">
+                     {partner.logo_url ? (
+                        <img src={partner.logo_url} alt="" className="w-full h-full object-contain" />
+                     ) : (
+                        <span className="text-[#024F86] font-black text-xl">{partner.name[0]}</span>
+                     )}
+                  </div>
+
+                  <div className="pt-1">
+                    <h3 className="text-lg font-bold text-[#3A424E] leading-tight mb-1">{partner.name}</h3>
+                    <p className="text-sm font-medium text-gray-500 mb-3">{partner.institution_name}</p>
+
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
+                      <span className="flex items-center gap-1 text-[12px] text-gray-500">
+                        <MapPin size={12} /> {partner.location}
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold border border-gray-200 text-gray-600 bg-gray-50">
+                        {oppTypeLabel}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* SECTION 3: Outras Oportunidades */}
+          {similarOpps.length > 0 && (
+            <section>
+              <div className="mb-4">
+                <h2 className="text-md font-bold text-gray-800">3. Outras Oportunidades para Você</h2>
+                <p className="text-xs text-gray-500">Vagas similares ordenadas pelo seu match</p>
+              </div>
+              
+              <div className="flex overflow-x-auto gap-4 pb-4 snap-x">
+                {similarOpps.map(opp => (
+                  <div key={opp.id} className="min-w-[280px] w-[280px] snap-center">
+                    <CardOportunidadeParceira 
+                      opportunity={opp} 
+                      onClickOverride={(id) => router.push(`/new-application/${id}`)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Confirm Area */}
+          <div className="pt-4 pb-10">
             <button
               onClick={handleConfirm}
-              className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#024F86] to-[#38B1E4] text-white text-sm font-black uppercase tracking-wider shadow-lg hover:shadow-xl transition-all"
+              disabled={creating || !selectedProfileId}
+              className="w-full flex justify-center items-center py-4 rounded-full bg-[#024F86] text-white text-md font-bold shadow-lg hover:shadow-xl hover:bg-[#023E6A] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Iniciar candidatura
+              {creating ? <Loader2 size={24} className="animate-spin" /> : "Confirmar Candidatura"}
             </button>
-          </motion.div>
-        </AnimatePresence>
-      </AppShell>
-    );
-  }
+          </div>
 
-  // phase === "form"
-  return (
-    <AppShell title={partner?.name ?? "Candidatura"}>
-      <div className="h-full flex flex-col">
-        <button
-          onClick={() => router.push("/candidaturas")}
-          className="flex items-center gap-1 text-xs text-[#3A424E]/60 px-4 pt-4 mb-2 hover:text-[#024F86] transition-colors"
-        >
-          <ArrowLeft size={14} /> Minhas candidaturas
-        </button>
-
-        <div className="flex-1 px-4 pb-4">
-          {application && (
-            <PartnerFormEngine
-              partnerName={partner?.name ?? "Parceiro"}
-              applicationId={application.id}
-              steps={steps}
-              fields={fields}
-              defaultValues={defaultValues}
-              localStorageKey={localStorageKey}
-              onSaveDraft={handleSaveDraft}
-              onSubmitForm={handleSubmitForm}
-            />
-          )}
         </div>
       </div>
     </AppShell>

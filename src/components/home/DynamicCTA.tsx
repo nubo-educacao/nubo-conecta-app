@@ -93,11 +93,11 @@ export default function DynamicCTA({
           </p>
         </div>
         <Link
-          href="/perfil"
+          href="/oportunidades?tab=para-voce"
           className="w-full py-3 rounded-xl text-sm font-bold text-center transition-all hover:opacity-90 active:scale-[0.98]"
           style={{ background: 'rgba(255,184,0,0.2)', color: '#b45309', fontFamily: 'Montserrat, sans-serif' }}
         >
-          Completar perfil
+          Complete seu perfil
         </Link>
       </div>
     );

@@ -12,8 +12,10 @@
 
 import { useRouter } from 'next/navigation';
 import { Suspense } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import CardOportunidades from '@/components/opportunities/CardOportunidades';
 import CardOportunidadeParceira from '@/components/opportunities/CardOportunidadeParceira';
+import MatchOnboardingForm from '@/components/match/MatchOnboardingForm';
 import ExploreClient from './ExploreClient';
 import type { IUnifiedOpportunity, ExploreFilters } from '@/types/opportunities';
 
@@ -25,6 +27,8 @@ interface OpportunitiesClientProps {
 
 export default function OpportunitiesClient({ opportunities, activeTab, filters }: OpportunitiesClientProps) {
   const router = useRouter();
+  const { user } = useAuth();
+  const onboardingCompleted = user?.user_metadata?.onboarding_completed as boolean | undefined;
 
   const switchTab = (tab: 'para-voce' | 'explore') => {
     router.replace(`?tab=${tab}`, { scroll: false });
@@ -81,32 +85,42 @@ export default function OpportunitiesClient({ opportunities, activeTab, filters 
 
       {activeTab === 'para-voce' ? (
         <>
-          {/* "Seus Matches" section header */}
-          <h2
-            className="font-bold text-[15px]"
-            style={{ color: '#3a424e', fontFamily: 'Montserrat, sans-serif' }}
-          >
-            Seus Matches
-          </h2>
-
-          {/* Card list — responsive grid */}
-          {opportunities.length === 0 ? (
-            <p
-              className="text-center py-12 text-[14px]"
-              style={{ color: '#636e7c', fontFamily: 'Montserrat, sans-serif' }}
-            >
-              Nenhuma oportunidade encontrada.
-            </p>
+          {user && !onboardingCompleted ? (
+            /* Estado A: onboarding incompleto — exibe formulário inline */
+            <MatchOnboardingForm
+              userId={user.id}
+              onComplete={() => router.refresh()}
+            />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {opportunities.map((opp) =>
-                opp.is_partner ? (
-                  <CardOportunidadeParceira key={opp.id} opportunity={opp} />
-                ) : (
-                  <CardOportunidades key={opp.id} opportunity={opp} />
-                ),
+            <>
+              {/* Estado B: onboarding completo — exibe matches */}
+              <h2
+                className="font-bold text-[15px]"
+                style={{ color: '#3a424e', fontFamily: 'Montserrat, sans-serif' }}
+              >
+                Seus Matches
+              </h2>
+
+              {/* Card list — responsive grid */}
+              {opportunities.length === 0 ? (
+                <p
+                  className="text-center py-12 text-[14px]"
+                  style={{ color: '#636e7c', fontFamily: 'Montserrat, sans-serif' }}
+                >
+                  Nenhuma oportunidade encontrada.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {opportunities.map((opp) =>
+                    opp.is_partner ? (
+                      <CardOportunidadeParceira key={opp.id} opportunity={opp} />
+                    ) : (
+                      <CardOportunidades key={opp.id} opportunity={opp} />
+                    ),
+                  )}
+                </div>
               )}
-            </div>
+            </>
           )}
         </>
       ) : (

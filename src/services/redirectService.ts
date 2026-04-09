@@ -43,6 +43,13 @@ export async function trackAndRedirect(
     },
   );
 
+  // Defensive guard: partner_id is NOT NULL in the DB schema.
+  // If partnerId is missing, skip tracking and return the URL directly (graceful degradation).
+  if (!partnerId) {
+    console.warn(`trackAndRedirect: partnerId is null for source=${source}, skipping tracking`);
+    return { url: redirectUrl };
+  }
+
   // INSERT FIRST — this must complete before the URL is returned
   const { error } = await supabase
     .from('external_redirect_clicks')
