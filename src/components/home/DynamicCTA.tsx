@@ -38,11 +38,11 @@ export default function DynamicCTA({
   if (state === 'visitor') {
     return (
       <div
-        className="rounded-2xl px-6 py-5 flex flex-col items-center gap-4 text-center"
+        className="rounded-2xl px-6 py-5 flex flex-col gap-4 text-center"
         style={{ background: 'linear-gradient(135deg, rgba(56,177,228,0.12) 0%, rgba(2,79,134,0.08) 100%)', border: '1px solid rgba(56,177,228,0.2)' }}
       >
         <div
-          className="flex items-center justify-center w-12 h-12 rounded-xl"
+          className="flex items-center justify-center w-12 h-12 rounded-xl mx-auto"
           style={{ background: 'linear-gradient(135deg, #38B1E4, #024F86)' }}
         >
           <LogIn size={22} color="white" />
@@ -72,11 +72,11 @@ export default function DynamicCTA({
   if (state === 'no-profile') {
     return (
       <div
-        className="rounded-2xl px-6 py-5 flex flex-col items-center gap-4 text-center"
+        className="rounded-2xl px-6 py-5 flex flex-col gap-4 text-center"
         style={{ background: 'rgba(255,184,0,0.08)', border: '1px solid rgba(255,184,0,0.25)' }}
       >
         <div
-          className="flex items-center justify-center w-12 h-12 rounded-xl"
+          className="flex items-center justify-center w-12 h-12 rounded-xl mx-auto"
           style={{ background: 'rgba(255,184,0,0.2)' }}
         >
           <UserCog size={22} style={{ color: '#b45309' }} />
@@ -106,11 +106,11 @@ export default function DynamicCTA({
   if (state === 'no-match') {
     return (
       <div
-        className="rounded-2xl px-6 py-5 flex flex-col items-center gap-4 text-center"
+        className="rounded-2xl px-6 py-5 flex flex-col gap-4 text-center"
         style={{ background: 'linear-gradient(135deg, rgba(56,177,228,0.12) 0%, rgba(2,79,134,0.08) 100%)', border: '1px solid rgba(56,177,228,0.2)' }}
       >
         <div
-          className="flex items-center justify-center w-12 h-12 rounded-xl"
+          className="flex items-center justify-center w-12 h-12 rounded-xl mx-auto"
           style={{ background: 'linear-gradient(135deg, #38B1E4, #024F86)' }}
         >
           <Sparkles size={22} color="white" />

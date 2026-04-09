@@ -59,7 +59,7 @@ export default function HomeClient({
   const showMatchSection = !!user;
 
   return (
-    <div className="flex flex-col gap-6 pb-5">
+    <div className="flex flex-col gap-6 pt-6 pb-5">
       {/* 1. Hero Buscador */}
       <HeroSearch />
 

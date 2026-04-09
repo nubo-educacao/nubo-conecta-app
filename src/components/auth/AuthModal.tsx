@@ -83,6 +83,7 @@ export default function AuthModal({ onClose }: AuthModalProps) {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         phone: formattedPhone,
+        options: { channel: 'whatsapp' },
       });
 
       if (error) throw error;
