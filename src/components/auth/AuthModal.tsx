@@ -83,6 +83,7 @@ export default function AuthModal({ onClose }: AuthModalProps) {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         phone: formattedPhone,
+        options: { channel: 'whatsapp' },
       });
 
       if (error) throw error;
@@ -286,7 +287,7 @@ export default function AuthModal({ onClose }: AuthModalProps) {
                   </div>
                 </div>
                 <label htmlFor="terms" className="text-[12px] font-sans font-medium text-nubo-nav-inactive leading-tight select-none cursor-pointer pt-0.5">
-                  Li e concordo com os <a href="/termos" className="text-nubo-primary hover:underline">Termos de Uso</a> e <a href="/privacidade" className="text-nubo-primary hover:underline">Política de Privacidade</a>.
+                  Li e concordo com os <a href="/termos-de-uso.pdf" target="_blank" rel="noopener noreferrer" className="text-nubo-primary hover:underline">Termos de Uso</a> e <a href="/politica-de-privacidade.pdf" target="_blank" rel="noopener noreferrer" className="text-nubo-primary hover:underline">Política de Privacidade</a>.
                 </label>
               </div>
 

@@ -23,12 +23,14 @@ interface CardOportunidadeParceiraProps {
   opportunity: IUnifiedOpportunity;
   onFavorite?: (id: string) => void;
   isFavorited?: boolean;
+  onClickOverride?: (id: string) => void;
 }
 
 export default function CardOportunidadeParceira({
   opportunity,
   onFavorite,
   isFavorited = false,
+  onClickOverride,
 }: CardOportunidadeParceiraProps) {
   const { user, setShowAuthModal } = useAuth();
   const isAuthenticated = !!user;
@@ -54,7 +56,11 @@ export default function CardOportunidadeParceira({
       setShowAuthModal(true);
       return;
     }
-    window.location.href = `/oportunidades/${opportunity.id}`;
+    if (onClickOverride) {
+      onClickOverride(opportunity.id);
+    } else {
+      window.location.href = `/oportunidades/${opportunity.id}`;
+    }
   };
 
   // Category label for partner cards.

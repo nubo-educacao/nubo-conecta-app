@@ -43,10 +43,14 @@ export default function HomeClient({
     if (user) loadExisting();
   }, [user, loadExisting]);
 
+  const onboardingCompleted = user?.user_metadata?.onboarding_completed as boolean | undefined;
+
   let ctaState: CTAState = 'loading';
   if (!loading) {
     if (!user) {
       ctaState = 'visitor';
+    } else if (!onboardingCompleted) {
+      ctaState = 'no-profile';
     } else if (matchState === 'loading') {
       ctaState = 'loading';
     } else if (matchState === 'done' && results.length > 0) {
@@ -56,10 +60,10 @@ export default function HomeClient({
     }
   }
 
-  const showMatchSection = !!user;
+  const showMatchSection = !!user && !!onboardingCompleted;
 
   return (
-    <div className="flex flex-col gap-6 pb-5">
+    <div className="flex flex-col gap-6 pt-6 pb-5">
       {/* 1. Hero Buscador */}
       <HeroSearch />
 
