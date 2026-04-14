@@ -7,9 +7,16 @@
 import { useState } from 'react';
 import { CloudLightning, X } from 'lucide-react';
 import ChatDrawer from './ChatDrawer';
+import { useProactiveDrawer } from '@/hooks/useProactiveDrawer';
 
 export default function ChatFAB() {
   const [isOpen, setIsOpen] = useState(false);
+
+  // Trigger proativo: abre drawer após 5s se não foi mostrado ainda na sessão
+  useProactiveDrawer({
+    isDrawerOpen: isOpen,
+    onOpen: () => setIsOpen(true),
+  });
 
   return (
     <>
