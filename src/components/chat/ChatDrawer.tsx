@@ -17,9 +17,11 @@ import { useChat } from '@/hooks/useChat';
 import { useConversationStarters } from '@/hooks/useConversationStarters';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { ChatMessage } from '@/services/chatService';
 
 interface ChatDrawerProps {
   onClose: () => void;
+  initialMessages?: ChatMessage[];
 }
 
 function genSessionId(): string {
@@ -37,7 +39,7 @@ function getOrCreateSessionId(): string {
   return id;
 }
 
-export default function ChatDrawer({ onClose }: ChatDrawerProps) {
+export default function ChatDrawer({ onClose, initialMessages = [] }: ChatDrawerProps) {
   const pathname = usePathname();
   const { user, session, setShowAuthModal } = useAuth();
   const sessionId = useRef(getOrCreateSessionId()).current;
@@ -50,6 +52,7 @@ export default function ChatDrawer({ onClose }: ChatDrawerProps) {
     pageRoute: pathname,
     sessionId,
     accessToken: session?.access_token ?? '',
+    initialMessages,
   });
 
   const hasMessages = messages.length > 0;
