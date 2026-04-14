@@ -10,11 +10,12 @@ export interface ChatMessage {
 }
 
 export interface ChatEvent {
-  type: 'text' | 'tool_start' | 'tool_end' | 'suggestions' | 'error' | 'system_message';
+  type: 'text' | 'tool_start' | 'tool_end' | 'suggestions' | 'error' | 'system_message' | 'intent_metadata';
   content?: string;
   tool?: string;
   args?: Record<string, unknown>;
   open_drawer?: boolean;
+  delay_ms?: number;
   output?: string;
   items?: string[];
   message?: string;

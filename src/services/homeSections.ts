@@ -5,8 +5,7 @@
  * via Admin CMS (/app-cms).
  */
 
-import { createClient } from '@/lib/supabase';
-
+import { supabase } from '@/lib/supabase';
 export interface IHomeSection {
   id: string;
   title: string;
@@ -27,8 +26,6 @@ export interface IHomeSection {
  *                    Se null/undefined, mostra apenas seções sem filtro de estado.
  */
 export async function getHomeSections(userState?: string | null): Promise<IHomeSection[]> {
-  const supabase = createClient();
-
   const { data, error } = await supabase
     .from('home_sections')
     .select('*')

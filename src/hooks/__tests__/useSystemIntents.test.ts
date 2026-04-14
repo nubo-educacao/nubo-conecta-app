@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { useSystemIntents } from '@/hooks/useSystemIntents';
-import { vi, describe, beforeEach, it, expect, Mock } from 'vitest';
+import { vi, describe, beforeEach, afterEach, it, expect, Mock } from 'vitest';
 import { usePathname } from 'next/navigation';
 import { streamChat } from '@/services/chatService';
 
@@ -9,7 +9,6 @@ vi.mock('next/navigation', () => ({
   usePathname: vi.fn(),
 }));
 
-// Mock do streamChat
 vi.mock('@/services/chatService', () => ({
   streamChat: vi.fn(),
 }));
@@ -17,67 +16,100 @@ vi.mock('@/services/chatService', () => ({
 describe('useSystemIntents', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
   });
 
-  it('dispara page_context quando rota muda para /opportunities/[id]', async () => {
-    (usePathname as Mock).mockReturnValue('/partner-opportunities/opp-123');
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
-    // Simular resposta do backend com system_message
+  const defaultProps = {
+    userId: 'user-123',
+    profileId: 'profile-abc',
+    sessionId: 'session-xyz',
+    accessToken: 'token-123',
+    isDrawerOpen: false,
+    onOpen: vi.fn(),
+  };
+
+  it('dispara page_context em qualquer rota (backend decide se responde)', async () => {
+    vi.useRealTimers();
+    (usePathname as Mock).mockReturnValue('/oportunidades/opp-123');
+
+    // Backend responde com texto real do LLM + metadata
     (streamChat as Mock).mockImplementation(async function* () {
-      yield { type: 'system_message', content: 'Oi! Vejo que está vendo esta oportunidade.', open_drawer: true };
+      yield { type: 'text', content: 'Olá! Vejo que você está explorando esta oportunidade.' };
+      yield { type: 'intent_metadata', open_drawer: true, delay_ms: 5000 };
     });
 
     const onOpen = vi.fn();
     const { result } = renderHook(() =>
-      useSystemIntents({
-        userId: 'user-123',
-        profileId: 'profile-abc',
-        sessionId: 'session-xyz',
-        accessToken: 'token-123',
-        isDrawerOpen: false,
-        onOpen,
-      })
+      useSystemIntents({ ...defaultProps, onOpen })
     );
 
     await waitFor(() => {
       expect(result.current.unreadCount).toBe(1);
       expect(result.current.pendingMessages).toHaveLength(1);
-      expect(result.current.pendingMessages[0].content).toContain('Oi!');
+      expect(result.current.pendingMessages[0].content).toContain('Olá!');
     });
 
-    // open_drawer=true deve ter chamado onOpen
-    expect(onOpen).toHaveBeenCalledTimes(1);
+    // streamChat deve ter sido chamado com page_context
+    expect(streamChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatInput: 'page_context',
+        intent_type: 'system_intent',
+      }),
+      'token-123',
+    );
   });
 
-  it('NÃO dispara em rotas genéricas como /home ou /perfil', async () => {
-    (usePathname as Mock).mockReturnValue('/perfil');
+  it('NÃO dispara sem auth (userId vazio)', async () => {
+    vi.useRealTimers();
+    (usePathname as Mock).mockReturnValue('/oportunidades/opp-456');
 
-    const onOpen = vi.fn();
     renderHook(() =>
-      useSystemIntents({
-        userId: 'u', profileId: 'p', sessionId: 's', accessToken: 'tk',
-        isDrawerOpen: false, onOpen,
-      })
+      useSystemIntents({ ...defaultProps, userId: '', accessToken: '' })
     );
 
     await new Promise((r) => setTimeout(r, 100));
     expect(streamChat).not.toHaveBeenCalled();
+  });
+
+  it('respeita delay_ms antes de abrir drawer', async () => {
+    (usePathname as Mock).mockReturnValue('/oportunidades/opp-789');
+
+    (streamChat as Mock).mockImplementation(async function* () {
+      yield { type: 'text', content: 'Resposta real da Cloudinha' };
+      yield { type: 'intent_metadata', open_drawer: true, delay_ms: 3000 };
+    });
+
+    const onOpen = vi.fn();
+    const { result } = renderHook(() =>
+      useSystemIntents({ ...defaultProps, onOpen })
+    );
+
+    // Flush microtasks para que o async generator complete
+    await vi.advanceTimersByTimeAsync(100);
+
+    // Ainda não abriu — delay de 3s não passou
     expect(onOpen).not.toHaveBeenCalled();
+
+    // Avançar 3s
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
   it('limpa unreadCount quando drawer é aberto', async () => {
-    (usePathname as Mock).mockReturnValue('/opportunities/opp-456');
+    vi.useRealTimers();
+    (usePathname as Mock).mockReturnValue('/oportunidades/opp-456');
 
     (streamChat as Mock).mockImplementation(async function* () {
-      yield { type: 'system_message', content: 'Olá!', open_drawer: false };
+      yield { type: 'text', content: 'Olá!' };
     });
 
     const { result, rerender } = renderHook(
       ({ isDrawerOpen }) =>
-        useSystemIntents({
-          userId: 'u', profileId: 'p', sessionId: 's', accessToken: 'tk',
-          isDrawerOpen, onOpen: vi.fn(),
-        }),
+        useSystemIntents({ ...defaultProps, isDrawerOpen, onOpen: vi.fn() }),
       { initialProps: { isDrawerOpen: false } }
     );
 
@@ -86,5 +118,26 @@ describe('useSystemIntents', () => {
     // Abrir o drawer
     rerender({ isDrawerOpen: true });
     expect(result.current.unreadCount).toBe(0);
+  });
+
+  it('quando backend não responde com texto (rota sem handler), ignora silenciosamente', async () => {
+    vi.useRealTimers();
+    (usePathname as Mock).mockReturnValue('/perfil');
+
+    // Backend retorna system_ack (sem texto, sem intent_metadata) — JSON direto, não stream
+    // Mas o frontend faz fetch como stream, então simular stream vazio
+    (streamChat as Mock).mockImplementation(async function* () {
+      // Nenhum evento de texto — backend retornou system_ack como JSON direto
+    });
+
+    const onOpen = vi.fn();
+    const { result } = renderHook(() =>
+      useSystemIntents({ ...defaultProps, onOpen })
+    );
+
+    await new Promise((r) => setTimeout(r, 100));
+    expect(result.current.unreadCount).toBe(0);
+    expect(result.current.pendingMessages).toHaveLength(0);
+    expect(onOpen).not.toHaveBeenCalled();
   });
 });

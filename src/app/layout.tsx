@@ -11,7 +11,12 @@ const montserrat = Montserrat({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Nubo Conecta",
   description: "Sua ponte para oportunidades educacionais",
-  viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
