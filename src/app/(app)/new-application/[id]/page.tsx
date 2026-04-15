@@ -120,9 +120,11 @@ export default function CheckoutCandidaturaPage() {
               category_label: "Programas Educacionais",
               category: "educational_programs",
               is_partner: true,
-              type: "partner_opportunities" as const,
+              type: "partner",
               opportunity_type: o.opportunity_type as string,
               location: pi.location ?? "Nacional",
+              education_level: "Programa",
+              badges: [],
               created_at: o.created_at as string,
             } as IUnifiedOpportunity;
           });

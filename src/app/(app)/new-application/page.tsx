@@ -57,7 +57,7 @@ export default function NewApplicationListPage() {
       setOpportunities(
         withForms.map((o: Record<string, unknown>) => {
           const inst = (o.institutions as Record<string, any>) ?? {};
-          let pi = {};
+          let pi: Record<string, any> = {};
           if (Array.isArray(inst.partner_institutions) && inst.partner_institutions.length > 0) {
               pi = inst.partner_institutions[0];
           } else if (inst.partner_institutions && !Array.isArray(inst.partner_institutions)) {
@@ -70,9 +70,11 @@ export default function NewApplicationListPage() {
             category_label:   "Programas Educacionais",
             category:         "educational_programs",
             is_partner:       true,
-            type:             "partner_opportunities" as const,
+            type:             "partner",
             opportunity_type: o.opportunity_type as string,
             location:         pi.location ?? "Nacional",
+            education_level:  "Programa",
+            badges:           [],
             created_at:       o.created_at as string,
             has_applied:      appliedIds.has(o.id as string),
           };

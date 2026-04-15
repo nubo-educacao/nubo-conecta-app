@@ -54,7 +54,8 @@ export default function PartnerFormsPage() {
         return;
       }
 
-      const opp = existingApp.partner_opportunities as Record<string, string> | null;
+      const rawOpp = existingApp.partner_opportunities;
+      const opp = Array.isArray(rawOpp) ? rawOpp[0] : rawOpp;
       const appState: ApplicationState = {
         id: existingApp.id,
         status: existingApp.status,

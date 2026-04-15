@@ -35,7 +35,7 @@ export function useConversationStarters(pageRoute: string): StartersData & { loa
       .eq('is_active', true)
       .order('route_priority', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
       .then(({ data: row }) => {
         if (cancelled) return;
         if (row) {
@@ -44,6 +44,7 @@ export function useConversationStarters(pageRoute: string): StartersData & { loa
             starters: Array.isArray(row.starters) ? row.starters : FALLBACK.starters,
           });
         }
+        // Se row=null (nenhum starter para esta rota), mantém o FALLBACK
         setLoading(false);
       });
 

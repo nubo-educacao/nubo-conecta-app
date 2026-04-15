@@ -16,6 +16,7 @@ interface UseChatOptions {
   pageRoute: string;
   sessionId: string;
   accessToken: string;
+  initialMessages?: ChatMessage[];
 }
 
 export function useChat({
@@ -24,8 +25,9 @@ export function useChat({
   pageRoute,
   sessionId,
   accessToken,
+  initialMessages = [],
 }: UseChatOptions) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [isStreaming, setIsStreaming] = useState(false);
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
