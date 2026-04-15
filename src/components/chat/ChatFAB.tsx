@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { CloudLightning, X } from 'lucide-react';
 import ChatDrawer from './ChatDrawer';
 import { useSystemIntents } from '@/hooks/useSystemIntents';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePathname } from 'next/navigation';
+import { type ChatMessage } from '@/services/chatService';
 
-// sessionId vive aqui para ser compartilhado com o hook de system intents
 const SESSION_KEY = 'nubo_chat_session';
 function getOrCreateSessionId(): string {
   if (typeof window === 'undefined') return Math.random().toString(36).slice(2);
@@ -19,29 +18,48 @@ function getOrCreateSessionId(): string {
 }
 
 export default function ChatFAB() {
-  const [isOpen, setIsOpen] = useState(false);
   const { user, session } = useAuth();
-  const pathname = usePathname();
   const sessionId = getOrCreateSessionId();
 
-  const { pendingMessages, unreadCount, consumeMessages } = useSystemIntents({
+  // Snapshot das mensagens pendentes capturado no momento da abertura
+  const [drawerMessages, setDrawerMessages] = useState<ChatMessage[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+
+  // pendingMessagesRef: sempre tem o valor mais atual do pendingMessages
+  // Usado pelo onOpen para leitura síncrona sem depender de closure
+  const pendingMessagesRef = useRef<ChatMessage[]>([]);
+
+  const { pendingMessages, unreadCount } = useSystemIntents({
     userId: user?.id ?? '',
     profileId: user?.id ?? '',
     sessionId,
     accessToken: session?.access_token ?? '',
     isDrawerOpen: isOpen,
-    onOpen: () => setIsOpen(true),
+    onOpen: () => {
+      // Lê o ref — sempre tem o valor atual, sem stale closure
+      setDrawerMessages([...pendingMessagesRef.current]);
+      setIsOpen(true);
+    },
   });
 
-  const handleOpen = () => {
-    setIsOpen(true);
-  };
+  // Sincronizar ref com o state atual (síncrono, sem delay de useEffect)
+  pendingMessagesRef.current = pendingMessages;
+
+  function handleToggle() {
+    if (isOpen) {
+      setIsOpen(false);
+    } else {
+      // Abertura manual: captura snapshot atual das mensagens
+      setDrawerMessages([...pendingMessagesRef.current]);
+      setIsOpen(true);
+    }
+  }
 
   return (
     <>
       {/* FAB button */}
       <button
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={handleToggle}
         className="fixed z-30 flex items-center justify-center rounded-full shadow-lg transition-all hover:scale-105 active:scale-95"
         style={{
           bottom: 'calc(env(safe-area-inset-bottom) + 76px)',
@@ -89,11 +107,11 @@ export default function ChatFAB() {
         )}
       </button>
 
-      {/* Drawer — com mensagens pendentes injetadas */}
+      {/* Drawer — drawerMessages é setado no mesmo ciclo que isOpen=true */}
       {isOpen && (
         <ChatDrawer
           onClose={() => setIsOpen(false)}
-          initialMessages={consumeMessages()}
+          initialMessages={drawerMessages}
         />
       )}
     </>

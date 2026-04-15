@@ -3,8 +3,9 @@
 /**
  * useSystemIntents — Dispara system intents contextuais ao backend da Cloudinha.
  *
- * Em QUALQUER mudança de rota, envia um system intent "page_context" ao backend.
- * O backend decide (via tabela system_intents no DB) se responde ou não.
+ * Em QUALQUER mudança de rota (ou quando auth ficar disponível), envia um
+ * system intent "page_context" ao backend. O backend decide (via tabela
+ * system_intents no DB) se responde ou não.
  *
  * Quando o backend responde:
  *   - A resposta da Cloudinha (real, gerada pelo LLM) é armazenada como pendingMessage
@@ -46,14 +47,16 @@ export function useSystemIntents({
   const pathname = usePathname();
   const [pendingMessages, setPendingMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const lastRouteRef = useRef<string>('');
+
+  // Rastreia qual rota+userId já foi disparado para evitar duplicatas
+  // Formato: "userId::pathname"
+  const dispatchedRef = useRef<string>('');
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Zerar badge quando drawer é aberto
   useEffect(() => {
     if (isDrawerOpen) {
       setUnreadCount(0);
-      // Cancelar timer de abertura automática se o usuário já abriu manualmente
       if (openTimerRef.current) {
         clearTimeout(openTimerRef.current);
         openTimerRef.current = null;
@@ -61,19 +64,25 @@ export function useSystemIntents({
     }
   }, [isDrawerOpen]);
 
+  // Disparar quando pathname OU auth mudam — resolve race condition de auth carregando
   useEffect(() => {
-    // Evitar disparar 2x na mesma rota
-    if (pathname === lastRouteRef.current) return;
-    lastRouteRef.current = pathname;
+    // Não disparar sem auth
+    if (!userId || !accessToken) {
+      console.log('[SystemIntent] Aguardando auth...', { userId: !!userId, token: !!accessToken });
+      return;
+    }
 
-    // Não disparar se não tem auth
-    if (!userId || !accessToken) return;
+    // Chave única: só dispara 1x por rota+usuário
+    const dispatchKey = `${userId}::${pathname}`;
+    if (dispatchedRef.current === dispatchKey) return;
+    dispatchedRef.current = dispatchKey;
+
+    console.log('[SystemIntent] Disparando page_context para:', pathname);
 
     let cancelled = false;
 
     async function dispatchPageContext() {
       try {
-        // Extrair ID do recurso (último segmento da URL)
         const segments = pathname.split('/').filter(Boolean);
         const resourceId = segments[segments.length - 1] || '';
 
@@ -97,16 +106,11 @@ export function useSystemIntents({
         for await (const event of stream) {
           if (cancelled) break;
 
-          // Resposta real da Cloudinha (gerada pelo LLM)
+          // Resposta real da Cloudinha (chunks de texto do LLM)
           if (event.type === 'text' && event.content) {
-            // Acumular texto na última mensagem pendente ou criar nova
             setPendingMessages((prev) => {
-              const last = prev[prev.length - 1];
-              if (last && !hasContent) {
-                // Primeira chunk — já criamos uma mensagem vazia? Não, criar agora.
-              }
               if (hasContent && prev.length > 0) {
-                // Acumular no último
+                // Acumular no último chunk
                 const updated = [...prev];
                 updated[updated.length - 1] = {
                   ...updated[updated.length - 1],
@@ -114,11 +118,11 @@ export function useSystemIntents({
                 };
                 return updated;
               }
-              // Primeira chunk — criar nova mensagem
+              // Primeiro chunk — criar nova mensagem
               return [...prev, {
                 id: genId(),
                 sender: 'model' as const,
-                content: event.content,
+                content: event.content!,
                 timestamp: new Date(),
               }];
             });
@@ -131,8 +135,9 @@ export function useSystemIntents({
             }
           }
 
-          // Metadados do intent (open_drawer, delay_ms) — emitidos pelo backend pós-pipeline
+          // Metadados do intent — emitidos pelo backend pós-pipeline (NÃO vai pro agente)
           if (event.type === 'intent_metadata') {
+            console.log('[SystemIntent] intent_metadata recebido:', event);
             if (event.open_drawer && !isDrawerOpen) {
               const delay = event.delay_ms ?? 5000;
               openTimerRef.current = setTimeout(() => {
@@ -143,7 +148,6 @@ export function useSystemIntents({
           }
         }
       } catch (e) {
-        // System intents são silenciosos em caso de falha
         console.warn('[SystemIntent] Falha ao disparar page_context:', e);
       }
     }
@@ -157,8 +161,9 @@ export function useSystemIntents({
         openTimerRef.current = null;
       }
     };
+  // Intencionalmente inclui userId e accessToken para retentar quando auth carrega
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, userId, accessToken]);
 
   // Consumir mensagens (para injetar no ChatDrawer quando abre)
   const consumeMessages = useCallback((): ChatMessage[] => {
