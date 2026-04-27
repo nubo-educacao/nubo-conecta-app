@@ -8,19 +8,22 @@ import { cookies } from 'next/headers';
 import type { IUnifiedOpportunity, OpportunityCategory, OpportunitySourceType } from '@/types/opportunities';
 
 // Row shape returned by v_unified_opportunities — maps directly to view columns
+// Sprint 6: added status, starts_at, ends_at. 'type' is the source type (sisu|prouni|partner).
 interface UnifiedOpportunityRow {
   unified_id: string;
   title: string;
   provider_name: string;
-  type: string;
+  type: string;                       // 'sisu' | 'prouni' | 'partner'
   category: string;
   is_partner: boolean;
   location: string;
   badges: string[];
-  opportunity_type: string;
   created_at: string;
   external_redirect_url: string | null;
   external_redirect_enabled: boolean;
+  status: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
 }
 
 // Category label lookup — keeps the service layer free of display-layer concerns
@@ -38,13 +41,18 @@ function mapRowToOpportunity(row: UnifiedOpportunityRow): IUnifiedOpportunity {
     institution_name: row.provider_name,
     is_partner:       row.is_partner,
     type:             row.type as OpportunitySourceType,
-    opportunity_type: row.opportunity_type,
+    // opportunity_type mirrors 'type' for backward compat with components
+    opportunity_type: row.type,
     category,
     category_label:   CATEGORY_LABELS[category] ?? row.category,
     location:         row.location,
-    education_level:  'Graduação', // MEC data is always undergraduate; partners override client-side if needed
+    education_level:  'Graduação', // MEC data is always undergraduate
     badges:           Array.isArray(row.badges) ? row.badges.filter(Boolean) : [],
     created_at:       row.created_at,
+    // Sprint 6: lifecycle dates and status
+    status:           row.status ?? undefined,
+    starts_at:        row.starts_at ?? undefined,
+    ends_at:          row.ends_at ?? undefined,
     external_redirect: row.external_redirect_url != null || row.external_redirect_enabled
       ? {
           enabled: row.external_redirect_enabled,

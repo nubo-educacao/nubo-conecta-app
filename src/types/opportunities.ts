@@ -43,6 +43,12 @@ export interface IUnifiedOpportunity {
   match_score?: number;
   /** ISO 8601 timestamp */
   created_at: string;
+  /** Sprint 6: lifecycle status (approved | inactive | pending) */
+  status?: string;
+  /** Sprint 6: opportunity start date — for display and alert logic */
+  starts_at?: string;
+  /** Sprint 6: opportunity end date — for display and alert logic */
+  ends_at?: string;
   /** External redirect config — only present for partner opportunities */
   external_redirect?: {
     enabled: boolean;
