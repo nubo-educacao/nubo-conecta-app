@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 
 import type { IUnifiedOpportunity } from "@/types/opportunities";
-import CardOportunidadeParceira from "@/components/opportunities/CardOportunidadeParceira";
+import OpportunityCard from "@/components/opportunities/OpportunityCard";
 
 interface OpportunityWithApplied extends IUnifiedOpportunity {
   has_applied: boolean;
@@ -124,7 +124,7 @@ export default function NewApplicationListPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {opportunities.map((opp) => (
               <div key={opp.id} className="relative">
-                <CardOportunidadeParceira
+                <OpportunityCard
                   opportunity={opp}
                   onClickOverride={handleSelect}
                 />

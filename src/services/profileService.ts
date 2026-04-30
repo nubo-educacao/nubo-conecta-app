@@ -49,6 +49,15 @@ export interface UserPreferencesData {
   state_preference?: string | null;
 }
 
+export interface UserEnemScoreData {
+  year?: number | null;
+  nota_linguagens?: number | null;
+  nota_ciencias_humanas?: number | null;
+  nota_ciencias_natureza?: number | null;
+  nota_matematica?: number | null;
+  nota_redacao?: number | null;
+}
+
 export async function saveUserData(userId: string, data: UserProfileData): Promise<void> {
   const { error } = await supabase
     .from('user_profiles')
@@ -71,6 +80,14 @@ export async function saveUserPreferences(userId: string, prefs: UserPreferences
     .upsert({ user_id: userId, ...prefs }, { onConflict: 'user_id' });
 
   if (error) throw new Error(`saveUserPreferences: ${error.message}`);
+}
+
+export async function saveUserEnemScore(userId: string, score: UserEnemScoreData): Promise<void> {
+  const { error } = await supabase
+    .from('user_enem_scores')
+    .upsert({ user_id: userId, ...score }, { onConflict: 'user_id,year' });
+
+  if (error) throw new Error(`saveUserEnemScore: ${error.message}`);
 }
 
 // Sets onboarding_completed = true in Supabase Auth user_metadata.

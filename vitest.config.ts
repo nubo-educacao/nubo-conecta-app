@@ -12,6 +12,6 @@ export default defineConfig({
   test: {
     // jsdom definido per-file via // @vitest-environment jsdom
     // Arquivos de lógica pura (redirectService, types) rodam em node (padrão)
-    globals: false,
+    globals: true,
   },
 });

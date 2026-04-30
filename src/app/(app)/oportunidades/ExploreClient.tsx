@@ -9,8 +9,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useRef, useCallback } from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
-import CardOportunidades from '@/components/opportunities/CardOportunidades';
-import CardOportunidadeParceira from '@/components/opportunities/CardOportunidadeParceira';
+import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import FilterModal from './FilterModal';
 import type { IUnifiedOpportunity, ExploreFilters } from '@/types/opportunities';
 import { useState } from 'react';
@@ -66,8 +65,10 @@ export default function ExploreClient({ opportunities, filters }: ExploreClientP
 
   const handleFilterApply = (partial: Partial<ExploreFilters>) => {
     updateParam({
-      modality: partial.modality,
       location: partial.location,
+      shift:    partial.shift,
+      min_igc:  partial.min_igc?.toString(),
+      price_range: partial.price_range,
     });
     setFilterModalOpen(false);
   };
@@ -79,11 +80,12 @@ export default function ExploreClient({ opportunities, filters }: ExploreClientP
       {/* SearchBar + Filtros — Figma node 22:1967 */}
       <div className="flex items-center gap-2">
         <div
-          className="flex-1 flex items-center gap-2 rounded-[12px] px-4"
+          className="flex-1 flex items-center gap-2 rounded-[16px] px-4 transition-all focus-within:ring-2 focus-within:ring-[#3092bb]/20"
           style={{
             background: '#ffffff',
-            border: '1px solid #e5e7eb',
-            height: 48,
+            border: '1px solid #f3f4f6',
+            boxShadow: '0px 2px 8px rgba(0,0,0,0.04)',
+            height: 52,
           }}
         >
           <Search size={18} color="#636e7c" />
@@ -139,21 +141,19 @@ export default function ExploreClient({ opportunities, filters }: ExploreClientP
         </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
-          {opportunities.map((opp) =>
-            opp.is_partner ? (
-              <CardOportunidadeParceira key={opp.id} opportunity={opp} />
-            ) : (
-              <CardOportunidades key={opp.id} opportunity={opp} />
-            ),
-          )}
+          {opportunities.map((opp) => (
+            <OpportunityCard key={opp.id} opportunity={opp} />
+          ))}
         </div>
       )}
 
       <FilterModal
         open={filterModalOpen}
         onClose={() => setFilterModalOpen(false)}
-        modality={filters.modality}
         location={filters.location}
+        shift={filters.shift}
+        min_igc={filters.min_igc}
+        price_range={filters.price_range}
         onApply={handleFilterApply}
       />
     </div>

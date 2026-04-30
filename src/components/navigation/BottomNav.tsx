@@ -30,16 +30,16 @@ export default function BottomNav() {
               href={href}
               className="flex flex-1 flex-col items-center justify-center gap-[2px] transition-colors"
             >
-              {/* Figma: ativo #048FAD Bold, inativo #707A7E Medium */}
+              {/* Figma: ativo #3092bb Bold, inativo #707A7E Medium */}
               <Icon
                 className="h-6 w-6"
-                style={{ color: isActive ? "#048FAD" : "#707A7E" }}
+                style={{ color: isActive ? "#3092bb" : "#707A7E" }}
                 strokeWidth={isActive ? 2.5 : 1.5}
               />
               <span
                 className="text-[9px] leading-tight"
                 style={{
-                  color: isActive ? "#048FAD" : "#707A7E",
+                  color: isActive ? "#3092bb" : "#707A7E",
                   fontWeight: isActive ? 700 : 500,
                 }}
               >

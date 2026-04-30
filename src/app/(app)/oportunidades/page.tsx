@@ -22,6 +22,9 @@ interface PageProps {
     category?: string;
     modality?: string;
     location?: string;
+    shift?: string;
+    min_igc?: string;
+    price_range?: string;
   }>;
 }
 
@@ -38,11 +41,19 @@ export default async function OpportunitiesPage({ searchParams }: PageProps) {
     modality: params.modality === 'presential' || params.modality === 'online'
       ? params.modality
       : undefined,
-    location: params.location,
+    location:    params.location,
+    shift:       params.shift as ExploreFilters['shift'],
+    min_igc:     params.min_igc ? parseInt(params.min_igc) : undefined,
+    price_range: params.price_range as ExploreFilters['price_range'],
   };
 
   // Server-side fetch — fails loud if DB is down (PLAYBOOK § 1)
-  const opportunities = await getUnifiedOpportunities({ mode: activeTab === 'explore' ? 'explorar' : 'para-voce', page: 0, limit: 30 });
+  const opportunities = await getUnifiedOpportunities({ 
+    mode: activeTab === 'explore' ? 'explorar' : 'para-voce', 
+    page: 0, 
+    limit: 30,
+    ...filters
+  });
 
   return (
     <AppShell>

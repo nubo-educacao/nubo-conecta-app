@@ -8,7 +8,7 @@ import { notFound } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import CardOportunidadeParceira from '@/components/opportunities/CardOportunidadeParceira';
+import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 
 interface PageProps {
@@ -86,30 +86,39 @@ export default async function InstitutionDetailPage({ params }: PageProps) {
         <div className="px-4 pt-6 pb-2">
           <Link
             href="/instituicoes"
-            className="flex items-center gap-2 text-[14px] font-medium"
-            style={{ color: '#3092bb', fontFamily: 'Montserrat, sans-serif' }}
+            className="flex items-center gap-2 text-[14px] font-semibold"
+            style={{ color: '#7030C2', fontFamily: 'Montserrat, sans-serif' }}
           >
             <ArrowLeft size={16} />
             Instituições Parceiras
           </Link>
         </div>
 
-        {/* Hero cover */}
+        {/* Hero cover - Fixed Purple Branding theme (Sprint 7) */}
         <div
-          className="relative w-full h-[200px]"
+          className="relative w-full h-[180px] bg-[#522A87] overflow-hidden"
           style={{
-            background: branding?.cover_url
-              ? undefined
-              : branding?.brand_color ?? 'linear-gradient(239.861deg, rgba(112,48,194,0.6) 6.45%, rgb(112,48,194) 59.27%)',
+            background: 'linear-gradient(239.86deg, #522A87 9.15%, #7030C2 59.27%)',
           }}
         >
           {branding?.cover_url && (
             <img
               src={branding.cover_url}
               alt={`Capa de ${institution.name}`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover opacity-60 mix-blend-soft-light"
             />
           )}
+          
+          {/* Wave/Cloud divider for the header - matching OpportunityCard aesthetics */}
+          <div className="absolute bottom-0 left-0 w-full z-10 pointer-events-none">
+            <div className="relative w-full h-[40px]">
+              <img
+                src="/assets/card-background.svg"
+                alt=""
+                className="w-full h-full object-cover object-bottom invert brightness-200 opacity-20"
+              />
+            </div>
+          </div>
           {branding?.logo_url && (
             <div className="absolute bottom-[-28px] left-6 w-[56px] h-[56px] rounded-full bg-white shadow-md flex items-center justify-center overflow-hidden">
               <img
@@ -151,7 +160,7 @@ export default async function InstitutionDetailPage({ params }: PageProps) {
               </h2>
               <div className="flex flex-col gap-4 items-center">
                 {opportunities.map((opp) => (
-                  <CardOportunidadeParceira key={opp.id} opportunity={opp} />
+                  <OpportunityCard key={opp.id} opportunity={opp} />
                 ))}
               </div>
             </div>

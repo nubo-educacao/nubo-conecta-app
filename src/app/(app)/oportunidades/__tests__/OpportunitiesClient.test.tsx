@@ -21,15 +21,9 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
 }));
 
-vi.mock('@/components/opportunities/CardOportunidades', () => ({
+vi.mock('@/components/opportunities/OpportunityCard', () => ({
   default: ({ opportunity }: { opportunity: { title: string } }) => (
-    <div data-testid="card-mec">{opportunity.title}</div>
-  ),
-}));
-
-vi.mock('@/components/opportunities/CardOportunidadeParceira', () => ({
-  default: ({ opportunity }: { opportunity: { title: string } }) => (
-    <div data-testid="card-partner">{opportunity.title}</div>
+    <div data-testid="opportunity-card">{opportunity.title}</div>
   ),
 }));
 
@@ -154,7 +148,7 @@ describe('OpportunitiesClient', () => {
     expect(screen.getByText('Nenhuma oportunidade encontrada.')).toBeDefined();
   });
 
-  it('aba "para-voce" renderiza CardOportunidades para MEC', () => {
+  it('aba "para-voce" renderiza OpportunityCard para MEC', () => {
     render(
       <OpportunitiesClient
         opportunities={[makeOpp({ title: 'Direito UFMG' })]}
@@ -162,11 +156,11 @@ describe('OpportunitiesClient', () => {
         filters={emptyFilters}
       />,
     );
-    expect(screen.getByTestId('card-mec')).toBeDefined();
+    expect(screen.getByTestId('opportunity-card')).toBeDefined();
     expect(screen.getByText('Direito UFMG')).toBeDefined();
   });
 
-  it('aba "para-voce" renderiza CardOportunidadeParceira para parceiros', () => {
+  it('aba "para-voce" renderiza OpportunityCard para parceiros', () => {
     render(
       <OpportunitiesClient
         opportunities={[makeOpp({ is_partner: true, title: 'Bootcamp TechCorp', type: 'partner', opportunity_type: 'bootcamp' })]}
@@ -174,7 +168,7 @@ describe('OpportunitiesClient', () => {
         filters={emptyFilters}
       />,
     );
-    expect(screen.getByTestId('card-partner')).toBeDefined();
+    expect(screen.getByTestId('opportunity-card')).toBeDefined();
   });
 
   it('aba "para-voce" NÃO renderiza ExploreClient', () => {
