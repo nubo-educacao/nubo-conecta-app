@@ -7,7 +7,7 @@ import { Loader2, ArrowLeft, User, Users, MapPin } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
-import CardOportunidadeParceira from "@/components/opportunities/CardOportunidadeParceira";
+import OpportunityCard from "@/components/opportunities/OpportunityCard";
 import type { IUnifiedOpportunity } from "@/types/opportunities";
 
 interface PartnerMeta {
@@ -332,7 +332,7 @@ export default function CheckoutCandidaturaPage() {
               <div className="flex overflow-x-auto gap-4 pb-4 snap-x">
                 {similarOpps.map(opp => (
                   <div key={opp.id} className="min-w-[280px] w-[280px] snap-center">
-                    <CardOportunidadeParceira 
+                    <OpportunityCard 
                       opportunity={opp} 
                       onClickOverride={(id) => router.push(`/new-application/${id}`)}
                     />

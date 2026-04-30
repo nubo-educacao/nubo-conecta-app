@@ -1,25 +1,34 @@
 'use client';
 
 // MatchOnboardingForm — Sprint 4.5 (BUG-004)
-// Seção 1 (Dados Pessoais): espelha UserDataSection do nubo-hub-app.
-// Seção 2 (Preferências): espelha UserPreferencesSection do nubo-hub-app.
-// Fluxo: validate+saveUserData+saveUserIncome → saveUserPreferences → generateMatch → markOnboardingComplete → onComplete()
+// Unified 3-step sequential onboarding flow.
+// Step 1: Identificação (Profile + Address)
+// Step 2: Desempenho & Renda (ENEM Scores + Income Calculator)
+// Step 3: Interesses & Filtros (Course Interests + Match Filters)
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   User, MapPin, GraduationCap, Calendar, Search, Home, Hash, Building,
   AlertCircle, DollarSign, Users, Calculator, X, Globe, Loader2, Sparkles,
-  ChevronDown, ChevronUp,
+  ChevronRight, ChevronLeft, Check, BookOpen, Briefcase, Info, Mail, Phone,
+  CheckCircle
 } from 'lucide-react';
-import { saveUserData, saveUserIncome, saveUserPreferences, markOnboardingComplete } from '@/services/profileService';
-import { generateMatch } from '@/services/matchService';
+import { 
+  saveUserData, 
+  saveUserIncome, 
+  saveUserPreferences, 
+  saveUserEnemScore,
+  markOnboardingComplete 
+} from '@/services/profileService';
+import { generateMatchAsync, getMatchStatus } from '@/services/matchService';
 
 interface MatchOnboardingFormProps {
   userId: string;
   onComplete: () => void;
 }
 
-// ── Education ────────────────────────────────────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────────────────
+
 const EDUCATION_OPTIONS = [
   'Ensino Fundamental',
   'Ensino Médio Incompleto',
@@ -29,46 +38,28 @@ const EDUCATION_OPTIONS = [
   'Pós-Gradução',
 ];
 
-// ── Shifts (exact from UserPreferencesSection) ────────────────────────────────
 const SHIFTS_OPTIONS = ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EAD'];
 
-// ── Program / University (DB check constraint: lowercase) ────────────────────
 const PROGRAM_OPTIONS = [
   { label: 'Sisu', value: 'sisu' },
   { label: 'Prouni', value: 'prouni' },
   { label: 'Indiferente', value: 'indiferente' },
 ];
+
 const UNIVERSITY_OPTIONS = [
   { label: 'Pública', value: 'publica' },
   { label: 'Privada', value: 'privada' },
   { label: 'Indiferente', value: 'indiferente' },
 ];
 
-// ── Quota types (ConcurrencyTag enum values, exact from nubo-hub-app) ────────
 const QUOTA_OPTIONS = [
-  { id: 'AMPLA_CONCORRENCIA',           label: 'Ampla Concorrência',              description: 'Vagas sem critérios específicos de cota.' },
-  { id: 'ESCOLA_PUBLICA',               label: 'Escola Pública',                  description: 'Para quem cursou todo o ensino médio em escola pública.' },
-  { id: 'BAIXA_RENDA',                  label: 'Baixa Renda',                     description: 'Para estudantes de baixa renda familiar.' },
-  { id: 'PPI',                          label: 'PPI (Pretos, Pardos e Indígenas)', description: 'Para estudantes autodeclarados pretos, pardos ou indígenas.' },
-  { id: 'PRETOS E PARDOS',              label: 'Pretos e Pardos',                  description: 'Para estudantes autodeclarados pretos ou pardos.' },
-  { id: 'INDIGENAS',                    label: 'Indígenas',                        description: 'Para estudantes indígenas.' },
-  { id: 'QUILOMBOLAS',                  label: 'Quilombolas',                      description: 'Para estudantes pertencentes a comunidades quilombolas.' },
-  { id: 'PCD',                          label: 'Pessoa com Deficiência (PCD)',      description: 'Para pessoas com deficiência, conforme laudo exigido.' },
-  { id: 'TRANS',                        label: 'Trans / Travesti',                 description: 'Para pessoas trans ou travestis, quando previsto.' },
-  { id: 'RURAL',                        label: 'Rural / Campo',                    description: 'Para estudantes oriundos de áreas rurais.' },
-  { id: 'AGRICULTURA_FAMILIAR',         label: 'Agricultura Familiar',             description: 'Para estudantes de famílias que vivem da agricultura familiar.' },
-  { id: 'REFUGIADOS',                   label: 'Refugiados',                       description: 'Para pessoas com status de refugiado reconhecido.' },
-  { id: 'CIGANOS',                      label: 'Ciganos',                          description: 'Para estudantes pertencentes a comunidades ciganas.' },
-  { id: 'AUTISMO',                      label: 'Autismo',                          description: 'Para pessoas no espectro autista.' },
-  { id: 'ALTAS_HABILIDADES',            label: 'Altas Habilidades',                description: 'Para estudantes com altas habilidades ou superdotação.' },
-  { id: 'EJA_ENCCEJA',                  label: 'EJA / ENCCEJA',                   description: 'Para quem concluiu os estudos pelo EJA ou ENCCEJA.' },
-  { id: 'PROFESSOR',                    label: 'Professor da Rede Pública',        description: 'Para professores que atuam na rede pública.' },
-  { id: 'MILITAR',                      label: 'Militares e Familiares',           description: 'Para policiais, bombeiros, militares ou seus familiares.' },
-  { id: 'EFA',                          label: 'Escolas Família Agrícola (EFA)',   description: 'Para egressos de Escolas Família Agrícola.' },
-  { id: 'PRIVACAO_LIBERDADE',           label: 'Privação de Liberdade',            description: 'Para pessoas em privação de liberdade.' },
-  { id: 'PCD_AUDITIVA',                 label: 'Deficiência Auditiva / Surdos',   description: 'Para pessoas com deficiência auditiva.' },
-  { id: 'ESCOLA_PRIVADA_BOLSA_INTEGRAL',label: 'Escola Privada com Bolsa',        description: 'Para quem estudou em escola privada com bolsa integral.' },
-  { id: 'OUTROS_ESPECIFICO',            label: 'Outros Critérios Específicos',     description: 'Outros critérios de cota específicos não listados acima.' },
+  { id: 'AMPLA_CONCORRENCIA', label: 'Ampla Concorrência', description: 'Vagas sem critérios específicos de cota.' },
+  { id: 'ESCOLA_PUBLICA', label: 'Escola Pública', description: 'Para quem cursou todo o ensino médio em escola pública.' },
+  { id: 'BAIXA_RENDA', label: 'Baixa Renda', description: 'Para estudantes de baixa renda familiar.' },
+  { id: 'PPI', label: 'PPI (Pretos, Pardos e Indígenas)', description: 'Para estudantes autodeclarados pretos, pardos ou indígenas.' },
+  { id: 'PCD', label: 'Pessoa com Deficiência (PCD)', description: 'Para pessoas com deficiência.' },
+  { id: 'TRANS', label: 'Trans / Travesti', description: 'Para pessoas trans ou travestis.' },
+  { id: 'QUILOMBOLAS', label: 'Quilombolas', description: 'Para estudantes pertencentes a comunidades quilombolas.' },
 ];
 
 const STATES_BR = [
@@ -77,6 +68,8 @@ const STATES_BR = [
 ];
 
 const SALARIO_MINIMO = 1518.00;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -91,776 +84,667 @@ const calculateAge = (birthDate: string): number | null => {
   return age;
 };
 
-interface ViaCEPResponse {
-  localidade: string; uf: string; bairro: string; logradouro: string; erro?: boolean;
-}
-async function lookupCEP(raw: string): Promise<ViaCEPResponse | null> {
+async function lookupCEP(raw: string) {
   const clean = raw.replace(/\D/g, '');
   if (clean.length !== 8) return null;
   try {
     const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
     if (!res.ok) return null;
-    const data: ViaCEPResponse = await res.json();
+    const data = await res.json();
     return data.erro ? null : data;
   } catch { return null; }
 }
 
-// ── Shared input style ────────────────────────────────────────────────────────
-const inputCls = 'bg-white/50 border border-white/40 focus:border-[#38B1E4] rounded-lg px-3 py-2 text-[#3A424E] outline-none transition-all placeholder:text-gray-400 w-full';
+// ── Components ───────────────────────────────────────────────────────────────
 
-function FieldLabel({ icon: Icon, label, error }: { icon?: React.ElementType; label: string; error?: boolean }) {
+function FieldLabel({ icon: Icon, label, error, required, htmlFor }: { icon?: React.ElementType; label: string; error?: boolean; required?: boolean; htmlFor?: string }) {
   return (
-    <label className={`text-sm font-semibold flex items-center gap-2 ${error ? 'text-red-500' : 'text-[#1BBBCD]'}`}>
-      {Icon && <Icon size={14} />}
+    <label htmlFor={htmlFor} className={`text-[12px] font-bold flex items-center gap-1.5 mb-1.5 uppercase tracking-wider ${error ? 'text-red-500' : 'text-[#636E7C]'}`}>
+      {Icon && <Icon size={14} className={error ? 'text-red-500' : 'text-[#1BBBCD]'} />}
       {label}
-      {error && <AlertCircle size={12} className="text-red-500 animate-pulse" />}
+      {required && <span className="text-[#38B1E4]">*</span>}
+      {error && <AlertCircle size={12} className="text-red-500 animate-pulse ml-auto" />}
     </label>
   );
 }
 
+const inputCls = 'bg-white/40 border border-white/60 focus:border-[#38B1E4] focus:bg-white rounded-xl px-4 py-2.5 text-[#3A424E] outline-none transition-all placeholder:text-gray-400 w-full text-[14px] shadow-sm';
+
 export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboardingFormProps) {
-  const [section, setSection] = useState<'personal' | 'prefs'>('personal');
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  // ── Seção 1 state ─────────────────────────────────────────────────────────
-  const [fullName, setFullName]         = useState('');
-  const [birthDate, setBirthDate]       = useState('');
-  const [education, setEducation]       = useState('');
+  // ── Step 1 State (Identificação) ──────────────────────────────────────────
+  const [fullName, setFullName] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [education, setEducation] = useState('');
   const [educationYear, setEducationYear] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [phone, setPhone] = useState('');
+  
+  // Address
   const [outsideBrazil, setOutsideBrazil] = useState(false);
-  // Address (Brazil)
-  const [zipCode, setZipCode]           = useState('');
-  const [state, setState]               = useState('');
-  const [city, setCity]                 = useState('');
+  const [zipCode, setZipCode] = useState('');
+  const [state, setState] = useState('');
+  const [city, setCity] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
-  const [street, setStreet]             = useState('');
+  const [street, setStreet] = useState('');
   const [streetNumber, setStreetNumber] = useState('');
-  const [complement, setComplement]     = useState('');
-  // Address (abroad)
-  const [country, setCountry]           = useState('');
-  const [cepLoading, setCepLoading]     = useState(false);
-  const [cepError, setCepError]         = useState<string | null>(null);
+  const [complement, setComplement] = useState('');
+  const [country, setCountry] = useState('Brasil');
+  
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState<string | null>(null);
 
-  // Income calculator state
-  const [perCapitaIncome, setPerCapitaIncome] = useState<number | null>(null);
-  const [useCalculator, setUseCalculator]     = useState(false);
-  const [familyCountStr, setFamilyCountStr]   = useState('');
-  const [memberIncomesStr, setMemberIncomesStr] = useState<string[]>([]);
-  const [socialBenefitsStr, setSocialBenefitsStr] = useState('');
-  const [alimonyStr, setAlimonyStr]           = useState('');
+  // ── Step 2 State (Desempenho & Renda) ──────────────────────────────────────
+  // ENEM
+  const [enemScore, setEnemScore] = useState('');
+  const [enemYear, setEnemYear] = useState(new Date().getFullYear().toString());
+  const [notaLing, setNotaLing] = useState('');
+  const [notaHum, setNotaHum] = useState('');
+  const [notaNat, setNotaNat] = useState('');
+  const [notaMat, setNotaMat] = useState('');
+  const [notaRed, setNotaRed] = useState('');
 
-  // ── Seção 2 state ─────────────────────────────────────────────────────────
-  const [enemScore, setEnemScore]           = useState('');
-  const [courseInput, setCourseInput]       = useState('');
+  // Income Calculator
+  const [useCalculator, setUseCalculator] = useState(true);
+  const [familyCount, setFamilyCount] = useState('');
+  const [socialBenefits, setSocialBenefits] = useState('');
+  const [alimony, setAlimony] = useState('');
+  const [memberIncomes, setMemberIncomes] = useState<string[]>([]);
+  const [manualPerCapita, setManualPerCapita] = useState<number | null>(null);
+
+  // Auto-calculate ENEM Average
+  useEffect(() => {
+    const scores = [notaLing, notaHum, notaNat, notaMat, notaRed]
+      .map(s => parseFloat(s))
+      .filter(n => !isNaN(n));
+    
+    if (scores.length === 5) {
+      const avg = scores.reduce((a, b) => a + b, 0) / 5;
+      setEnemScore(avg.toFixed(1));
+    } else if (scores.length > 0) {
+      // Clear manual score if they started typing components
+      setEnemScore('');
+    }
+  }, [notaLing, notaHum, notaNat, notaMat, notaRed]);
+
+  // ── Step 3 State (Interesses & Filtros) ────────────────────────────────────
+  const [courseInput, setCourseInput] = useState('');
   const [courseInterest, setCourseInterest] = useState<string[]>([]);
-  const [quotaTypes, setQuotaTypes]         = useState<string[]>([]);
-  const [shifts, setShifts]                 = useState<string[]>([]);
-  const [programPref, setProgramPref]       = useState('');
-  const [universityPref, setUniversityPref] = useState('');
-  const [locationPref, setLocationPref]     = useState('');
-  const [statePref, setStatePref]           = useState('');
+  const [quotaTypes, setQuotaTypes] = useState<string[]>([]);
+  const [shifts, setShifts] = useState<string[]>([]);
+  const [programPref, setProgramPref] = useState('indiferente');
+  const [universityPref, setUniversityPref] = useState('indiferente');
+  const [locationPref, setLocationPref] = useState('');
+  const [statePref, setStatePref] = useState('');
 
-  // ── Status ────────────────────────────────────────────────────────────────
-  const [errors, setErrors]               = useState<Record<string, boolean>>({});
-  const [section1Saving, setSection1Saving] = useState(false);
-  const [submitting, setSubmitting]       = useState(false);
-  const [submitError, setSubmitError]     = useState<string | null>(null);
+  // ── UI Status ──────────────────────────────────────────────────────────────
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(false);
+  const [globalError, setGlobalError] = useState<string | null>(null);
 
-  // ── Income calculator derived value ───────────────────────────────────────
-  const calcPerCapita = useCallback(() => {
-    if (!useCalculator) return perCapitaIncome;
-    const count = parseInt(familyCountStr) || 0;
-    const incomes = memberIncomesStr
+  // ── Derived Values ─────────────────────────────────────────────────────────
+  const perCapitaIncome = useMemo(() => {
+    if (!useCalculator) return manualPerCapita;
+    const count = parseInt(familyCount) || 0;
+    const incomesTotal = memberIncomes
       .map(i => parseFloat(i.replace(',', '.')))
       .filter(n => !isNaN(n))
       .reduce((a, b) => a + b, 0);
-    const benefits = parseFloat(socialBenefitsStr.replace(',', '.')) || 0;
-    const alim = parseFloat(alimonyStr.replace(',', '.')) || 0;
-    return count > 0 ? (incomes + benefits + alim) / count : 0;
-  }, [useCalculator, familyCountStr, memberIncomesStr, socialBenefitsStr, alimonyStr, perCapitaIncome]);
+    const benefits = parseFloat(socialBenefits.replace(',', '.')) || 0;
+    const alim = parseFloat(alimony.replace(',', '.')) || 0;
+    return count > 0 ? (incomesTotal + benefits + alim) / count : 0;
+  }, [useCalculator, familyCount, memberIncomes, socialBenefits, alimony, manualPerCapita]);
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
+
+  const handleCEPChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '');
+    setZipCode(val);
+    if (val.length === 8) {
+      setCepLoading(true);
+      setCepError(null);
+      const data = await lookupCEP(val);
+      if (data) {
+        setCity(data.localidade);
+        setState(data.uf);
+        setNeighborhood(data.bairro || '');
+        setStreet(data.logradouro || '');
+      } else {
+        setCepError('CEP não encontrado');
+      }
+      setCepLoading(false);
+    }
+  };
 
   const handleFamilyCountChange = (val: string) => {
-    setFamilyCountStr(val);
+    setFamilyCount(val);
     const count = parseInt(val);
     if (!isNaN(count) && count > 0) {
-      setMemberIncomesStr(prev => {
+      setMemberIncomes(prev => {
         const arr = [...prev];
         while (arr.length < count) arr.push('');
         return arr.slice(0, count);
       });
     } else {
-      setMemberIncomesStr([]);
+      setMemberIncomes([]);
     }
   };
 
-  // ── CEP ───────────────────────────────────────────────────────────────────
-  const handleCEPChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, '');
-    let formatted = raw;
-    if (raw.length > 5) formatted = raw.slice(0, 5) + '-' + raw.slice(5, 8);
-    setZipCode(formatted);
-    setCepError(null);
-    if (raw.length === 8) handleCEPLookup(raw);
-  };
-
-  const handleCEPLookup = useCallback(async (raw: string) => {
-    setCepLoading(true);
-    setCepError(null);
-    const result = await lookupCEP(raw);
-    if (result) {
-      setCity(result.localidade);
-      setState(result.uf);
-      setNeighborhood(result.bairro || '');
-      setStreet(result.logradouro || '');
-    } else {
-      setCepError('CEP não encontrado');
-    }
-    setCepLoading(false);
-  }, []);
-
-  // ── Section 1 Validation + Save ───────────────────────────────────────────
-  const validateSection1 = (): { valid: boolean; errs: Record<string, boolean> } => {
+  const validateStep = () => {
     const errs: Record<string, boolean> = {};
-    const nameParts = fullName.trim().split(/\s+/);
-    if (!fullName || nameParts.length < 2) errs.full_name = true;
-    const age = calculateAge(birthDate);
-    if (!birthDate || !age || age < 6 || age > 100) errs.birth_date = true;
-    if (!education) errs.education = true;
-
-    if (outsideBrazil) {
-      if (!country) errs.country = true;
-      if (!city) errs.city = true;
-      if (!street) errs.street = true;
-    } else {
-      if (!zipCode || zipCode.replace(/\D/g, '').length < 8) errs.zip_code = true;
-      if (!state) errs.state = true;
-      if (!city) errs.city = true;
-      if (!neighborhood) errs.neighborhood = true;
-      if (!street) errs.street = true;
-      if (!streetNumber) errs.street_number = true;
+    if (step === 1) {
+      if (!fullName.trim() || fullName.trim().split(' ').length < 2) errs.fullName = true;
+      if (!birthDate) errs.birthDate = true;
+      if (!education) errs.education = true;
+      if (!outsideBrazil) {
+        if (zipCode.length < 8) errs.zipCode = true;
+        if (!city) errs.city = true;
+        if (!state) errs.state = true;
+        if (!street) errs.street = true;
+        if (!streetNumber) errs.streetNumber = true;
+      } else {
+        if (!country) errs.country = true;
+        if (!city) errs.city = true;
+      }
+    } else if (step === 2) {
+      if (!enemScore || parseFloat(enemScore) < 0 || parseFloat(enemScore) > 1000) errs.enemScore = true;
+      if (perCapitaIncome === null) errs.income = true;
     }
-
     setErrors(errs);
-    return { valid: Object.keys(errs).length === 0, errs };
+    return Object.keys(errs).length === 0;
   };
 
-  const handleNextSection = async () => {
-    const { valid } = validateSection1();
-    if (!valid) return;
-    setSection1Saving(true);
-    setSubmitError(null);
+  const nextStep = () => {
+    if (validateStep()) setStep(prev => (prev < 3 ? (prev + 1 as any) : 3));
+  };
+
+  const prevStep = () => setStep(prev => (prev > 1 ? (prev - 1 as any) : 1));
+
+  const handleFinalSubmit = async () => {
+    if (!validateStep()) return;
+    setLoading(true);
+    setGlobalError(null);
+
     try {
-      const age = calculateAge(birthDate);
+      // 1. Save User Profile
       await saveUserData(userId, {
-        full_name:      fullName.trim(),
-        birth_date:     birthDate,
-        age:            age ?? undefined,
-        education:      education,
+        full_name: fullName,
+        birth_date: birthDate,
+        age: calculateAge(birthDate) || undefined,
+        education,
         education_year: educationYear || 'N/A',
-        zip_code:       outsideBrazil ? null : zipCode.replace(/\D/g, '') || null,
-        city:           city || null,
-        state:          outsideBrazil ? null : (state || null),
-        neighborhood:   outsideBrazil ? null : (neighborhood || null),
-        street:         street || null,
-        street_number:  outsideBrazil ? null : (streetNumber || null),
-        complement:     outsideBrazil ? null : (complement || null),
-        country:        outsideBrazil ? (country || null) : 'Brasil',
+        zip_code: outsideBrazil ? null : zipCode,
+        city,
+        state: outsideBrazil ? null : state,
+        neighborhood: outsideBrazil ? null : neighborhood,
+        street,
+        street_number: outsideBrazil ? null : streetNumber,
+        complement,
+        country: outsideBrazil ? country : 'Brasil',
         outside_brazil: outsideBrazil,
       });
 
-      const derived = calcPerCapita();
-      if (derived !== null) {
-        await saveUserIncome(userId, {
-          family_count:       parseInt(familyCountStr) || null,
-          social_benefits:    parseFloat(socialBenefitsStr.replace(',', '.')) || null,
-          alimony:            parseFloat(alimonyStr.replace(',', '.')) || null,
-          member_incomes:     memberIncomesStr.map(i => parseFloat(i.replace(',', '.'))).filter(n => !isNaN(n)),
-          per_capita_income:  derived,
-        });
+      // 2. Save Income
+      await saveUserIncome(userId, {
+        family_count: parseInt(familyCount) || null,
+        social_benefits: parseFloat(socialBenefits) || 0,
+        alimony: parseFloat(alimony) || 0,
+        member_incomes: memberIncomes.map(i => parseFloat(i) || 0),
+        per_capita_income: perCapitaIncome || 0,
+      });
+
+      // 3. Save ENEM Scores
+      await saveUserEnemScore(userId, {
+        year: parseInt(enemYear),
+        nota_linguagens: parseFloat(notaLing) || null,
+        nota_ciencias_humanas: parseFloat(notaHum) || null,
+        nota_ciencias_natureza: parseFloat(notaNat) || null,
+        nota_matematica: parseFloat(notaMat) || null,
+        nota_redacao: parseFloat(notaRed) || null,
+      });
+
+      // 4. Save Preferences
+      await saveUserPreferences(userId, {
+        enem_score: parseFloat(enemScore),
+        family_income_per_capita: perCapitaIncome,
+        course_interest: courseInterest.length > 0 ? courseInterest : null,
+        quota_types: quotaTypes.length > 0 ? quotaTypes : null,
+        preferred_shifts: shifts.length > 0 ? shifts : null,
+        program_preference: programPref,
+        university_preference: universityPref,
+        location_preference: locationPref || null,
+        state_preference: statePref || null,
+      });
+
+      // 5. Generate Match and Complete (Async Flow)
+      await generateMatchAsync();
+      
+      // Polling for completion
+      let status = 'processing';
+      let retryCount = 0;
+      const maxRetries = 30; // 60 seconds max polling
+
+      while (status === 'processing' && retryCount < maxRetries) {
+        await new Promise(r => setTimeout(r, 2000));
+        status = await getMatchStatus(userId);
+        retryCount++;
+        if (status === 'error') throw new Error('O motor de match encontrou um erro. Tente novamente em alguns instantes.');
       }
 
-      setSection('prefs');
-    } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : 'Erro ao salvar dados. Tente novamente.');
-    } finally {
-      setSection1Saving(false);
-    }
-  };
+      if (status === 'processing') {
+        throw new Error('O processamento está demorando mais que o esperado. Seus matches aparecerão em breve no catálogo.');
+      }
 
-  // ── Final Submit ─────────────────────────────────────────────────────────
-  const canSubmit = enemScore.trim() !== '';
-
-  const handleSubmit = async () => {
-    if (!canSubmit) return;
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      const derived = calcPerCapita();
-      await saveUserPreferences(userId, {
-        enem_score:              parseFloat(enemScore),
-        family_income_per_capita: derived ?? null,
-        course_interest:         courseInterest.length > 0 ? courseInterest : null,
-        quota_types:             quotaTypes.length > 0 ? quotaTypes : null,
-        preferred_shifts:        shifts.length > 0 ? shifts : null,
-        program_preference:      programPref || null,
-        university_preference:   universityPref || null,
-        location_preference:     locationPref || null,
-        state_preference:        statePref || null,
-      });
-      await generateMatch(userId);
       await markOnboardingComplete();
       onComplete();
-    } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : 'Erro ao gerar match. Tente novamente.');
+    } catch (err) {
+      setGlobalError(err instanceof Error ? err.message : 'Erro ao processar dados.');
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  const addCourse = () => {
-    const t = courseInput.trim();
-    if (t && !courseInterest.includes(t)) setCourseInterest(p => [...p, t]);
-    setCourseInput('');
-  };
-  const toggleArr = (arr: string[], val: string, set: (v: string[]) => void) =>
-    set(arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]);
+  // ── Render Helpers ─────────────────────────────────────────────────────────
 
-  const pillBtn = (label: string, active: boolean, onClick: () => void) => (
-    <button
-      key={label}
-      type="button"
-      onClick={onClick}
-      className="px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all"
-      style={{
-        background: active ? '#38B1E4' : 'rgba(56,177,228,0.1)',
-        color:      active ? '#ffffff' : '#38B1E4',
-        border:     `1px solid ${active ? '#38B1E4' : 'rgba(56,177,228,0.25)'}`,
-        fontFamily: 'Montserrat, sans-serif',
-      }}
-    >
-      {label}
-    </button>
-  );
-
-  const sectionTab = (id: 'personal' | 'prefs', label: string) => (
-    <button
-      type="button"
-      onClick={() => setSection(id)}
-      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-bold transition-all"
-      style={{
-        background: section === id ? '#38B1E4' : 'rgba(56,177,228,0.08)',
-        color:      section === id ? '#ffffff' : '#636e7c',
-        fontFamily: 'Montserrat, sans-serif',
-        border:     `1px solid ${section === id ? '#38B1E4' : 'rgba(56,177,228,0.15)'}`,
-      }}
-    >
-      {label}
-    </button>
+  const StepIndicator = () => (
+    <div className="flex items-center justify-between mb-8 px-2">
+      {[1, 2, 3].map((s) => (
+        <div key={s} className="flex items-center flex-1 last:flex-none">
+          <div 
+            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[14px] transition-all duration-300 ${
+              step === s 
+                ? 'bg-[#38B1E4] text-white shadow-[0_0_15px_rgba(56,177,228,0.4)] scale-110' 
+                : step > s 
+                  ? 'bg-[#1BBBCD] text-white' 
+                  : 'bg-white/50 text-[#636E7C] border border-white/60'
+            }`}
+          >
+            {step > s ? <Check size={20} /> : s}
+          </div>
+          {s < 3 && (
+            <div className={`h-[2px] flex-1 mx-2 rounded-full transition-all duration-500 ${step > s ? 'bg-[#1BBBCD]' : 'bg-white/30'}`} />
+          )}
+        </div>
+      ))}
+    </div>
   );
 
   return (
-    <div className="flex flex-col gap-4 px-4 py-4">
-      {/* Header */}
-      <div>
-        <h2 className="font-bold text-[16px]" style={{ color: '#3A424E', fontFamily: 'Montserrat, sans-serif' }}>
-          Complete seu perfil
-        </h2>
-        <p className="text-[13px] mt-0.5" style={{ color: '#636e7c', fontFamily: 'Montserrat, sans-serif' }}>
-          Preencha seus dados para gerar oportunidades personalizadas.
-        </p>
-      </div>
+    <div className="flex flex-col max-w-2xl mx-auto w-full animate-in fade-in duration-700">
+      <StepIndicator />
 
-      {/* Tab pills */}
-      <div className="flex gap-2">
-        {sectionTab('personal', '1. Dados Pessoais')}
-        {sectionTab('prefs', '2. Preferências')}
-      </div>
+      <div className="bg-white/20 backdrop-blur-xl border border-white/30 rounded-3xl p-6 md:p-8 shadow-2xl overflow-hidden relative group">
+        {/* Glow effect */}
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#38B1E4]/20 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-[#024F86]/10 rounded-full blur-3xl" />
 
-      {/* ══ SEÇÃO 1: Dados Pessoais ══════════════════════════════════════════ */}
-      {section === 'personal' && (
-        <div className="flex flex-col gap-5">
+        {/* STEP 1: IDENTIFICAÇÃO */}
+        {step === 1 && (
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+            <header className="mb-8">
+              <h2 className="text-2xl font-black text-[#024F86] flex items-center gap-3" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                <User className="text-[#38B1E4]" /> Identificação
+              </h2>
+              <p className="text-[#636E7C] text-[14px] mt-1">Conte-nos um pouco sobre você para começarmos.</p>
+            </header>
 
-          {/* Nome + Data Nascimento */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel icon={User} label="Nome Completo" error={errors.full_name} />
-              <input
-                type="text"
-                value={fullName}
-                onChange={e => { setFullName(e.target.value); if (errors.full_name) setErrors(p => ({...p, full_name: false})); }}
-                placeholder="Seu nome completo"
-                className={`${inputCls} ${errors.full_name ? 'border-red-400 bg-red-50/10' : ''}`}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel icon={Calendar} label="Data de Nascimento" error={errors.birth_date} />
-              <input
-                type="date"
-                value={birthDate}
-                onChange={e => { setBirthDate(e.target.value); if (errors.birth_date) setErrors(p => ({...p, birth_date: false})); }}
-                className={`${inputCls} ${errors.birth_date ? 'border-red-400 bg-red-50/10' : ''}`}
-              />
-            </div>
-          </div>
-
-          {/* Escolaridade + Ano */}
-          <div className="border-t border-white/20 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel icon={GraduationCap} label="Escolaridade" error={errors.education} />
-              <select
-                value={education}
-                onChange={e => {
-                  const val = e.target.value;
-                  setEducation(val);
-                  if (val !== 'Ensino Fundamental' && val !== 'Ensino Médio Incompleto') setEducationYear('');
-                  if (errors.education) setErrors(p => ({...p, education: false}));
-                }}
-                className={`${inputCls} h-[42px] ${errors.education ? 'border-red-400 bg-red-50/10' : ''}`}
-              >
-                <option value="">Selecione...</option>
-                {EDUCATION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-            </div>
-
-            {(education === 'Ensino Fundamental' || education === 'Ensino Médio Incompleto') && (
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel icon={Calendar} label="Ano" error={errors.education_year} />
-                <select
-                  value={educationYear}
-                  onChange={e => setEducationYear(e.target.value)}
-                  className={`${inputCls} h-[42px]`}
-                >
-                  <option value="">Selecione o ano...</option>
-                  {education === 'Ensino Fundamental'
-                    ? Array.from({ length: 9 }, (_, i) => (
-                        <option key={i+1} value={`${i+1}º ano`}>{i+1}º ano</option>
-                      ))
-                    : (
-                      <>
-                        <option value="1º ano EM">1º ano EM</option>
-                        <option value="2º ano EM">2º ano EM</option>
-                        <option value="3º ano EM">3º ano EM</option>
-                      </>
-                    )
-                  }
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="md:col-span-2">
+                <FieldLabel label="Nome Completo" icon={User} required error={errors.fullName} htmlFor="fullName" />
+                <input 
+                  id="fullName"
+                  className={inputCls} 
+                  placeholder="Ex: Maria Oliveira Santos"
+                  value={fullName}
+                  onChange={e => setFullName(e.target.value)}
+                />
+              </div>
+              <div>
+                <FieldLabel label="Data de Nascimento" icon={Calendar} required error={errors.birthDate} htmlFor="birthDate" />
+                <input 
+                  id="birthDate"
+                  type="date" 
+                  className={inputCls} 
+                  value={birthDate}
+                  onChange={e => setBirthDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <FieldLabel label="Escolaridade" icon={GraduationCap} required error={errors.education} htmlFor="education" />
+                <select id="education" className={inputCls} value={education} onChange={e => setEducation(e.target.value)}>
+                  <option value="">Selecione...</option>
+                  {EDUCATION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               </div>
-            )}
-          </div>
-
-          {/* ── Renda ─────────────────────────────────────────────────────── */}
-          <div className="border-t border-white/20 pt-4">
-            <h3 className="text-base font-bold flex items-center gap-2 mb-3" style={{ color: '#024F86', fontFamily: 'Montserrat, sans-serif' }}>
-              <DollarSign size={16} /> Informações de Renda
-            </h3>
-
-            <div className="flex flex-col gap-3 bg-[#F8FAFC] p-4 rounded-xl border border-gray-100">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <span className="text-sm font-medium" style={{ color: '#3A424E', fontFamily: 'Montserrat, sans-serif' }}>
-                    Renda Per Capita:{' '}
-                  </span>
-                  <span className="text-base font-bold" style={{ color: '#024F86', fontFamily: 'Montserrat, sans-serif' }}>
-                    {calcPerCapita() != null ? formatCurrency(calcPerCapita()!) : 'Não informada'}
-                  </span>
-                  {calcPerCapita() != null && calcPerCapita()! > 0 && (
-                    <span className="ml-2 text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full whitespace-nowrap">
-                      {(calcPerCapita()! / SALARIO_MINIMO).toFixed(2)} SM
-                    </span>
-                  )}
-                </div>
-                {!useCalculator && (
-                  <button
-                    type="button"
-                    onClick={() => setUseCalculator(true)}
-                    className="text-xs bg-[#E0F2FE] text-[#024F86] px-3 py-1.5 rounded-lg font-medium hover:bg-[#d0ebfd] transition-colors flex items-center gap-1"
-                  >
-                    <Calculator size={12} /> Calcular Renda
-                  </button>
-                )}
-              </div>
-
-              {useCalculator && (
-                <div className="space-y-3 border-t pt-3 border-gray-200">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1.5">
-                      <FieldLabel icon={Users} label="Pessoas na casa" />
-                      <input
-                        type="number"
-                        value={familyCountStr}
-                        onChange={e => handleFamilyCountChange(e.target.value)}
-                        placeholder="Quantas pessoas?"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <FieldLabel icon={DollarSign} label="Benefícios Sociais (Bolsa Família, etc)" />
-                      <input
-                        type="number"
-                        value={socialBenefitsStr}
-                        onChange={e => setSocialBenefitsStr(e.target.value)}
-                        placeholder="R$ 0,00"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <FieldLabel icon={DollarSign} label="Pensão Alimentícia" />
-                      <input
-                        type="number"
-                        value={alimonyStr}
-                        onChange={e => setAlimonyStr(e.target.value)}
-                        placeholder="R$ 0,00"
-                        className={inputCls}
-                      />
-                    </div>
-                  </div>
-
-                  {memberIncomesStr.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-semibold text-gray-600" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                        Renda por pessoa (sem contar benefícios/pensão)
-                      </p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {memberIncomesStr.map((inc, i) => (
-                          <div key={i} className="bg-white p-2 rounded-lg border border-gray-200">
-                            <label className="text-xs text-gray-500 mb-1 block" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                              Pessoa {i + 1}
-                            </label>
-                            <input
-                              type="number"
-                              value={inc}
-                              onChange={e => {
-                                const arr = [...memberIncomesStr];
-                                arr[i] = e.target.value;
-                                setMemberIncomesStr(arr);
-                              }}
-                              className="w-full text-sm outline-none text-[#3A424E] placeholder:text-gray-300"
-                              placeholder="R$ 0,00"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => setUseCalculator(false)}
-                    className="text-xs text-red-500 hover:text-red-700 font-medium flex items-center gap-1"
-                  >
-                    <X size={12} /> Ocultar Calculadora (Manter Valor)
-                  </button>
-                </div>
-              )}
-
-              {!useCalculator && (
-                <div className="flex flex-col gap-1.5">
-                  <FieldLabel icon={DollarSign} label="Editar Valor Permanentemente (Manual)" />
-                  <input
-                    type="number"
-                    value={perCapitaIncome ?? ''}
-                    onChange={e => setPerCapitaIncome(parseFloat(e.target.value) || null)}
-                    placeholder="R$ 0,00"
-                    className={inputCls}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ── Endereço ──────────────────────────────────────────────────── */}
-          <div className="border-t border-white/20 pt-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold flex items-center gap-2" style={{ color: '#024F86', fontFamily: 'Montserrat, sans-serif' }}>
-                <Home size={16} /> Endereço
-              </h3>
-              <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold" style={{ color: '#1BBBCD', fontFamily: 'Montserrat, sans-serif' }}>
-                <input
-                  type="checkbox"
-                  checked={outsideBrazil}
-                  onChange={e => setOutsideBrazil(e.target.checked)}
-                  className="w-4 h-4 accent-[#38B1E4] rounded cursor-pointer"
-                />
-                <Globe size={14} /> Não moro no Brasil
-              </label>
             </div>
 
-            {outsideBrazil ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <FieldLabel icon={Globe} label="País" error={errors.country} />
-                  <input type="text" value={country} onChange={e => setCountry(e.target.value)} placeholder="Ex: Estados Unidos"
-                    className={`${inputCls} ${errors.country ? 'border-red-400 bg-red-50/10' : ''}`} />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <FieldLabel icon={Building} label="Cidade" error={errors.city} />
-                  <input type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="Ex: Nova Iorque"
-                    className={`${inputCls} ${errors.city ? 'border-red-400 bg-red-50/10' : ''}`} />
-                </div>
-                <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <FieldLabel icon={Home} label="Endereço Completo" error={errors.street} />
-                  <input type="text" value={street} onChange={e => setStreet(e.target.value)} placeholder="Rua, número, complemento..."
-                    className={`${inputCls} ${errors.street ? 'border-red-400 bg-red-50/10' : ''}`} />
-                </div>
+            <div className="pt-4 border-t border-white/20">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-[#024F86] uppercase tracking-tighter text-[14px]">Endereço de Residência</h3>
+                <button 
+                  onClick={() => setOutsideBrazil(!outsideBrazil)}
+                  className="text-[12px] flex items-center gap-1.5 font-bold text-[#38B1E4] hover:underline"
+                >
+                  <Globe size={14} /> {outsideBrazil ? 'Moro no Brasil' : 'Moro no Exterior'}
+                </button>
               </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {/* CEP */}
-                  <div className="flex flex-col gap-1.5 md:col-span-1">
-                    <FieldLabel icon={MapPin} label="CEP" error={errors.zip_code} />
+
+              {!outsideBrazil ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="col-span-1">
+                    <FieldLabel label="CEP" icon={Search} error={errors.zipCode} />
                     <div className="relative">
-                      <input
-                        type="text"
+                      <input 
+                        className={inputCls} 
+                        placeholder="00000-000"
                         value={zipCode}
                         onChange={handleCEPChange}
-                        placeholder="00000-000"
-                        maxLength={9}
-                        className={`${inputCls} pr-10 ${errors.zip_code ? 'border-red-400 bg-red-50/10' : ''}`}
+                        maxLength={8}
                       />
-                      {cepLoading
-                        ? <Loader2 size={16} className="animate-spin text-[#38B1E4] absolute right-3 top-1/2 -translate-y-1/2" />
-                        : <button
-                            type="button"
-                            onClick={() => handleCEPLookup(zipCode)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#38B1E4] hover:text-[#2a9ac9] transition-colors"
-                          >
-                            <Search size={16} />
-                          </button>
-                      }
+                      {cepLoading && <Loader2 size={16} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-[#38B1E4]" />}
                     </div>
-                    {cepError && <p className="text-red-500 text-xs">{cepError}</p>}
                   </div>
-
-                  {/* Estado */}
-                  <div className="flex flex-col gap-1.5">
-                    <FieldLabel icon={Building} label="Estado" error={errors.state} />
-                    <input type="text" value={state} onChange={e => setState(e.target.value.toUpperCase().slice(0, 2))}
-                      placeholder="UF" maxLength={2}
-                      className={`${inputCls} ${errors.state ? 'border-red-400 bg-red-50/10' : ''}`} />
+                  <div className="col-span-1">
+                    <FieldLabel label="UF" error={errors.state} />
+                    <input className={inputCls} value={state} readOnly />
                   </div>
-
-                  {/* Cidade */}
-                  <div className="flex flex-col gap-1.5 md:col-span-2">
-                    <FieldLabel icon={MapPin} label="Cidade" error={errors.city} />
-                    <input type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="Sua cidade"
-                      className={`${inputCls} ${errors.city ? 'border-red-400 bg-red-50/10' : ''}`} />
+                  <div className="col-span-2">
+                    <FieldLabel label="Cidade" error={errors.city} />
+                    <input className={inputCls} value={city} readOnly />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
-                  {/* Bairro */}
-                  <div className="flex flex-col gap-1.5 md:col-span-1">
-                    <FieldLabel icon={MapPin} label="Bairro" error={errors.neighborhood} />
-                    <input type="text" value={neighborhood} onChange={e => setNeighborhood(e.target.value)} placeholder="Seu bairro"
-                      className={`${inputCls} ${errors.neighborhood ? 'border-red-400 bg-red-50/10' : ''}`} />
+                  <div className="col-span-2">
+                    <FieldLabel label="Rua" error={errors.street} htmlFor="street" />
+                    <input id="street" className={inputCls} value={street} onChange={e => setStreet(e.target.value)} />
                   </div>
-
-                  {/* Rua */}
-                  <div className="flex flex-col gap-1.5 md:col-span-1">
-                    <FieldLabel icon={Home} label="Rua" error={errors.street} />
-                    <input type="text" value={street} onChange={e => setStreet(e.target.value)} placeholder="Nome da rua"
-                      className={`${inputCls} ${errors.street ? 'border-red-400 bg-red-50/10' : ''}`} />
+                  <div className="col-span-1">
+                    <FieldLabel label="Nº" error={errors.streetNumber} htmlFor="streetNumber" />
+                    <input id="streetNumber" className={inputCls} value={streetNumber} onChange={e => setStreetNumber(e.target.value)} />
                   </div>
-
-                  {/* Número */}
-                  <div className="flex flex-col gap-1.5">
-                    <FieldLabel icon={Hash} label="Número" error={errors.street_number} />
-                    <input type="text" value={streetNumber} onChange={e => setStreetNumber(e.target.value)} placeholder="Nº"
-                      className={`${inputCls} ${errors.street_number ? 'border-red-400 bg-red-50/10' : ''}`} />
-                  </div>
-
-                  {/* Complemento */}
-                  <div className="flex flex-col gap-1.5">
-                    <FieldLabel icon={Building} label="Complemento" />
-                    <input type="text" value={complement} onChange={e => setComplement(e.target.value)} placeholder="Apto, bloco..."
-                      className={inputCls} />
+                  <div className="col-span-1">
+                    <FieldLabel label="Compl." />
+                    <input className={inputCls} value={complement} onChange={e => setComplement(e.target.value)} />
                   </div>
                 </div>
-              </>
-            )}
-          </div>
-
-          {/* Error */}
-          {submitError && (
-            <div className="px-4 py-3 rounded-xl text-[13px]" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.2)', fontFamily: 'Montserrat, sans-serif' }}>
-              {submitError}
-            </div>
-          )}
-          {Object.keys(errors).length > 0 && (
-            <div className="px-4 py-3 rounded-xl text-[13px]" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.2)', fontFamily: 'Montserrat, sans-serif' }}>
-              Corrija os campos destacados antes de continuar.
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleNextSection}
-            disabled={section1Saving}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[14px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)', fontFamily: 'Montserrat, sans-serif' }}
-          >
-            {section1Saving ? <Loader2 size={16} className="animate-spin" /> : null}
-            {section1Saving ? 'Salvando...' : 'Próximo: Preferências →'}
-          </button>
-        </div>
-      )}
-
-      {/* ══ SEÇÃO 2: Preferências ════════════════════════════════════════════ */}
-      {section === 'prefs' && (
-        <div className="flex flex-col gap-5">
-
-          {/* ENEM Score */}
-          <div className="flex flex-col gap-1.5">
-            <FieldLabel icon={GraduationCap} label="Nota do ENEM *" />
-            <input
-              type="number"
-              min={0} max={1000} step={0.01}
-              value={enemScore}
-              onChange={e => setEnemScore(e.target.value)}
-              placeholder="Ex: 650.5"
-              className={inputCls}
-            />
-            <p className="text-[11px]" style={{ color: '#9ca3af', fontFamily: 'Montserrat, sans-serif' }}>
-              Nota média (0 a 1000). Campo obrigatório para gerar o Match.
-            </p>
-          </div>
-
-          {/* Cursos de Interesse */}
-          <div className="flex flex-col gap-1.5">
-            <FieldLabel icon={GraduationCap} label="Cursos de interesse" />
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={courseInput}
-                onChange={e => setCourseInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCourse(); } }}
-                placeholder="Ex: Medicina, Direito..."
-                className={`${inputCls} flex-1`}
-              />
-              <button
-                type="button"
-                onClick={addCourse}
-                className="px-3 py-2 rounded-lg text-[13px] font-bold text-white"
-                style={{ background: '#38B1E4', fontFamily: 'Montserrat, sans-serif' }}
-              >
-                +
-              </button>
-            </div>
-            {courseInterest.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-1">
-                {courseInterest.map(c => (
-                  <span
-                    key={c}
-                    onClick={() => setCourseInterest(p => p.filter(x => x !== c))}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold cursor-pointer"
-                    style={{ background: '#E0F2FE', color: '#024F86', fontFamily: 'Montserrat, sans-serif' }}
-                  >
-                    {c} <X size={10} />
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Cotas */}
-          <div className="flex flex-col gap-2 border-t border-white/20 pt-4">
-            <FieldLabel label="Cotas aplicáveis" />
-            <div className="flex flex-col gap-2">
-              {QUOTA_OPTIONS.map(({ id, label, description }) => (
-                <label
-                  key={id}
-                  className="flex items-start gap-2 cursor-pointer p-2 rounded-lg hover:bg-white/30 transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={quotaTypes.includes(id)}
-                    onChange={() => toggleArr(quotaTypes, id, setQuotaTypes)}
-                    className="mt-0.5 w-4 h-4 accent-[#38B1E4] flex-shrink-0"
-                  />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div>
+                    <FieldLabel label="País" icon={Globe} error={errors.country} />
+                    <input className={inputCls} value={country} onChange={e => setCountry(e.target.value)} />
+                  </div>
                   <div>
-                    <p className="text-[13px] font-semibold" style={{ color: '#3A424E', fontFamily: 'Montserrat, sans-serif' }}>
-                      {label}
-                    </p>
-                    <p className="text-[11px]" style={{ color: '#9ca3af', fontFamily: 'Montserrat, sans-serif' }}>
-                      {description}
-                    </p>
+                    <FieldLabel label="Cidade" error={errors.city} />
+                    <input className={inputCls} value={city} onChange={e => setCity(e.target.value)} />
                   </div>
-                </label>
-              ))}
+                </div>
+              )}
             </div>
           </div>
+        )}
 
-          {/* Turnos */}
-          <div className="flex flex-col gap-2 border-t border-white/20 pt-4">
-            <FieldLabel label="Turnos preferidos" />
-            <div className="flex flex-wrap gap-2">
-              {SHIFTS_OPTIONS.map(s => pillBtn(s, shifts.includes(s), () => toggleArr(shifts, s, setShifts)))}
+        {/* STEP 2: DESEMPENHO & RENDA */}
+        {step === 2 && (
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+             <header className="mb-8">
+              <h2 className="text-2xl font-black text-[#024F86] flex items-center gap-3" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                <Sparkles className="text-[#38B1E4]" /> Desempenho & Renda
+              </h2>
+              <p className="text-[#636E7C] text-[14px] mt-1">Esses dados são cruciais para o cálculo do seu Match.</p>
+            </header>
+
+            <div className="bg-[#E0F2FE]/30 rounded-2xl p-5 border border-[#38B1E4]/20">
+              <h3 className="font-bold text-[#024F86] mb-4 flex items-center gap-2 uppercase text-[13px]">
+                <GraduationCap size={16} /> Resultados do ENEM
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {enemScore ? (
+                  <div className="col-span-2 md:col-span-1 animate-in zoom-in-95 duration-300">
+                    <FieldLabel label="Média Geral Calculada" icon={CheckCircle} />
+                    <div className="bg-white/80 border-2 border-[#38B1E4] rounded-xl px-4 py-2 flex items-center justify-center text-[#024F86] font-black text-[22px] shadow-sm">
+                      {enemScore}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="col-span-2 md:col-span-1">
+                    <FieldLabel label="Média Geral" required error={errors.enemScore} />
+                    <div className="bg-white/40 border border-dashed border-gray-300 rounded-xl px-4 py-2.5 text-[12px] text-gray-400 flex items-center justify-center text-center">
+                      Preencha as 5 notas abaixo para calcular
+                    </div>
+                  </div>
+                )}
+                
+                <div>
+                  <FieldLabel label="Ano" />
+                  <select className={inputCls} value={enemYear} onChange={e => setEnemYear(e.target.value)}>
+                    {[2026, 2025, 2024].map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+                
+                <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-5 gap-3 mt-2">
+                  {[
+                    { label: 'Ling.', val: notaLing, set: setNotaLing },
+                    { label: 'Humanas', val: notaHum, set: setNotaHum },
+                    { label: 'Natureza', val: notaNat, set: setNotaNat },
+                    { label: 'Matem.', val: notaMat, set: setNotaMat },
+                    { label: 'Redação', val: notaRed, set: setNotaRed },
+                  ].map(f => (
+                    <div key={f.label}>
+                      <label className="text-[10px] font-bold text-[#636E7C] mb-1 block uppercase">{f.label}</label>
+                      <input 
+                        type="number" 
+                        className="w-full bg-white/60 border border-white/80 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-[#38B1E4] transition-all" 
+                        placeholder="0.0"
+                        value={f.val}
+                        onChange={e => f.set(e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-[#F8FAFC] rounded-2xl p-5 border border-gray-100">
+               <h3 className="font-bold text-[#024F86] mb-4 flex items-center justify-between gap-2 uppercase text-[13px]">
+                <div className="flex items-center gap-2"><DollarSign size={16} /> Renda Per Capita</div>
+              </h3>
+
+              <div className="space-y-4 animate-in fade-in duration-300">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <FieldLabel label="Nº de Familiares" icon={Users} />
+                    <input type="number" className={inputCls} placeholder="Ex: 4" value={familyCount} onChange={e => handleFamilyCountChange(e.target.value)} />
+                  </div>
+                  <div>
+                    <FieldLabel label="Benefícios (Bruto)" icon={DollarSign} />
+                    <input type="number" className={inputCls} placeholder="R$ 0,00" value={socialBenefits} onChange={e => setSocialBenefits(e.target.value)} />
+                  </div>
+                </div>
+                
+                {memberIncomes.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-[#636E7C] uppercase">Rendas Individuais</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {memberIncomes.map((inc, i) => (
+                        <input 
+                          key={i} 
+                          type="number" 
+                          placeholder={`Pessoa ${i+1}`}
+                          className="bg-white border rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-[#38B1E4]" 
+                          value={inc}
+                          onChange={e => {
+                            const arr = [...memberIncomes];
+                            arr[i] = e.target.value;
+                            setMemberIncomes(arr);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {familyCount && perCapitaIncome > 0 && (
+                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-[#024F86] to-[#38B1E4] rounded-2xl text-white shadow-lg animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold opacity-80 uppercase">Renda Per Capita Calculada</span>
+                      <span className="text-[20px] font-black">{formatCurrency(perCapitaIncome)}</span>
+                    </div>
+                    <CheckCircle size={24} className="opacity-40" />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Programa preferido */}
-          <div className="flex flex-col gap-2 border-t border-white/20 pt-4">
-            <FieldLabel label="Programa preferido" />
-            <div className="flex gap-2">
-              {PROGRAM_OPTIONS.map(({ label, value }) => pillBtn(label, programPref === value, () => setProgramPref(programPref === value ? '' : value)))}
+        {/* STEP 3: INTERESSES & FILTROS */}
+        {step === 3 && (
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+             <header className="mb-8">
+              <h2 className="text-2xl font-black text-[#024F86] flex items-center gap-3" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                <BookOpen className="text-[#38B1E4]" /> Interesses & Filtros
+              </h2>
+              <p className="text-[#636E7C] text-[14px] mt-1">Finalize com suas preferências de estudo.</p>
+            </header>
+
+            <div className="space-y-5">
+              {/* Cursos */}
+              <div>
+                <FieldLabel label="Cursos de Interesse" icon={Search} />
+                <div className="flex gap-2">
+                  <input 
+                    className={`${inputCls} flex-1`} 
+                    placeholder="Ex: Medicina, TI..."
+                    value={courseInput}
+                    onChange={e => setCourseInput(e.target.value)}
+                    onKeyDown={e => { if(e.key === 'Enter') { 
+                      const t = courseInput.trim();
+                      if(t && !courseInterest.includes(t)) setCourseInterest([...courseInterest, t]);
+                      setCourseInput('');
+                    }}}
+                  />
+                  <button 
+                    onClick={() => {
+                      const t = courseInput.trim();
+                      if(t && !courseInterest.includes(t)) setCourseInterest([...courseInterest, t]);
+                      setCourseInput('');
+                    }}
+                    className="bg-[#38B1E4] text-white px-4 rounded-xl font-bold"
+                  >
+                    +
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {courseInterest.map(c => (
+                    <span key={c} className="bg-[#E0F2FE] text-[#024F86] px-3 py-1 rounded-full text-[12px] font-bold flex items-center gap-2">
+                      {c} <X size={12} className="cursor-pointer" onClick={() => setCourseInterest(courseInterest.filter(x => x !== c))} />
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Filtros Rápidos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white/20">
+                <div>
+                  <FieldLabel label="Turnos Preferidos" icon={Briefcase} />
+                  <div className="flex flex-wrap gap-2">
+                    {SHIFTS_OPTIONS.map(s => (
+                      <button
+                        key={s}
+                        onClick={() => {
+                          if (shifts.includes(s)) setShifts(shifts.filter(x => x !== s));
+                          else setShifts([...shifts, s]);
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
+                          shifts.includes(s) ? 'bg-[#38B1E4] text-white border-[#38B1E4]' : 'bg-white/40 text-[#636E7C] border-white/60'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <FieldLabel label="Programa / Univ." icon={Building} />
+                  <div className="flex flex-col gap-2">
+                    <select className={inputCls} value={programPref} onChange={e => setProgramPref(e.target.value)}>
+                      {PROGRAM_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    <select className={inputCls} value={universityPref} onChange={e => setUniversityPref(e.target.value)}>
+                      {UNIVERSITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cotas */}
+              <div className="pt-4 border-t border-white/20">
+                <FieldLabel label="Modalidades de Cota" icon={Users} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                  {QUOTA_OPTIONS.map(q => (
+                    <label key={q.id} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${quotaTypes.includes(q.id) ? 'bg-[#E0F2FE] border-[#38B1E4]/50' : 'bg-white/30 border-transparent'}`}>
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 accent-[#38B1E4]"
+                        checked={quotaTypes.includes(q.id)}
+                        onChange={() => {
+                          if (quotaTypes.includes(q.id)) setQuotaTypes(quotaTypes.filter(x => x !== q.id));
+                          else setQuotaTypes([...quotaTypes, q.id]);
+                        }}
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-[12px] font-bold text-[#3A424E]">{q.label}</span>
+                        <span className="text-[10px] text-[#636E7C] leading-tight">{q.description}</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Tipo de universidade */}
-          <div className="flex flex-col gap-2 border-t border-white/20 pt-4">
-            <FieldLabel label="Tipo de universidade" />
-            <div className="flex gap-2">
-              {UNIVERSITY_OPTIONS.map(({ label, value }) => pillBtn(label, universityPref === value, () => setUniversityPref(universityPref === value ? '' : value)))}
-            </div>
+        {/* Global Error */}
+        {globalError && (
+          <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-600 text-[13px] animate-in slide-in-from-bottom-2">
+            <AlertCircle size={20} /> {globalError}
           </div>
+        )}
 
-          {/* Localização + Estado de preferência */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-white/20 pt-4">
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel icon={MapPin} label="Cidade de preferência" />
-              <input
-                type="text"
-                value={locationPref}
-                onChange={e => setLocationPref(e.target.value)}
-                placeholder="Ex: São Paulo"
-                className={inputCls}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel icon={MapPin} label="Estado de preferência" />
-              <select value={statePref} onChange={e => setStatePref(e.target.value)} className={inputCls}>
-                <option value="">Qualquer estado</option>
-                {STATES_BR.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Submit error */}
-          {submitError && (
-            <div className="px-4 py-3 rounded-xl text-[13px]" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.2)', fontFamily: 'Montserrat, sans-serif' }}>
-              {submitError}
-            </div>
+        {/* Navigation */}
+        <div className="flex gap-4 mt-10">
+          {step > 1 && (
+            <button 
+              onClick={prevStep}
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[15px] font-bold text-[#636E7C] bg-white/40 border border-white/60 hover:bg-white/60 transition-all"
+            >
+              <ChevronLeft size={20} /> Voltar
+            </button>
           )}
-
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!canSubmit || submitting}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[15px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)', fontFamily: 'Montserrat, sans-serif' }}
-          >
-            {submitting ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
-            {submitting ? 'Gerando seu Match...' : 'Gerar Match'}
-          </button>
-
-          {!canSubmit && (
-            <p className="text-center text-[12px]" style={{ color: '#9ca3af', fontFamily: 'Montserrat, sans-serif' }}>
-              Preencha a nota do ENEM para continuar
-            </p>
+          
+          {step < 3 ? (
+            <button 
+              onClick={nextStep}
+              className="flex-[2] flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[15px] font-bold text-white bg-[#38B1E4] shadow-[0_10px_20px_rgba(56,177,228,0.3)] hover:shadow-[0_15px_25px_rgba(56,177,228,0.4)] transition-all active:scale-[0.98]"
+            >
+              Continuar <ChevronRight size={20} />
+            </button>
+          ) : (
+            <button 
+              onClick={handleFinalSubmit}
+              disabled={loading}
+              className="flex-[2] flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[15px] font-bold text-white bg-gradient-to-r from-[#1BBBCD] to-[#024F86] shadow-[0_10px_20px_rgba(2,79,134,0.3)] hover:shadow-[0_15px_25px_rgba(2,79,134,0.4)] transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              {loading ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
+              {loading ? 'Calculando seu Match...' : 'Finalizar e Ver Matches'}
+            </button>
           )}
         </div>
-      )}
+      </div>
+
+      <p className="text-center mt-6 text-[12px] text-[#636E7C]/60 font-medium">
+        Seus dados estão protegidos e serão usados apenas para personalizar sua experiência.
+      </p>
     </div>
   );
 }

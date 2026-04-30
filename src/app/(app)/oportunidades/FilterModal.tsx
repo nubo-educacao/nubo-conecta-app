@@ -6,10 +6,26 @@ import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
-const MODALITY_OPTIONS = [
-  { label: 'Todas as modalidades', value: '' },
-  { label: 'Presencial',           value: 'presential' },
-  { label: 'Online / EaD',         value: 'online' },
+const SHIFT_OPTIONS = [
+  { label: 'Todos os turnos', value: '' },
+  { label: 'Matutino',       value: 'Matutino' },
+  { label: 'Vespertino',     value: 'Vespertino' },
+  { label: 'Noturno',        value: 'Noturno' },
+  { label: 'Integral',       value: 'Integral' },
+  { label: 'EaD / Online',   value: 'EaD' },
+];
+
+const IGC_OPTIONS = [
+  { label: 'Qualquer conceito', value: '' },
+  { label: 'Conceito 3+',      value: '3' },
+  { label: 'Conceito 4+',      value: '4' },
+  { label: 'Conceito 5',       value: '5' },
+];
+
+const PRICE_OPTIONS = [
+  { label: 'Todos os preços', value: '' },
+  { label: 'Gratuito',       value: 'free' },
+  { label: 'Pago / Parceiro', value: 'paid' },
 ];
 
 const UF_OPTIONS = [
@@ -26,25 +42,42 @@ interface FilterModalProps {
   onClose: () => void;
   modality?: string;
   location?: string;
+  shift?: string;
+  min_igc?: number;
+  price_range?: string;
   onApply: (filters: Partial<ExploreFilters>) => void;
 }
 
-export default function FilterModal({ open, onClose, modality, location, onApply }: FilterModalProps) {
-  const [localModality, setLocalModality] = useState<string>(modality ?? '');
+export default function FilterModal({ 
+  open, 
+  onClose, 
+  location, 
+  shift, 
+  min_igc, 
+  price_range, 
+  onApply 
+}: FilterModalProps) {
   const [localLocation, setLocalLocation] = useState<string>(location ?? '');
+  const [localShift, setLocalShift] = useState<string>(shift ?? '');
+  const [localMinIGC, setLocalMinIGC] = useState<string>(min_igc?.toString() ?? '');
+  const [localPriceRange, setLocalPriceRange] = useState<string>(price_range ?? '');
 
   // Reset local state when modal opens
   useEffect(() => {
     if (open) {
-      setLocalModality(modality ?? '');
       setLocalLocation(location ?? '');
+      setLocalShift(shift ?? '');
+      setLocalMinIGC(min_igc?.toString() ?? '');
+      setLocalPriceRange(price_range ?? '');
     }
-  }, [open, modality, location]);
+  }, [open, location, shift, min_igc, price_range]);
 
   const handleApply = () => {
     onApply({
-      modality: (localModality as ExploreFilters['modality']) || undefined,
       location: localLocation || undefined,
+      shift: (localShift as any) || undefined,
+      min_igc: localMinIGC ? parseInt(localMinIGC) : undefined,
+      price_range: (localPriceRange as any) || undefined,
     });
   };
 
@@ -94,17 +127,50 @@ export default function FilterModal({ open, onClose, modality, location, onApply
               </button>
             </div>
 
-            {/* Modalidade */}
+
+            {/* Turno */}
             <div className="flex flex-col gap-2">
               <label className="font-sans font-semibold text-[13px] text-nubo-text-head">
-                Modalidade
+                Turno
               </label>
               <select
-                value={localModality}
-                onChange={(e) => setLocalModality(e.target.value)}
+                value={localShift}
+                onChange={(e) => setLocalShift(e.target.value)}
                 className="w-full rounded-[12px] px-4 h-[48px] text-[15px] font-sans font-medium text-nubo-text-head bg-white outline-none border border-nubo-line focus:border-nubo-primary focus:ring-1 focus:ring-nubo-primary transition-all"
               >
-                {MODALITY_OPTIONS.map((opt) => (
+                {SHIFT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Conceito MEC (IGC) */}
+            <div className="flex flex-col gap-2">
+              <label className="font-sans font-semibold text-[13px] text-nubo-text-head">
+                Qualidade MEC (Conceito IGC)
+              </label>
+              <select
+                value={localMinIGC}
+                onChange={(e) => setLocalMinIGC(e.target.value)}
+                className="w-full rounded-[12px] px-4 h-[48px] text-[15px] font-sans font-medium text-nubo-text-head bg-white outline-none border border-nubo-line focus:border-nubo-primary focus:ring-1 focus:ring-nubo-primary transition-all"
+              >
+                {IGC_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Preço */}
+            <div className="flex flex-col gap-2">
+              <label className="font-sans font-semibold text-[13px] text-nubo-text-head">
+                Preço
+              </label>
+              <select
+                value={localPriceRange}
+                onChange={(e) => setLocalPriceRange(e.target.value)}
+                className="w-full rounded-[12px] px-4 h-[48px] text-[15px] font-sans font-medium text-nubo-text-head bg-white outline-none border border-nubo-line focus:border-nubo-primary focus:ring-1 focus:ring-nubo-primary transition-all"
+              >
+                {PRICE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>

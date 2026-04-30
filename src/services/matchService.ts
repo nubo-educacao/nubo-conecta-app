@@ -4,10 +4,27 @@
 
 import { supabase } from '@/lib/supabase';
 
+export interface MatchDetails {
+  meets_income: boolean;
+  academic_score: number;
+  weighted_enem_score: number;
+  cutoff_score: number;
+  shift_score: number;
+  inst_program_score: number;
+  course_score: number;
+  distance_score: number;
+  regional_bonus: number;
+  base_score: number;
+  is_partner: boolean;
+  boost_applied: boolean;
+  idle_vacancy_boost_applied: boolean;
+  opportunity_type: string;
+}
+
 export interface MatchResult {
   unified_opportunity_id: string;
   match_score: number;
-  match_details: Record<string, number>;
+  match_details: MatchDetails;
 }
 
 /**
@@ -23,6 +40,32 @@ export async function generateMatch(profileId: string): Promise<MatchResult[]> {
 
   if (error) throw new Error(`generateMatch RPC failed: ${error.message}`);
   return (data as MatchResult[]) ?? [];
+}
+
+/**
+ * Calls the calculate-match Edge Function which triggers async processing.
+ */
+export async function generateMatchAsync(): Promise<{ jobId: string }> {
+  const { data, error } = await supabase.functions.invoke('calculate-match', {
+    method: 'POST',
+  });
+
+  if (error) throw new Error(`generateMatchAsync failed: ${error.message}`);
+  return data;
+}
+
+/**
+ * Checks the current match status for a user.
+ */
+export async function getMatchStatus(profileId: string): Promise<'idle' | 'processing' | 'ready' | 'error'> {
+  const { data, error } = await supabase
+    .from('user_preferences')
+    .select('match_status')
+    .eq('user_id', profileId)
+    .single();
+
+  if (error) throw new Error(`getMatchStatus failed: ${error.message}`);
+  return data.match_status || 'idle';
 }
 
 /**

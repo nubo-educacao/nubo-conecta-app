@@ -6,7 +6,7 @@
 
 import { useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import CardOportunidades from '@/components/opportunities/CardOportunidades';
+import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 
 interface OpportunityCarouselProps {
@@ -90,7 +90,7 @@ export default function OpportunityCarousel({
             className="flex-shrink-0 snap-start"
             style={{ width: 'min(361px, 85vw)' }}
           >
-            <CardOportunidades opportunity={opp} />
+            <OpportunityCard opportunity={opp} />
           </div>
         ))}
       </div>
@@ -99,7 +99,7 @@ export default function OpportunityCarousel({
       {desktopGridMode && (
         <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6 px-4">
           {desktopItems.map((opp) => (
-            <CardOportunidades key={opp.id} opportunity={opp} />
+            <OpportunityCard key={opp.id} opportunity={opp} />
           ))}
         </div>
       )}

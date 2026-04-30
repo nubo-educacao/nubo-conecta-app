@@ -12,12 +12,12 @@ const config: Config = {
       // Design tokens — extraídos do Figma (node 32:6814) em 2026-04-01
       colors: {
         nubo: {
-          primary:       "#38B1E4",   // Primary Main
-          "primary-light": "#6CD4FF", // Primary Light
-          "primary-dark":  "#024F86", // Background Dark / logo color
-          "nav-active":  "#048FAD",   // BottomNav ativo
-          "nav-inactive":"#707A7E",   // BottomNav inativo
-          "text-head":   "#3A424E",   // Heading Text
+          primary:       "#3092bb",   // Novo Azul MEC
+          "primary-light": "#60c6f2", 
+          "primary-dark":  "#024F86", // Logo / Dark
+          "nav-active":  "#3092bb",   // Alinhado com MEC
+          "nav-inactive":"#707A7E",   
+          "text-head":   "#3A424E",   
           "text-body":   "rgba(58,66,78,0.9)",
           "text-secondary":"rgba(58,66,78,0.5)",
           background:    "#FFFFFF",
@@ -30,7 +30,7 @@ const config: Config = {
           orange:        "#FF9900",
           brick:         "#F65834",
           purple:        "#9747FF",
-          cyan:          "#00B5DD",
+          cyan:          "#3092bb",
         },
       },
       fontFamily: {

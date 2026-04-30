@@ -69,14 +69,14 @@ export default function TopBar({ title }: TopBarProps) {
           {title ? (
             <h1
               className="text-base font-bold"
-              style={{ color: "#024F86", fontFamily: "Montserrat, sans-serif" }}
+              style={{ color: "#3092bb", fontFamily: 'Montserrat, sans-serif' }}
             >
               {title}
             </h1>
           ) : (
             <span
               className="text-base font-bold whitespace-nowrap"
-              style={{ color: "#024F86", fontFamily: "Montserrat, sans-serif" }}
+              style={{ color: "#3092bb", fontFamily: 'Montserrat, sans-serif' }}
             >
               Nubo Conecta
             </span>
@@ -93,9 +93,9 @@ export default function TopBar({ title }: TopBarProps) {
                 href={href}
                 className="px-3 py-1.5 rounded-full text-sm transition-colors"
                 style={{
-                  color: isActive ? "#048FAD" : "#707A7E",
+                  color: isActive ? "#3092bb" : "#707A7E",
                   fontWeight: isActive ? 700 : 500,
-                  background: isActive ? "rgba(4,143,173,0.08)" : "transparent",
+                  background: isActive ? "rgba(48,146,187,0.08)" : "transparent",
                   fontFamily: "Montserrat, sans-serif",
                 }}
               >

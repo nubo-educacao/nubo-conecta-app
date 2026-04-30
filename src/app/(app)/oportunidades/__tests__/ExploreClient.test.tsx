@@ -24,15 +24,9 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(mockSearchParamsString),
 }));
 
-vi.mock('@/components/opportunities/CardOportunidades', () => ({
+vi.mock('@/components/opportunities/OpportunityCard', () => ({
   default: ({ opportunity }: { opportunity: { title: string } }) => (
-    <div data-testid="card-mec">{opportunity.title}</div>
-  ),
-}));
-
-vi.mock('@/components/opportunities/CardOportunidadeParceira', () => ({
-  default: ({ opportunity }: { opportunity: { title: string } }) => (
-    <div data-testid="card-partner">{opportunity.title}</div>
+    <div data-testid="opportunity-card">{opportunity.title}</div>
   ),
 }));
 
@@ -190,18 +184,16 @@ describe('ExploreClient', () => {
 
   // ── Grid de cards ──────────────────────────────────────────────────────────
 
-  it('renderiza CardOportunidades para oportunidades MEC (is_partner=false)', () => {
+  it('renderiza OpportunityCard para oportunidades MEC (is_partner=false)', () => {
     const opps = [makeOpp({ id: 'mec_001', title: 'Direito UFMG', is_partner: false })];
     render(<ExploreClient opportunities={opps} filters={emptyFilters} />);
-    expect(screen.getByTestId('card-mec')).toBeDefined();
-    expect(screen.queryByTestId('card-partner')).toBeNull();
+    expect(screen.getByTestId('opportunity-card')).toBeDefined();
   });
 
-  it('renderiza CardOportunidadeParceira para oportunidades parceiras (is_partner=true)', () => {
+  it('renderiza OpportunityCard para oportunidades parceiras (is_partner=true)', () => {
     const opps = [makeOpp({ id: 'partner_001', title: 'Bootcamp TechCorp', is_partner: true, type: 'partner', opportunity_type: 'bootcamp' })];
     render(<ExploreClient opportunities={opps} filters={emptyFilters} />);
-    expect(screen.getByTestId('card-partner')).toBeDefined();
-    expect(screen.queryByTestId('card-mec')).toBeNull();
+    expect(screen.getByTestId('opportunity-card')).toBeDefined();
   });
 
   it('renderiza múltiplos cards sem duplicatas (key correta)', () => {
@@ -211,7 +203,7 @@ describe('ExploreClient', () => {
       makeOpp({ id: 'mec_003', title: 'Direito' }),
     ];
     render(<ExploreClient opportunities={opps} filters={emptyFilters} />);
-    expect(screen.getAllByTestId('card-mec')).toHaveLength(3);
+    expect(screen.getAllByTestId('opportunity-card')).toHaveLength(3);
   });
 
   // ── FilterModal ────────────────────────────────────────────────────────────

@@ -15,6 +15,9 @@ export interface ExploreFilters {
   category?: string;
   modality?: 'presential' | 'online';
   location?: string;
+  shift?: 'Matutino' | 'Vespertino' | 'Noturno' | 'Integral';
+  min_igc?: number;
+  price_range?: 'free' | 'paid';
 }
 
 export interface IUnifiedOpportunity {
@@ -43,9 +46,45 @@ export interface IUnifiedOpportunity {
   match_score?: number;
   /** ISO 8601 timestamp */
   created_at: string;
+  /** Sprint 6: lifecycle status (approved | inactive | pending) */
+  status?: string;
+  /** Sprint 6: opportunity start date — for display and alert logic */
+  starts_at?: string;
+  /** Sprint 6: opportunity end date — for display and alert logic */
+  ends_at?: string;
   /** External redirect config — only present for partner opportunities */
   external_redirect?: {
     enabled: boolean;
     url?: string;
+  };
+  /** MEC only: min cutoff score for the course across all concurrency types */
+  min_cutoff_score?: number;
+  /** MEC only: max cutoff score for the course across all concurrency types */
+  max_cutoff_score?: number;
+  /** Partner only: institution cover image URL */
+  institution_cover_url?: string;
+  /** Deep Details: MEC vacancy metadata */
+  nu_vagas_autorizadas?: string;
+  qt_vagas_ofertadas?: string;
+  qt_inscricao_2025?: string;
+  vagas_ociosas_2025?: number;
+  /** Deep Details: Institution metadata */
+  institution_id?: string;
+  institution_igc?: string;
+  institution_organization?: string;
+  institution_category?: string;
+  institution_site?: string;
+  /** Deep Details: Partner metadata */
+  eligibility_criteria?: any;
+  benefits?: any;
+  brand_color?: string;
+  description?: string;
+  /** Deep Details: Weights (MEC) */
+  weights?: {
+    redacao?: number;
+    matematica?: number;
+    linguagens?: number;
+    humanas?: number;
+    natureza?: number;
   };
 }
