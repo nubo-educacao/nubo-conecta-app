@@ -99,3 +99,19 @@ export async function markOnboardingComplete(): Promise<void> {
 
   if (error) throw new Error(`markOnboardingComplete: ${error.message}`);
 }
+
+export async function getUserOnboardingData(userId: string) {
+  const [profileRes, incomeRes, prefsRes, enemScoresRes] = await Promise.all([
+    supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle(),
+    supabase.from('user_income').select('*').eq('user_id', userId).maybeSingle(),
+    supabase.from('user_preferences').select('*').eq('user_id', userId).maybeSingle(),
+    supabase.from('user_enem_scores').select('*').eq('user_id', userId)
+  ]);
+
+  return {
+    profile: profileRes.data,
+    income: incomeRes.data,
+    preferences: prefsRes.data,
+    enemScores: enemScoresRes.data
+  };
+}

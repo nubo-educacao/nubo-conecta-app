@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { 
-  ChevronLeft, Share2, Heart, ExternalLink, Info, MapPin, 
+import {
+  ChevronLeft, Share2, Heart, ExternalLink, Info, MapPin,
   Globe, GraduationCap, Award, Users, Clock, Calendar,
-  CheckCircle2, Building2
+  CheckCircle2, Building2, Sun, Sunset, Moon, SunMoon, Laptop
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 import SisuProuniCard from './SisuProuniCard';
 import OpportunitiesListCard, { Opportunity } from './OpportunitiesListCard';
+import SisuScoreDisplay from './SisuScoreDisplay';
 import { supabase } from '@/lib/supabase';
 
 interface DetailsLayoutProps {
@@ -31,6 +32,7 @@ export default function DetailsLayout({
   const router = useRouter();
   const [isRegistrationOpen, setIsRegistrationOpen] = React.useState<boolean | null>(null);
   const [registrationDates, setRegistrationDates] = React.useState<{ start: string; end: string } | null>(null);
+  const [campus, setCampus] = React.useState<{ name: string; city: string; state: string } | null>(null);
 
   const isPartner = opportunity.is_partner;
   const brandColor = opportunity.brand_color || (isPartner ? '#7030C2' : '#3092BB');
@@ -57,7 +59,7 @@ export default function DetailsLayout({
         const now = new Date();
         const start = new Date(data.start_date);
         const end = new Date(data.end_date);
-        
+
         setRegistrationDates({ start: data.start_date, end: data.end_date });
         setIsRegistrationOpen(now >= start && now <= end);
       } else {
@@ -68,6 +70,21 @@ export default function DetailsLayout({
     checkDates();
   }, [opportunity.opportunity_type, isPartner]);
 
+  // Fetch campus data for MEC opportunities
+  React.useEffect(() => {
+    if (isPartner) return;
+    const uuid = opportunity.id.replace('mec_', '');
+    supabase
+      .from('opportunities')
+      .select('courses(campus_id, campus:campus(name, city, state))')
+      .eq('id', uuid)
+      .limit(1)
+      .then(({ data }) => {
+        const campusData = (data?.[0] as any)?.courses?.campus;
+        if (campusData) setCampus(campusData);
+      });
+  }, [opportunity.id, isPartner]);
+
   // Helper for Category Chips
   const categoryLabel = opportunity.opportunity_type?.toUpperCase() || 'PROGRAMA';
 
@@ -75,15 +92,15 @@ export default function DetailsLayout({
   const renderFormattedCriteria = (data: any) => {
     if (!data) return null;
     if (typeof data === 'string') return <p>{data}</p>;
-    
+
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {Object.entries(data).map(([key, value]) => {
           if (key === 'badges') return null;
-          
+
           let displayValue = String(value);
           let icon = <Info size={16} className="text-[#3092BB]" />;
-          
+
           if (key === 'income') {
             displayValue = String(value);
             icon = <Award size={16} className="text-yellow-500" />;
@@ -126,21 +143,21 @@ export default function DetailsLayout({
       {/* ── Hero / Cover ── */}
       <section className="relative h-[220px] w-full">
         {/* Main Cover Image Container (Pattern from OpportunityCard) */}
-        <div 
+        <div
           className="absolute inset-x-0 bottom-0 top-0 overflow-hidden rounded-b-[40px] shadow-lg mx-0"
-          style={{ 
-            background: isPartner 
+          style={{
+            background: isPartner
               ? brandColor
               : 'linear-gradient(239.86deg, rgba(48, 146, 187, 0.8) 9.15%, #3092BB 59.27%)'
           }}
         >
           {/* Image Overlay */}
-          <img 
+          <img
             src={opportunity.institution_cover_url || (isPartner ? undefined : "https://images.unsplash.com/photo-1523050853064-855722749e41?q=80&w=2070&auto=format&fit=crop")}
             className="w-full h-full object-cover mix-blend-soft-light opacity-60"
             alt=""
             onError={(e) => {
-               (e.target as HTMLImageElement).style.display = 'none';
+              (e.target as HTMLImageElement).style.display = 'none';
             }}
           />
           {/* Overlay Gradient for contrast */}
@@ -149,13 +166,13 @@ export default function DetailsLayout({
 
         {/* Floating Controls on Hero */}
         <div className="absolute top-6 left-6 right-6 flex items-center justify-between z-20">
-          <button 
+          <button
             onClick={() => router.back()}
             className="size-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 hover:bg-white/30 transition-all"
           >
             <ChevronLeft size={22} />
           </button>
-          <button 
+          <button
             onClick={onFavorite}
             className="size-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 hover:bg-white/30 transition-all"
           >
@@ -180,13 +197,23 @@ export default function DetailsLayout({
           <h1 className="text-3xl font-black text-[#3A424E] leading-tight tracking-tight">
             {opportunity.title}
           </h1>
-          <Link 
+          <Link
             href={`/instituicoes/${opportunity.institution_id}`}
             className="flex items-center gap-2 mt-2 text-[#3092BB] font-bold hover:underline"
           >
             <Building2 size={18} />
-            <span className="text-sm line-clamp-1">{opportunity.institution_name}</span>
+            <span className="text-sm">{opportunity.institution_name}</span>
           </Link>
+          {campus && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span className="text-[11px] font-bold text-white px-3 py-1 rounded-full" style={{ backgroundColor: '#024F86' }}>
+                {campus.name}
+              </span>
+              <span className="text-[11px] font-bold text-white px-3 py-1 rounded-full" style={{ backgroundColor: '#38B1E4' }}>
+                {campus.city} · {campus.state}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Match Score Circular Badge */}
@@ -194,10 +221,10 @@ export default function DetailsLayout({
           <div className="relative size-16 shrink-0">
             <svg className="size-full -rotate-90" viewBox="0 0 36 36">
               <circle cx="18" cy="18" r="16" fill="none" className="stroke-gray-100" strokeWidth="3" />
-              <motion.circle 
-                cx="18" cy="18" r="16" fill="none" 
-                className="stroke-[#3092BB]" 
-                strokeWidth="3" 
+              <motion.circle
+                cx="18" cy="18" r="16" fill="none"
+                className="stroke-[#3092BB]"
+                strokeWidth="3"
                 strokeDasharray="100 100"
                 initial={{ strokeDashoffset: 100 }}
                 animate={{ strokeDashoffset: 100 - (Number(opportunity.match_score) || 0) }}
@@ -234,47 +261,82 @@ export default function DetailsLayout({
 
       {/* ── Metadata Grid ── */}
       <section className="grid grid-cols-2 gap-4 px-6 mt-8">
-        {[
-          { label: 'Localização', value: opportunity.location || 'Nacional', icon: MapPin, color: 'text-blue-500' },
-          { label: 'Turno', value: opportunity.badges.find(b => ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EaD', 'EAD', 'Curso a distância'].includes(b)) || 'Consultar', icon: Clock, color: 'text-orange-500' },
-          { label: 'Vagas', value: `${opportunity.nu_vagas_autorizadas || '--'} vagas`, icon: Users, color: 'text-pink-500' },
-          { 
-            label: 'Inscrições', 
-            value: (opportunity.starts_at || opportunity.ends_at) 
-              ? `${opportunity.starts_at ? new Date(opportunity.starts_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '?'} a ${opportunity.ends_at ? new Date(opportunity.ends_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '?'}`
-              : 'Em breve', 
-            icon: Calendar, 
-            color: 'text-emerald-500' 
-          }
-        ].map((item, idx) => (
-          <div key={idx} className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-gray-50">
-            <div className={cn("size-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0", item.color)}>
-              <item.icon size={18} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">{item.label}</p>
-              <p className="text-[13px] font-bold text-[#3A424E] truncate">{item.value}</p>
+        {/* Localização */}
+        <div className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-gray-50">
+          <div className="size-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 text-blue-500">
+            <MapPin size={18} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">Localização</p>
+            <p className="text-[13px] font-bold text-[#3A424E] truncate">{opportunity.location || 'Nacional'}</p>
+          </div>
+        </div>
+
+        {/* Turno — icons from relatedOpportunities */}
+        <div className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-gray-50">
+          <div className="size-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 text-orange-500">
+            <Clock size={18} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">Turno</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {(() => {
+                const shifts = [...new Set(relatedOpportunities.map(r => r.shift).filter(Boolean))];
+                if (shifts.length === 0) {
+                  const badgeShift = opportunity.badges.find(b => ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EaD', 'EAD', 'Curso a distância'].includes(b));
+                  if (badgeShift) shifts.push(badgeShift);
+                }
+                if (shifts.length === 0) return <span className="text-[13px] font-bold text-[#3A424E]">Consultar</span>;
+                return shifts.map(shift => {
+                  const map: Record<string, { Icon: any; color: string; title: string }> = {
+                    'Matutino': { Icon: Sun, color: 'text-orange-500', title: 'Matutino' },
+                    'Integral': { Icon: SunMoon, color: 'text-blue-500', title: 'Integral' },
+                    'Vespertino': { Icon: Sunset, color: 'text-amber-500', title: 'Vespertino' },
+                    'Noturno': { Icon: Moon, color: 'text-indigo-500', title: 'Noturno' },
+                    'EaD': { Icon: Laptop, color: 'text-slate-500', title: 'EaD' },
+                    'EAD': { Icon: Laptop, color: 'text-slate-500', title: 'EAD' },
+                    'Curso a distância': { Icon: Laptop, color: 'text-slate-500', title: 'EaD' },
+                  };
+                  const s = map[shift] || { Icon: Sun, color: 'text-slate-400', title: shift };
+                  return <s.Icon key={shift} size={20} className={s.color} title={s.title} />;
+                });
+              })()}
             </div>
           </div>
-        ))}
-      </section>
+        </div>
 
-      {/* ── Description ── */}
-      <section className="px-6 mt-10 space-y-3">
-        <h2 className="text-[#3A424E] font-black text-lg">Sobre a Oportunidade</h2>
-        <p className="text-[#636E7C] text-sm leading-relaxed">
-          {isPartner 
-            ? (opportunity.description || "Esta oportunidade é oferecida por uma instituição parceira do Nubo Conecta. Confira os critérios de elegibilidade e benefícios exclusivos abaixo para garantir sua vaga.")
-            : "Curso com ênfase em excelência acadêmica e forte conexão com o mercado de trabalho. Verifique as notas de corte e pesos das disciplinas para otimizar sua candidatura."
-          }
-        </p>
+        {/* Vagas */}
+        <div className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-gray-50">
+          <div className="size-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 text-pink-500">
+            <Users size={18} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">Vagas</p>
+            <p className="text-[13px] font-bold text-[#3A424E] truncate">{opportunity.nu_vagas_autorizadas || '--'} vagas</p>
+          </div>
+        </div>
+
+        {/* Inscrições */}
+        <div className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-gray-50">
+          <div className="size-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 text-emerald-500">
+            <Calendar size={18} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">Inscrições</p>
+            <p className="text-[13px] font-bold text-[#3A424E] truncate">
+              {(opportunity.starts_at || opportunity.ends_at)
+                ? `${opportunity.starts_at ? new Date(opportunity.starts_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '?'} a ${opportunity.ends_at ? new Date(opportunity.ends_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '?'}`
+                : 'Em breve'}
+            </p>
+          </div>
+        </div>
       </section>
 
       {/* ── Statistics / Program Specifics ── */}
       <div className="px-6 mt-8 space-y-8">
         {!isPartner ? (
           <>
-            <SisuProuniCard 
+            <SisuProuniCard
               opportunity_type={opportunity.opportunity_type || 'SISU'}
               qt_inscricao_2025={opportunity.qt_inscricao_2025}
               max_cutoff_score={opportunity.max_cutoff_score}
@@ -282,9 +344,13 @@ export default function DetailsLayout({
               nu_vagas_autorizadas={opportunity.nu_vagas_autorizadas}
             />
 
+            {opportunity.weights && (
+              <SisuScoreDisplay weights={opportunity.weights} />
+            )}
+
             {/* ── Pesos do ENEM ── */}
             {opportunity.weights && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -319,10 +385,10 @@ export default function DetailsLayout({
             )}
 
             {/* ── Lista de Modalidades ── */}
-            <OpportunitiesListCard 
+            <OpportunitiesListCard
               opportunities={relatedOpportunities.length > 0 ? relatedOpportunities : [{
                 id: opportunity.unified_id,
-                shift: 'Noturno', 
+                shift: 'Noturno',
                 concurrency_tags: (opportunity as any).concurrency_tags,
                 scholarship_tags: (opportunity as any).scholarship_tags,
                 cutoff_score: opportunity.max_cutoff_score,
@@ -335,7 +401,7 @@ export default function DetailsLayout({
           </>
         ) : (
           <div className="space-y-6">
-            <motion.section 
+            <motion.section
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -353,7 +419,7 @@ export default function DetailsLayout({
             </motion.section>
 
             {opportunity.benefits && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -366,8 +432,8 @@ export default function DetailsLayout({
                   Benefícios Exclusivos
                 </h3>
                 <div className="text-sm text-[#636E7C] leading-relaxed">
-                  {typeof opportunity.benefits === 'string' 
-                    ? opportunity.benefits 
+                  {typeof opportunity.benefits === 'string'
+                    ? opportunity.benefits
                     : renderFormattedCriteria(opportunity.benefits)}
                 </div>
               </motion.section>
@@ -381,7 +447,7 @@ export default function DetailsLayout({
         <h2 className="text-[#3A424E] font-black text-lg mb-4">Sobre a Instituição</h2>
         <div className="bg-white border border-gray-100 rounded-[32px] p-6 flex flex-col gap-6 shadow-sm">
           <div className="flex items-center gap-4">
-            <div 
+            <div
               className="size-16 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg shrink-0"
               style={{ backgroundColor: brandColor }}
             >
@@ -395,7 +461,7 @@ export default function DetailsLayout({
               </div>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 rounded-2xl p-4">
               <p className="text-[10px] text-gray-400 font-bold uppercase">IGC (MEC)</p>
@@ -407,7 +473,7 @@ export default function DetailsLayout({
             </div>
           </div>
 
-          <Link 
+          <Link
             href={`/instituicoes/${opportunity.institution_id}`}
             className="w-full h-12 rounded-full border-2 border-gray-100 flex items-center justify-center font-bold text-[#3A424E] hover:bg-gray-50 transition-colors gap-2"
           >
@@ -420,7 +486,7 @@ export default function DetailsLayout({
       {/* ── Sticky Bottom CTA ── */}
       {isEncerrado ? (
         <div className="fixed bottom-0 inset-x-0 p-6 bg-white/80 backdrop-blur-2xl border-t border-gray-100/50 z-50 flex flex-col gap-4 pb-10">
-          <button 
+          <button
             disabled
             className="w-full h-14 rounded-full font-black text-lg text-[#868E96] shadow-none flex items-center justify-center gap-2 bg-[#F1F3F5] border border-[#DEE2E6] cursor-not-allowed"
           >
@@ -429,7 +495,7 @@ export default function DetailsLayout({
         </div>
       ) : isRegistrationOpen !== false && (
         <div className="fixed bottom-0 inset-x-0 p-6 bg-white/80 backdrop-blur-2xl border-t border-gray-100/50 z-50 flex flex-col gap-4 pb-10">
-          <button 
+          <button
             onClick={() => {
               if (opportunity.external_redirect_enabled && opportunity.external_redirect_url) {
                 window.open(opportunity.external_redirect_url, '_blank');

@@ -15,6 +15,11 @@ export interface Opportunity {
   opportunity_type: string;
   year?: number;
   semester?: string;
+  vacancies?: {
+    broad_competition_offered?: number;
+    quotas_offered?: number;
+    [key: string]: any;
+  } | null;
 }
 
 interface OpportunitiesListCardProps {
@@ -106,9 +111,10 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
         <table className="w-full text-left">
           <thead className="bg-[#F9FAFB] text-[#636E7C] text-[10px] uppercase font-bold tracking-wider">
             <tr>
-              <th className="px-6 py-4 w-[120px]">Turno</th>
+              <th className="px-6 py-4 w-[80px]">Turno</th>
               <th className="px-6 py-4">Modalidade e Cotas</th>
-              <th className="px-6 py-4 text-right w-[150px]">Nota de Corte</th>
+              <th className="px-4 py-4 text-right w-[90px]">Vagas</th>
+              <th className="px-6 py-4 text-right w-[140px]">Nota de Corte</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -122,11 +128,14 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                   className={`transition-colors group ${isHighlighted ? 'bg-blue-50/50' : 'hover:bg-gray-50/50'}`}
                 >
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
+                    <div className="relative group/shift flex items-center justify-center">
                       <div className={`size-8 rounded-xl bg-white shadow-sm border border-gray-100 flex items-center justify-center ${color}`}>
                         <Icon size={16} />
                       </div>
-                      <span className="text-xs font-bold text-[#3A424E]">{label}</span>
+                      <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 px-2 py-1 bg-[#3A424E] text-white text-[10px] rounded-lg opacity-0 group-hover/shift:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-xl">
+                        {label}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#3A424E]" />
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -147,6 +156,13 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                         </div>
                       </div>
                     </div>
+                  </td>
+                  <td className="px-4 py-4 text-right">
+                    <span className="text-sm font-bold text-[#3A424E]">
+                      {opp.vacancies
+                        ? ((opp.vacancies.broad_competition_offered || 0) + (opp.vacancies.quotas_offered || 0)) || '---'
+                        : '---'}
+                    </span>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex flex-col items-end">

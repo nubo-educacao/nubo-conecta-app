@@ -176,6 +176,28 @@ export async function getUnifiedOpportunities(
 
   const mapped = (data as UnifiedOpportunityRow[]).map(mapRowToOpportunity);
 
+  // If user is authenticated, we want to fetch the match scores for these opportunities 
+  // so the Explore tab can also show the match badge.
+  const { data: authData } = await supabase.auth.getUser();
+  if (authData.user && mapped.length > 0) {
+    const unifiedIds = mapped.map(opp => opp.id);
+    const { data: matchData } = await supabase
+      .from('user_opportunity_matches')
+      .select('unified_opportunity_id, match_score')
+      .eq('profile_id', authData.user.id)
+      .in('unified_opportunity_id', unifiedIds);
+
+    if (matchData) {
+      const matchMap = new Map(matchData.map((m: any) => [m.unified_opportunity_id, m.match_score]));
+      mapped.forEach(opp => {
+        const score = matchMap.get(opp.id);
+        if (score !== undefined) {
+          opp.match_score = score;
+        }
+      });
+    }
+  }
+
   if (mode === 'para-voce') {
     // In-memory sort: parceiras primeiro, depois por recência (apenas para não-logados)
     mapped.sort((a, b) => Number(b.is_partner) - Number(a.is_partner));

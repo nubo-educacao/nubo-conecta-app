@@ -6,19 +6,21 @@
 // Step 2: Desempenho & Renda (ENEM Scores + Income Calculator)
 // Step 3: Interesses & Filtros (Course Interests + Match Filters)
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   User, MapPin, GraduationCap, Calendar, Search, Home, Hash, Building,
   AlertCircle, DollarSign, Users, Calculator, X, Globe, Loader2, Sparkles,
   ChevronRight, ChevronLeft, Check, BookOpen, Briefcase, Info, Mail, Phone,
   CheckCircle
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { 
   saveUserData, 
   saveUserIncome, 
   saveUserPreferences, 
   saveUserEnemScore,
-  markOnboardingComplete 
+  markOnboardingComplete,
+  getUserOnboardingData
 } from '@/services/profileService';
 import { generateMatchAsync, getMatchStatus } from '@/services/matchService';
 
@@ -40,9 +42,10 @@ const EDUCATION_OPTIONS = [
 
 const SHIFTS_OPTIONS = ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EAD'];
 
-const PROGRAM_OPTIONS = [
+const STATIC_PROGRAM_OPTIONS = [
   { label: 'Sisu', value: 'sisu' },
   { label: 'Prouni', value: 'prouni' },
+  { label: 'Bolsa', value: 'bolsa' },
   { label: 'Indiferente', value: 'indiferente' },
 ];
 
@@ -110,7 +113,10 @@ function FieldLabel({ icon: Icon, label, error, required, htmlFor }: { icon?: Re
 
 const inputCls = 'bg-white/40 border border-white/60 focus:border-[#38B1E4] focus:bg-white rounded-xl px-4 py-2.5 text-[#3A424E] outline-none transition-all placeholder:text-gray-400 w-full text-[14px] shadow-sm';
 
+type YearScores = { ling: string; hum: string; nat: string; mat: string; red: string };
+
 export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboardingFormProps) {
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // ── Step 1 State (Identificação) ──────────────────────────────────────────
@@ -136,14 +142,13 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
   const [cepError, setCepError] = useState<string | null>(null);
 
   // ── Step 2 State (Desempenho & Renda) ──────────────────────────────────────
-  // ENEM
-  const [enemScore, setEnemScore] = useState('');
-  const [enemYear, setEnemYear] = useState(new Date().getFullYear().toString());
-  const [notaLing, setNotaLing] = useState('');
-  const [notaHum, setNotaHum] = useState('');
-  const [notaNat, setNotaNat] = useState('');
-  const [notaMat, setNotaMat] = useState('');
-  const [notaRed, setNotaRed] = useState('');
+  // ENEM — scores keyed by year so each tab is independent
+  const [enemYear, setEnemYear] = useState('2026');
+  const [scoresByYear, setScoresByYear] = useState<Record<string, YearScores>>({});
+
+  const currentScores: YearScores = scoresByYear[enemYear] ?? { ling: '', hum: '', nat: '', mat: '', red: '' };
+  const updateScore = (field: keyof YearScores, val: string) =>
+    setScoresByYear(prev => ({ ...prev, [enemYear]: { ...currentScores, [field]: val } }));
 
   // Income Calculator
   const [useCalculator, setUseCalculator] = useState(true);
@@ -153,20 +158,6 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
   const [memberIncomes, setMemberIncomes] = useState<string[]>([]);
   const [manualPerCapita, setManualPerCapita] = useState<number | null>(null);
 
-  // Auto-calculate ENEM Average
-  useEffect(() => {
-    const scores = [notaLing, notaHum, notaNat, notaMat, notaRed]
-      .map(s => parseFloat(s))
-      .filter(n => !isNaN(n));
-    
-    if (scores.length === 5) {
-      const avg = scores.reduce((a, b) => a + b, 0) / 5;
-      setEnemScore(avg.toFixed(1));
-    } else if (scores.length > 0) {
-      // Clear manual score if they started typing components
-      setEnemScore('');
-    }
-  }, [notaLing, notaHum, notaNat, notaMat, notaRed]);
 
   // ── Step 3 State (Interesses & Filtros) ────────────────────────────────────
   const [courseInput, setCourseInput] = useState('');
@@ -177,6 +168,129 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
   const [universityPref, setUniversityPref] = useState('indiferente');
   const [locationPref, setLocationPref] = useState('');
   const [statePref, setStatePref] = useState('');
+
+  // ── Course Autocomplete ────────────────────────────────────────────────────
+  const [courseResults, setCourseResults] = useState<string[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+  const [showCourseSuggestions, setShowCourseSuggestions] = useState(false);
+  const courseInputRef = useRef<HTMLDivElement>(null);
+
+  const programOptions = STATIC_PROGRAM_OPTIONS;
+
+
+  // Course search debounce
+  useEffect(() => {
+    if (courseInput.length < 2) {
+      setCourseResults([]);
+      setShowCourseSuggestions(false);
+      return;
+    }
+    setCoursesLoading(true);
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from('courses')
+        .select('course_name')
+        .ilike('course_name', `%${courseInput}%`)
+        .limit(10);
+      const names = [...new Set((data || []).map(r => r.course_name).filter(Boolean))] as string[];
+      setCourseResults(names);
+      setShowCourseSuggestions(names.length > 0);
+      setCoursesLoading(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [courseInput]);
+
+  // Close course dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (courseInputRef.current && !courseInputRef.current.contains(e.target as Node)) {
+        setShowCourseSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // ── Load Existing User Data ────────────────────────────────────────────────
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setIsLoadingData(true);
+        const data = await getUserOnboardingData(userId);
+        
+        if (data.profile) {
+          setFullName(data.profile.full_name || '');
+          setBirthDate(data.profile.birth_date || '');
+          setEducation(data.profile.education || '');
+          setEducationYear(data.profile.education_year || '');
+          setOutsideBrazil(data.profile.outside_brazil || false);
+          setZipCode(data.profile.zip_code || '');
+          setCity(data.profile.city || '');
+          setState(data.profile.state || '');
+          setNeighborhood(data.profile.neighborhood || '');
+          setStreet(data.profile.street || '');
+          setStreetNumber(data.profile.street_number || '');
+          setComplement(data.profile.complement || '');
+          setCountry(data.profile.country || 'Brasil');
+        }
+
+        if (data.income) {
+          setFamilyCount(data.income.family_count?.toString() || '');
+          setSocialBenefits(data.income.social_benefits?.toString() || '');
+          setAlimony(data.income.alimony?.toString() || '');
+          if (data.income.member_incomes && data.income.member_incomes.length > 0) {
+            setMemberIncomes(data.income.member_incomes.map(i => i.toString()));
+          }
+          if (data.income.per_capita_income != null) {
+            setManualPerCapita(data.income.per_capita_income);
+            if (!data.income.member_incomes || data.income.member_incomes.length === 0) {
+              setUseCalculator(false);
+            }
+          }
+        }
+
+        if (data.preferences) {
+          if (data.preferences.course_interest && data.preferences.course_interest.length > 0) {
+            setCourseInterest(data.preferences.course_interest);
+          }
+          if (data.preferences.quota_types && data.preferences.quota_types.length > 0) {
+            setQuotaTypes(data.preferences.quota_types);
+          }
+          if (data.preferences.preferred_shifts && data.preferences.preferred_shifts.length > 0) {
+            setShifts(data.preferences.preferred_shifts);
+          }
+          setProgramPref(data.preferences.program_preference || 'indiferente');
+          setUniversityPref(data.preferences.university_preference || 'indiferente');
+          setLocationPref(data.preferences.location_preference || '');
+          setStatePref(data.preferences.state_preference || '');
+        }
+
+        if (data.enemScores && data.enemScores.length > 0) {
+          const scores: Record<string, YearScores> = {};
+          let latestYear = '2026';
+          data.enemScores.forEach((s: any) => {
+            scores[s.year.toString()] = {
+              ling: s.nota_linguagens?.toString() || '',
+              hum: s.nota_ciencias_humanas?.toString() || '',
+              nat: s.nota_ciencias_natureza?.toString() || '',
+              mat: s.nota_matematica?.toString() || '',
+              red: s.nota_redacao?.toString() || ''
+            };
+            if (s.year.toString() > latestYear) {
+              latestYear = s.year.toString();
+            }
+          });
+          setScoresByYear(scores);
+          setEnemYear(latestYear);
+        }
+      } catch (err) {
+        console.error('Error loading onboarding data:', err);
+      } finally {
+        setIsLoadingData(false);
+      }
+    }
+    loadData();
+  }, [userId]);
 
   // ── UI Status ──────────────────────────────────────────────────────────────
   const [errors, setErrors] = useState<Record<string, boolean>>({});
@@ -248,7 +362,10 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         if (!city) errs.city = true;
       }
     } else if (step === 2) {
-      if (!enemScore || parseFloat(enemScore) < 0 || parseFloat(enemScore) > 1000) errs.enemScore = true;
+      const hasAnyScore = Object.values(scoresByYear).some(s =>
+        [s.ling, s.hum, s.nat, s.mat, s.red].some(v => v !== '')
+      );
+      if (!hasAnyScore) errs.enemScore = true;
       if (perCapitaIncome === null) errs.income = true;
     }
     setErrors(errs);
@@ -294,19 +411,35 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         per_capita_income: perCapitaIncome || 0,
       });
 
-      // 3. Save ENEM Scores
-      await saveUserEnemScore(userId, {
-        year: parseInt(enemYear),
-        nota_linguagens: parseFloat(notaLing) || null,
-        nota_ciencias_humanas: parseFloat(notaHum) || null,
-        nota_ciencias_natureza: parseFloat(notaNat) || null,
-        nota_matematica: parseFloat(notaMat) || null,
-        nota_redacao: parseFloat(notaRed) || null,
-      });
+      // 3. Save ENEM Scores for each year that has data
+      await Promise.allSettled(
+        Object.entries(scoresByYear)
+          .filter(([, s]) => [s.ling, s.hum, s.nat, s.mat, s.red].some(v => v !== ''))
+          .map(([year, s]) =>
+            saveUserEnemScore(userId, {
+              year: parseInt(year),
+              nota_linguagens: parseFloat(s.ling) || null,
+              nota_ciencias_humanas: parseFloat(s.hum) || null,
+              nota_ciencias_natureza: parseFloat(s.nat) || null,
+              nota_matematica: parseFloat(s.mat) || null,
+              nota_redacao: parseFloat(s.red) || null,
+            })
+          )
+      );
+
+      // Best average across all filled years (for preferences)
+      const bestEnemScore = Object.values(scoresByYear).reduce((best, s) => {
+        const vals = [s.ling, s.hum, s.nat, s.mat, s.red].map(parseFloat).filter(n => !isNaN(n));
+        if (vals.length === 5) {
+          const avg = vals.reduce((a, b) => a + b, 0) / 5;
+          return avg > best ? avg : best;
+        }
+        return best;
+      }, 0);
 
       // 4. Save Preferences
       await saveUserPreferences(userId, {
-        enem_score: parseFloat(enemScore),
+        enem_score: bestEnemScore,
         family_income_per_capita: perCapitaIncome,
         course_interest: courseInterest.length > 0 ? courseInterest : null,
         quota_types: quotaTypes.length > 0 ? quotaTypes : null,
@@ -369,6 +502,15 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
       ))}
     </div>
   );
+
+  if (isLoadingData) {
+    return (
+      <div className="flex flex-col max-w-2xl mx-auto w-full items-center justify-center min-h-[400px]">
+        <Loader2 className="animate-spin text-[#38B1E4] mb-4" size={48} />
+        <p className="text-[#636E7C] font-semibold animate-pulse">Carregando seus dados...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col max-w-2xl mx-auto w-full animate-in fade-in duration-700">
@@ -496,46 +638,43 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               <h3 className="font-bold text-[#024F86] mb-4 flex items-center gap-2 uppercase text-[13px]">
                 <GraduationCap size={16} /> Resultados do ENEM
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {enemScore ? (
-                  <div className="col-span-2 md:col-span-1 animate-in zoom-in-95 duration-300">
-                    <FieldLabel label="Média Geral Calculada" icon={CheckCircle} />
-                    <div className="bg-white/80 border-2 border-[#38B1E4] rounded-xl px-4 py-2 flex items-center justify-center text-[#024F86] font-black text-[22px] shadow-sm">
-                      {enemScore}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="col-span-2 md:col-span-1">
-                    <FieldLabel label="Média Geral" required error={errors.enemScore} />
-                    <div className="bg-white/40 border border-dashed border-gray-300 rounded-xl px-4 py-2.5 text-[12px] text-gray-400 flex items-center justify-center text-center">
-                      Preencha as 5 notas abaixo para calcular
-                    </div>
-                  </div>
-                )}
-                
+              <div className="space-y-4">
                 <div>
                   <FieldLabel label="Ano" />
-                  <select className={inputCls} value={enemYear} onChange={e => setEnemYear(e.target.value)}>
-                    {[2026, 2025, 2024].map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
+                  <div className="flex gap-2">
+                    {[2026, 2025, 2024].map(y => (
+                      <button
+                        key={y}
+                        type="button"
+                        onClick={() => setEnemYear(y.toString())}
+                        className={`flex-1 py-2.5 rounded-xl text-[13px] font-bold border transition-all ${
+                          enemYear === y.toString()
+                            ? 'bg-[#38B1E4] text-white border-[#38B1E4] shadow-[0_4px_12px_rgba(56,177,228,0.3)]'
+                            : 'bg-white/40 text-[#636E7C] border-white/60 hover:bg-white/60'
+                        }`}
+                      >
+                        {y}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                
-                <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-5 gap-3 mt-2">
-                  {[
-                    { label: 'Ling.', val: notaLing, set: setNotaLing },
-                    { label: 'Humanas', val: notaHum, set: setNotaHum },
-                    { label: 'Natureza', val: notaNat, set: setNotaNat },
-                    { label: 'Matem.', val: notaMat, set: setNotaMat },
-                    { label: 'Redação', val: notaRed, set: setNotaRed },
-                  ].map(f => (
-                    <div key={f.label}>
+
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {([
+                    { label: 'Ling.', field: 'ling' },
+                    { label: 'Humanas', field: 'hum' },
+                    { label: 'Natureza', field: 'nat' },
+                    { label: 'Matem.', field: 'mat' },
+                    { label: 'Redação', field: 'red' },
+                  ] as { label: string; field: keyof YearScores }[]).map(f => (
+                    <div key={f.field}>
                       <label className="text-[10px] font-bold text-[#636E7C] mb-1 block uppercase">{f.label}</label>
-                      <input 
-                        type="number" 
-                        className="w-full bg-white/60 border border-white/80 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-[#38B1E4] transition-all" 
+                      <input
+                        type="number"
+                        className="w-full bg-white/60 border border-white/80 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-[#38B1E4] transition-all"
                         placeholder="0.0"
-                        value={f.val}
-                        onChange={e => f.set(e.target.value)}
+                        value={currentScores[f.field]}
+                        onChange={e => updateScore(f.field, e.target.value)}
                       />
                     </div>
                   ))}
@@ -610,28 +749,61 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               {/* Cursos */}
               <div>
                 <FieldLabel label="Cursos de Interesse" icon={Search} />
-                <div className="flex gap-2">
-                  <input 
-                    className={`${inputCls} flex-1`} 
-                    placeholder="Ex: Medicina, TI..."
-                    value={courseInput}
-                    onChange={e => setCourseInput(e.target.value)}
-                    onKeyDown={e => { if(e.key === 'Enter') { 
-                      const t = courseInput.trim();
-                      if(t && !courseInterest.includes(t)) setCourseInterest([...courseInterest, t]);
-                      setCourseInput('');
-                    }}}
-                  />
-                  <button 
-                    onClick={() => {
-                      const t = courseInput.trim();
-                      if(t && !courseInterest.includes(t)) setCourseInterest([...courseInterest, t]);
-                      setCourseInput('');
-                    }}
-                    className="bg-[#38B1E4] text-white px-4 rounded-xl font-bold"
-                  >
-                    +
-                  </button>
+                <div ref={courseInputRef} className="relative">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        className={`${inputCls} pr-8`}
+                        placeholder="Digite para buscar (ex: Medicina)..."
+                        value={courseInput}
+                        onChange={e => { setCourseInput(e.target.value); setShowCourseSuggestions(true); }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            const t = courseInput.trim();
+                            if (t && !courseInterest.includes(t)) setCourseInterest([...courseInterest, t]);
+                            setCourseInput('');
+                            setShowCourseSuggestions(false);
+                          }
+                        }}
+                        onFocus={() => courseInput.length >= 2 && setShowCourseSuggestions(true)}
+                      />
+                      {coursesLoading && (
+                        <Loader2 size={14} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-[#38B1E4]" />
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const t = courseInput.trim();
+                        if (t && !courseInterest.includes(t)) setCourseInterest([...courseInterest, t]);
+                        setCourseInput('');
+                        setShowCourseSuggestions(false);
+                      }}
+                      className="bg-[#38B1E4] text-white px-4 rounded-xl font-bold"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  {showCourseSuggestions && courseResults.length > 0 && (
+                    <div className="absolute z-50 left-0 right-12 mt-1 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden max-h-56 overflow-y-auto">
+                      {courseResults.map(name => (
+                        <button
+                          key={name}
+                          type="button"
+                          className="w-full text-left px-4 py-2.5 text-[13px] text-[#3A424E] hover:bg-[#E0F2FE] transition-colors"
+                          onMouseDown={e => {
+                            e.preventDefault();
+                            if (!courseInterest.includes(name)) setCourseInterest([...courseInterest, name]);
+                            setCourseInput('');
+                            setShowCourseSuggestions(false);
+                          }}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-2 mt-3">
                   {courseInterest.map(c => (
@@ -668,7 +840,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                   <FieldLabel label="Programa / Univ." icon={Building} />
                   <div className="flex flex-col gap-2">
                     <select className={inputCls} value={programPref} onChange={e => setProgramPref(e.target.value)}>
-                      {PROGRAM_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      {programOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                     <select className={inputCls} value={universityPref} onChange={e => setUniversityPref(e.target.value)}>
                       {UNIVERSITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}

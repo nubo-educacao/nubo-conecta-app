@@ -180,7 +180,7 @@ export default function OpportunityCard({
       {/* ── Content Section (Transparent, sitting over the white block) ── */}
       <div className="absolute inset-x-0 top-[95px] bottom-0 px-5 pb-5 pt-3 flex flex-col justify-between z-20 bg-transparent">
         {/* Match Badge - Adjusted top position to match Figma y=111 (95 + 16) */}
-        {opportunity.match_score !== undefined && (
+        {opportunity.match_score != null && (
           <div className="absolute right-4 top-[16px] z-40">
             <BadgeCompatibilidade score={opportunity.match_score} variant={variant} />
           </div>

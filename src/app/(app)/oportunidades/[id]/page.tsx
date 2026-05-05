@@ -148,7 +148,8 @@ async function getRelatedOpportunities(unifiedId: string): Promise<Opportunity[]
     cutoff_score: r.cutoff_score,
     opportunity_type: r.opportunity_type,
     year: r.year,
-    semester: r.semester
+    semester: r.semester,
+    vacancies: r.vacancies ?? null,
   }));
 }
 
