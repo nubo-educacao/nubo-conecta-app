@@ -373,7 +373,7 @@ export default function DetailsLayout({
                         {subject.label}
                       </div>
                       <span className="text-xs font-black text-[#3A424E]">
-                        {opportunity.weights[subject.key] || '1'}
+                        {opportunity.weights![subject.key as keyof typeof opportunity.weights] || '1'}
                       </span>
                     </div>
                   ))}
@@ -387,16 +387,16 @@ export default function DetailsLayout({
             {/* ── Lista de Modalidades ── */}
             <OpportunitiesListCard
               opportunities={relatedOpportunities.length > 0 ? relatedOpportunities : [{
-                id: opportunity.unified_id,
+                id: opportunity.id,
                 shift: 'Noturno',
                 concurrency_tags: (opportunity as any).concurrency_tags,
                 scholarship_tags: (opportunity as any).scholarship_tags,
-                cutoff_score: opportunity.max_cutoff_score,
+                cutoff_score: opportunity.max_cutoff_score ?? null,
                 opportunity_type: opportunity.opportunity_type,
                 year: 2025,
                 semester: '1'
               }]}
-              highlightedOpportunityId={opportunity.unified_id}
+              highlightedOpportunityId={opportunity.id}
             />
           </>
         ) : (
@@ -497,8 +497,8 @@ export default function DetailsLayout({
         <div className="fixed bottom-0 inset-x-0 p-6 bg-white/80 backdrop-blur-2xl border-t border-gray-100/50 z-50 flex flex-col gap-4 pb-10">
           <button
             onClick={() => {
-              if (opportunity.external_redirect_enabled && opportunity.external_redirect_url) {
-                window.open(opportunity.external_redirect_url, '_blank');
+              if (opportunity.external_redirect?.enabled && opportunity.external_redirect?.url) {
+                window.open(opportunity.external_redirect.url, '_blank');
               } else {
                 // Application logic
               }
@@ -507,7 +507,7 @@ export default function DetailsLayout({
             style={{ background: brandColor }}
           >
             {isPartner ? 'Candidatar Agora' : 'Quero me Candidatar'}
-            {opportunity.external_redirect_enabled && <ExternalLink size={18} />}
+            {opportunity.external_redirect?.enabled && <ExternalLink size={18} />}
           </button>
         </div>
       )}

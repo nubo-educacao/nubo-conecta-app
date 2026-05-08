@@ -144,7 +144,7 @@ export async function getUnifiedOpportunities(
     query = query.ilike('location', `%${options.location}%`);
   }
 
-  if (options.shift && options.shift !== '') {
+  if (options.shift) {
     if (options.shift === 'EaD') {
       // Para EaD, buscamos os dois sinônimos comuns no banco MEC (EaD e Curso a distância)
       query = query.filter('badges', 'ov', JSON.stringify(['EaD', 'Curso a distância']));

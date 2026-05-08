@@ -239,7 +239,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
           setSocialBenefits(data.income.social_benefits?.toString() || '');
           setAlimony(data.income.alimony?.toString() || '');
           if (data.income.member_incomes && data.income.member_incomes.length > 0) {
-            setMemberIncomes(data.income.member_incomes.map(i => i.toString()));
+            setMemberIncomes(data.income.member_incomes.map((i: any) => i.toString()));
           }
           if (data.income.per_capita_income != null) {
             setManualPerCapita(data.income.per_capita_income);
@@ -727,11 +727,11 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                   </div>
                 )}
 
-                {familyCount && perCapitaIncome > 0 && (
+                {familyCount && perCapitaIncome !== null && perCapitaIncome > 0 && (
                   <div className="flex items-center justify-between p-4 bg-gradient-to-r from-[#024F86] to-[#38B1E4] rounded-2xl text-white shadow-lg animate-in slide-in-from-top-2 duration-300">
                     <div className="flex flex-col">
                       <span className="text-[10px] font-bold opacity-80 uppercase">Renda Per Capita Calculada</span>
-                      <span className="text-[20px] font-black">{formatCurrency(perCapitaIncome)}</span>
+                      <span className="text-[20px] font-black">{formatCurrency(perCapitaIncome || 0)}</span>
                     </div>
                     <CheckCircle size={24} className="opacity-40" />
                   </div>
