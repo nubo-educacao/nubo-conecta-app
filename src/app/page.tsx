@@ -1,6 +1,7 @@
 // Home Dashboard — Sprint 05 CMS Dinâmico
 // Server Component: busca seções do CMS e dados de cada seção server-side.
 // Fallback para queries hardcoded se home_sections estiver vazio.
+export const dynamic = 'force-dynamic';
 
 import AppShell from '@/components/layout/AppShell';
 import HomeClient from './HomeClient';

@@ -26,6 +26,11 @@ export interface IHomeSection {
  *                    Se null/undefined, mostra apenas seções sem filtro de estado.
  */
 export async function getHomeSections(userState?: string | null): Promise<IHomeSection[]> {
+  if (!supabase) {
+    console.warn('[Home CMS] Supabase client not initialized. Skipping fetch.');
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('home_sections')
     .select('*')
