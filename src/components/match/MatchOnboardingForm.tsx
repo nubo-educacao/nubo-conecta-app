@@ -366,7 +366,13 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         [s.ling, s.hum, s.nat, s.mat, s.red].some(v => v !== '')
       );
       if (!hasAnyScore) errs.enemScore = true;
-      if (perCapitaIncome === null) errs.income = true;
+      
+      // Income is mandatory
+      const isIncomeFilled = useCalculator 
+        ? (familyCount && parseInt(familyCount) > 0)
+        : (manualPerCapita !== null);
+        
+      if (!isIncomeFilled) errs.income = true;
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -690,8 +696,8 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               <div className="space-y-4 animate-in fade-in duration-300">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <FieldLabel label="Nº de Familiares" icon={Users} />
-                    <input type="number" className={inputCls} placeholder="Ex: 4" value={familyCount} onChange={e => handleFamilyCountChange(e.target.value)} />
+                    <FieldLabel label="Nº de Familiares" icon={Users} required error={errors.income} />
+                    <input type="number" className={`${inputCls} ${errors.income ? 'border-red-500' : ''}`} placeholder="Ex: 1" value={familyCount} onChange={e => { handleFamilyCountChange(e.target.value); if (errors.income) setErrors(prev => ({ ...prev, income: false })); }} />
                   </div>
                   <div>
                     <FieldLabel label="Benefícios (Bruto)" icon={DollarSign} />

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProfileProvider } from "@/contexts/ProfileContext";
 import CloudBackground from "@/components/CloudBackground";
 import ChatFAB from "@/components/chat/ChatFAB";
 import GlobalAuthModal from "@/components/auth/GlobalAuthModal";
@@ -29,11 +30,13 @@ export default function RootLayout({
       <body className={`${montserrat.className} relative min-h-screen overflow-x-hidden`}>
         <CloudBackground />
         <AuthProvider>
-          <div className="relative z-10 min-h-screen">
-            {children}
-          </div>
-          <ChatFAB />
-          <GlobalAuthModal />
+          <ProfileProvider>
+            <div className="relative z-10 min-h-screen">
+              {children}
+            </div>
+            <ChatFAB />
+            <GlobalAuthModal />
+          </ProfileProvider>
         </AuthProvider>
       </body>
     </html>

@@ -16,6 +16,7 @@ import ToolBadge from './ToolBadge';
 import { useChat } from '@/hooks/useChat';
 import { useConversationStarters } from '@/hooks/useConversationStarters';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { cn } from '@/lib/utils';
 import { ChatMessage } from '@/services/chatService';
 
@@ -42,13 +43,14 @@ function getOrCreateSessionId(): string {
 export default function ChatDrawer({ onClose, initialMessages = [] }: ChatDrawerProps) {
   const pathname = usePathname();
   const { user, session, setShowAuthModal } = useAuth();
+  const { activeProfileId } = useProfile();
   const sessionId = useRef(getOrCreateSessionId()).current;
 
   const { intro_message, starters } = useConversationStarters(pathname);
 
   const { messages, isStreaming, activeTool, suggestions, sendMessage } = useChat({
     userId: user?.id ?? '',
-    profileId: user?.id ?? '',
+    profileId: activeProfileId ?? user?.id ?? '',
     pageRoute: pathname,
     sessionId,
     accessToken: session?.access_token ?? '',
@@ -77,35 +79,54 @@ export default function ChatDrawer({ onClose, initialMessages = [] }: ChatDrawer
   const showStarters = !hasMessages && starters.length > 0;
   const showSuggestions = hasMessages && !isStreaming && suggestions.length > 0;
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 pointer-events-none">
-        {/* Backdrop — mobile only */}
+        {/* Backdrop — visible on both mobile and desktop now */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/30 backdrop-blur-sm md:hidden pointer-events-auto"
+          className="absolute inset-0 bg-black/40 backdrop-blur-md pointer-events-auto cursor-pointer"
           onClick={onClose}
         />
 
         {/* Panel Wrapper for Animation */}
         <motion.div
-          initial={{ opacity: 0, y: "100%" }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: "100%" }}
+          initial={{ 
+            opacity: 0, 
+            x: isMobile ? 0 : "100%", 
+            y: isMobile ? "100%" : 0 
+          }}
+          animate={{ 
+            opacity: 1, 
+            x: 0, 
+            y: 0 
+          }}
+          exit={{ 
+            opacity: 0, 
+            x: isMobile ? 0 : "100%", 
+            y: isMobile ? "100%" : 0 
+          }}
+          transition={{ 
+            type: 'spring', 
+            damping: 28, 
+            stiffness: 220 
+          }}
           className={cn(
             "absolute z-50 flex flex-col pointer-events-auto",
-            // Mobile: bottom sheet
-            "bottom-0 left-0 right-0 rounded-t-[32px] max-h-[85vh]",
-            // Desktop: right side panel
-            "md:bottom-6 md:right-6 md:left-auto md:w-[380px] md:max-h-[600px] md:h-[600px] md:rounded-[24px]",
-            "bg-white/95 backdrop-blur-xl shadow-2xl border border-nubo-primary/10 overflow-hidden"
+            // Mobile: full screen with rounded top for organic feel
+            "bottom-0 left-0 right-0 top-0 rounded-t-[32px] md:rounded-none h-full max-h-full",
+            // Desktop: right side wizard (full height)
+            "md:inset-y-0 md:right-0 md:left-auto md:w-[500px] md:h-full md:max-h-screen md:rounded-l-[40px] md:rounded-r-none",
+            "bg-white/95 backdrop-blur-2xl shadow-[0_0_50px_rgba(0,0,0,0.15)] border-l border-nubo-primary/10 overflow-hidden"
           )}
         >
-          {/* Mobile Drag Indicator */}
-          <div className="w-full flex justify-center py-3 md:hidden">
-            <div className="w-12 h-1.5 bg-nubo-line rounded-full" />
+          {/* Mobile Drag Indicator / Close handle */}
+          <div className="w-full flex justify-center pt-4 pb-2 md:hidden">
+            <div className="w-12 h-1.5 bg-nubo-line/60 rounded-full" />
           </div>
 
           {/* Header */}
