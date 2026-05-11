@@ -16,6 +16,7 @@ import Link from 'next/link';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import { getUnifiedInstitutionById } from '@/services/institutions';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
+import RequireAuth from '@/components/auth/RequireAuth';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -79,6 +80,7 @@ export default async function InstitutionDetailPage({ params }: PageProps) {
 
   return (
     <AppShell>
+      <RequireAuth />
       <div className="flex flex-col min-h-screen">
         {/* Back */}
         <div className="px-4 pt-6 pb-2">

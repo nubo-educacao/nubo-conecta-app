@@ -132,7 +132,7 @@ export default function CandidaturasPage() {
       `)
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false })
-      .then(({ data }) => {
+      .then(({ data }: { data: any[] | null }) => {
         const mapped = (data || []).map((row: Record<string, unknown>) => {
           const opp = (row.partner_opportunities as Record<string, unknown> | null) ?? {};
           const inst = (opp.institutions as Record<string, string> | null) ?? {};

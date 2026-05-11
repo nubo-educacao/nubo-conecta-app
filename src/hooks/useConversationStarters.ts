@@ -36,7 +36,7 @@ export function useConversationStarters(pageRoute: string): StartersData & { loa
       .order('route_priority', { ascending: false })
       .limit(1)
       .maybeSingle()
-      .then(({ data: row }) => {
+      .then(({ data: row }: { data: any }) => {
         if (cancelled) return;
         if (row) {
           setData({

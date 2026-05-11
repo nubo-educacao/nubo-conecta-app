@@ -192,7 +192,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         .select('course_name')
         .ilike('course_name', `%${courseInput}%`)
         .limit(10);
-      const names = [...new Set((data || []).map(r => r.course_name).filter(Boolean))] as string[];
+      const names = [...new Set((data || []).map((r: any) => r.course_name).filter(Boolean))] as string[];
       setCourseResults(names);
       setShowCourseSuggestions(names.length > 0);
       setCoursesLoading(false);

@@ -45,7 +45,8 @@ function CardSkeleton() {
 export default function CheckoutCandidaturaPage() {
   const { id: partnerOppId } = useParams<{ id: string }>();
   const router = useRouter();
-  const { user, setShowAuthModal } = useAuth();
+  const { user: nullableUser } = useAuth();
+  const user = nullableUser!; // guaranteed by AuthGuard in (protected) layout
 
   const [loading, setLoading] = useState(true);
   const [partner, setPartner] = useState<PartnerMeta | null>(null);
@@ -56,7 +57,7 @@ export default function CheckoutCandidaturaPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    // user is guaranteed by AuthGuard in (protected) layout
 
     const boot = async () => {
       try {
@@ -101,7 +102,7 @@ export default function CheckoutCandidaturaPage() {
 
         if (profilesRes.data) {
           setProfiles(profilesRes.data as UserProfile[]);
-          const mainProfile = profilesRes.data.find(p => p.id === user.id);
+          const mainProfile = (profilesRes.data as UserProfile[]).find(p => p.id === user.id);
           if (mainProfile) setSelectedProfileId(mainProfile.id);
         }
 
@@ -159,7 +160,7 @@ export default function CheckoutCandidaturaPage() {
   }, [user, partnerOppId]);
 
   const handleConfirm = async () => {
-    if (!user || !partner) return;
+    if (!partner) return;
     setCreating(true);
     setError(null);
 
@@ -183,21 +184,7 @@ export default function CheckoutCandidaturaPage() {
     router.push(`/partner-forms/${data.id}`);
   };
 
-  if (!user) {
-    return (
-      <AppShell>
-        <div className="flex flex-col items-center justify-center py-24 text-center px-6">
-          <p className="text-sm font-semibold text-[#024F86] mb-3">Faça login para continuar</p>
-          <button
-            onClick={() => setShowAuthModal(true)}
-            className="px-6 py-2.5 rounded-full bg-[#024F86] text-white text-xs font-bold"
-          >
-            Entrar
-          </button>
-        </div>
-      </AppShell>
-    );
-  }
+  // user is guaranteed by AuthGuard in (protected) layout
 
   const mainProfile = profiles.find(p => p.id === user.id);
   const dependents = profiles.filter(p => p.isdependent);

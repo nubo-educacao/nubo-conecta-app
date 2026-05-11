@@ -79,7 +79,7 @@ export default function DetailsLayout({
       .select('courses(campus_id, campus:campus(name, city, state))')
       .eq('id', uuid)
       .limit(1)
-      .then(({ data }) => {
+      .then(({ data }: { data: any[] | null }) => {
         const campusData = (data?.[0] as any)?.courses?.campus;
         if (campusData) setCampus(campusData);
       });

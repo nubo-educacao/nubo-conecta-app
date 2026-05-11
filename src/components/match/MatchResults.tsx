@@ -36,9 +36,9 @@ export default function MatchResults({ results, onRegenerate, isLoading }: Match
       .from('v_unified_opportunities')
       .select('unified_id, title, provider_name, location, opportunity_type, is_partner')
       .in('unified_id', ids)
-      .then(({ data }) => {
+      .then(({ data }: { data: any[] | null }) => {
         if (!data) return;
-        const detailMap = new Map(data.map((row) => [row.unified_id, row]));
+        const detailMap = new Map(data.map((row: any) => [row.unified_id, row]));
         const merged: EnrichedMatch[] = results
           .map((r) => {
             const detail = detailMap.get(r.unified_opportunity_id);

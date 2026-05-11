@@ -40,7 +40,7 @@ export default function HomeClient({ sections }: HomeClientProps) {
       .from('student_applications')
       .select('id, status')
       .eq('user_id', user.id)
-      .then(({ data }) => {
+      .then(({ data }: { data: any[] | null }) => {
         setApplications(data || []);
         setAppsLoading(false);
       });

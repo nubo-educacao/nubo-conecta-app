@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,10 +20,11 @@ export interface PerfilData {
   enemScores: Record<string, unknown>[] | null;
 }
 
-export default function PerfilPage() {
+function PerfilContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user: nullableUser } = useAuth();
+  const user = nullableUser!; // guaranteed by AuthGuard in (protected) layout
   const { activeProfileId, profiles } = useProfile();
   const [data, setData] = useState<PerfilData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,17 +51,7 @@ export default function PerfilPage() {
     });
   }, [activeProfileId]);
 
-  if (!user) {
-    return (
-      <AppShell title="Perfil">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-sm text-gray-500" style={{ fontFamily: "Montserrat, sans-serif" }}>
-            Faça login para acessar seu perfil.
-          </p>
-        </div>
-      </AppShell>
-    );
-  }
+  // user is guaranteed by AuthGuard in (protected) layout
 
   return (
     <AppShell title="Perfil">
@@ -136,3 +127,12 @@ export default function PerfilPage() {
     </AppShell>
   );
 }
+
+export default function PerfilPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Carregando...</div>}>
+      <PerfilContent />
+    </Suspense>
+  );
+}
+

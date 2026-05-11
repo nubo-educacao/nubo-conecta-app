@@ -17,7 +17,7 @@ interface OpportunityWithApplied extends IUnifiedOpportunity {
 
 
 export default function NewApplicationListPage() {
-  const { user, setShowAuthModal } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [opportunities, setOpportunities] = useState<OpportunityWithApplied[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +44,7 @@ export default function NewApplicationListPage() {
           Array.isArray(o.partner_steps) && (o.partner_steps as unknown[]).length > 0,
       );
 
-      // If user is logged in, check which ones they've already applied to
+      // user is guaranteed by AuthGuard in (protected) layout
       let appliedIds = new Set<string>();
       if (user) {
         const { data: apps } = await supabase
@@ -87,7 +87,6 @@ export default function NewApplicationListPage() {
   }, [user]);
 
   const handleSelect = (oppId: string) => {
-    if (!user) { setShowAuthModal(true); return; }
     router.push(`/new-application/${oppId}`);
   };
 

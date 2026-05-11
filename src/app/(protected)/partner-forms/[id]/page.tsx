@@ -23,20 +23,17 @@ type PagePhase = "loading" | "form" | "submitted" | "error";
 export default function PartnerFormsPage() {
   const { id: applicationId } = useParams<{ id: string }>();
   const router = useRouter();
-  const { user, setShowAuthModal } = useAuth();
+  const { user } = useAuth();
 
   const [phase, setPhase] = useState<PagePhase>("loading");
   const [steps, setSteps] = useState<PartnerStep[]>([]);
   const [fields, setFields] = useState<PartnerFormField[]>([]);
   const [application, setApplication] = useState<ApplicationState | null>(null);
 
-  const localStorageKey = `nubo_draft_${application?.partner_id}_${user?.id ?? "anon"}`;
+  const localStorageKey = `nubo_draft_${application?.partner_id}_${user!.id}`;
 
   useEffect(() => {
-    if (!user) {
-      setPhase("error");
-      return;
-    }
+    // user is guaranteed by AuthGuard in (protected) layout
 
     const boot = async () => {
       // 1. Fetch Application
@@ -140,21 +137,13 @@ export default function PartnerFormsPage() {
     );
   }
 
-  if (phase === "error" || !user) {
+  if (phase === "error") {
     return (
       <AppShell>
         <div className="flex flex-col items-center justify-center py-20 text-center px-6">
           <p className="text-sm font-semibold text-[#024F86] mb-3">
-            {!user ? "Faça login para continuar" : "Não foi possível carregar o formulário"}
+            Não foi possível carregar o formulário
           </p>
-          {!user && (
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#024F86] to-[#38B1E4] text-white text-xs font-bold shadow"
-            >
-              Entrar
-            </button>
-          )}
         </div>
       </AppShell>
     );
