@@ -127,7 +127,7 @@ export default function OpportunitiesClient({ opportunities, activeTab, filters 
               />
             </div>
           ) : (
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4">
               {/* Estado B: onboarding completo — exibe matches com opção de refazer */}
               <div className="flex items-center justify-between">
                 <h2
@@ -146,7 +146,7 @@ export default function OpportunitiesClient({ opportunities, activeTab, filters 
                 </button>
               </div>
 
-              {/* Card list — responsive grid */}
+              {/* Card list — responsive grid (same as ExploreClient) */}
               {opportunities.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 px-4 bg-white/30 backdrop-blur-md rounded-3xl border border-white/20">
                   <div className="bg-[#E0F2FE] p-4 rounded-full text-[#024F86] mb-4">
@@ -170,7 +170,7 @@ export default function OpportunitiesClient({ opportunities, activeTab, filters 
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
                   {opportunities.map((opp) => (
                     <OpportunityCard key={opp.id} opportunity={opp} />
                   ))}

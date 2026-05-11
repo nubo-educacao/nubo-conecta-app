@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { notFound } from 'next/navigation';
 import DetailsLayout from '@/components/opportunities/DetailsLayout';
+import RequireAuth from '@/components/auth/RequireAuth';
 import AppShell from '@/components/layout/AppShell';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 import type { Opportunity } from '@/components/opportunities/OpportunitiesListCard';
@@ -167,6 +168,7 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
 
   return (
     <AppShell>
+      <RequireAuth />
       <DetailsLayout 
         opportunity={opportunity}
         relatedOpportunities={relatedOpportunities}

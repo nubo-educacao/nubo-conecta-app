@@ -15,7 +15,7 @@ export interface ExploreFilters {
   category?: string;
   modality?: 'presential' | 'online';
   location?: string;
-  shift?: 'Matutino' | 'Vespertino' | 'Noturno' | 'Integral';
+  shift?: 'Matutino' | 'Vespertino' | 'Noturno' | 'Integral' | 'EaD';
   min_igc?: number;
   price_range?: 'free' | 'paid';
 }

@@ -1,10 +1,11 @@
-// institutions.ts — Sprint 3.8
-// Busca instituições parceiras ativas para o carrossel da Home e página /instituicoes.
+// institutions.ts — Sprint 8.0
+// Busca instituições via v_unified_institutions (parceiras + MEC).
+// getPartnerInstitutions mantido para retrocompat com InstitutionCarousel.
 // Server-side via createServerClient (@supabase/ssr).
-// Queries V1 schema: institutions (is_partner=true) JOIN partner_institutions.
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import type { UnifiedInstitution } from '@/types/institutions';
 
 export interface IPartnerInstitution {
   id: string;
@@ -62,4 +63,56 @@ export async function getPartnerInstitutions(): Promise<IPartnerInstitution[]> {
     description: row.partner_institutions?.description ?? null,
     brand_color: row.partner_institutions?.brand_color ?? null,
   }));
+}
+
+// ─── Unified Institutions (Sprint 8.0) ───────────────────────────────────────
+
+export async function getUnifiedInstitutions(): Promise<UnifiedInstitution[]> {
+  const cookieStore = await cookies();
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: () => {},
+      },
+    },
+  );
+
+  const { data, error } = await supabase
+    .from('v_unified_institutions')
+    .select('id, name, location, logo_url, cover_url, brand_color, description, type')
+    .order('name', { ascending: true });
+
+  if (error) {
+    throw new Error(`getUnifiedInstitutions failed: ${error.message} (code: ${error.code})`);
+  }
+
+  return (data ?? []) as UnifiedInstitution[];
+}
+
+export async function getUnifiedInstitutionById(id: string): Promise<UnifiedInstitution | null> {
+  const cookieStore = await cookies();
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: () => {},
+      },
+    },
+  );
+
+  const { data, error } = await supabase
+    .from('v_unified_institutions')
+    .select('id, name, location, logo_url, cover_url, brand_color, description, type')
+    .eq('id', id)
+    .limit(1);
+
+  if (error) return null;
+  return (data && data.length > 0) ? (data[0] as UnifiedInstitution) : null;
 }

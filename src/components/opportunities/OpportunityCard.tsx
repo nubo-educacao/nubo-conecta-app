@@ -26,7 +26,7 @@ const BadgeCompatibilidade = ({ score, variant }: { score: number; variant: 'def
 
   return (
     <div
-      className="flex flex-col items-center justify-center rounded-full text-white shadow-[0px_4px_3.75px_rgba(0,0,0,0.25)] size-[47px]"
+      className="flex flex-col items-center justify-center rounded-full text-white size-[47px] shadow-[0px_4px_3.75px_rgba(0,0,0,0.25)] border-none ring-0 outline-none"
       style={{ background: bgGradient }}
     >
       <div className="flex flex-col items-center justify-center text-center">
@@ -90,7 +90,12 @@ export default function OpportunityCard({
 
   const currentTheme = themes[variant];
   const coverUrl = isPartner ? opportunity.institution_cover_url : (opportunity as any).image_url;
-  const hasImage = coverUrl && !imgError && coverUrl !== 'null' && coverUrl !== '';
+  const hasCoverImage = !!(coverUrl && !imgError && coverUrl !== 'null' && coverUrl !== '');
+
+  // Determine the header image to use
+  const headerImage = !isPartner
+    ? '/assets/card-header-default.png'
+    : (hasCoverImage ? coverUrl : '/assets/card-header-partner.png');
 
   const isEncerrado = opportunity.status === 'inactive';
 
@@ -98,37 +103,49 @@ export default function OpportunityCard({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      whileHover={{ scale: 1.01 }}
+      whileHover="hover"
+      variants={{
+        hover: {
+          scale: 1.01,
+          boxShadow: `0 0 0 2.5px ${currentTheme.hoverBorder}, 0px 24px 48px -12px rgba(181,183,192,0.4)`
+        }
+      }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
       onClick={handleViewDetails}
       className={cn(
-        "group relative w-[361px] h-[277px] rounded-[16px] overflow-hidden cursor-pointer flex flex-col",
-        "shadow-[0px_24px_44px_-11px_rgba(181,183,192,0.3)] transition-all duration-200 border-0",
+        "group relative w-full max-w-[361px] h-[277px] rounded-[16px] overflow-hidden cursor-pointer flex flex-col",
+        "shadow-[0px_24px_44px_-11px_rgba(181,183,192,0.3)] transition-all",
         className
       )}
       style={{
         fontFamily: 'Montserrat, sans-serif',
-        background: currentTheme.cardBg
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.border = `2px solid ${currentTheme.hoverBorder}`;
-        // Adjust padding slightly to prevent layout shift if needed, 
-        // but here we just want the stroke to appear.
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.border = '0';
+        background: 'white'
       }}
     >
+      {/* ── Header Background Gradient ── */}
+      <div
+        className="absolute inset-x-0 top-0 h-[124px] z-0"
+        style={{ background: currentTheme.cardBg }}
+      />
+
       {/* ── Background Image Layer ── */}
-      {hasImage && (
+      {headerImage && (
         <div className={cn(
           "absolute inset-x-0 z-0 overflow-hidden",
           isPartner ? "top-[20px] h-[104px]" : "top-0 h-[124px]"
         )}>
-          <img
-            src={coverUrl}
+          <motion.img
+            src={headerImage}
             alt=""
             onError={() => setImgError(true)}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 mix-blend-overlay"
+            variants={{
+              hover: { scale: 1.1 }
+            }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className={cn(
+              "w-full h-full object-cover",
+              (isPartner && hasCoverImage) ? "opacity-70 mix-blend-overlay" : "opacity-100"
+            )}
           />
         </div>
       )}
@@ -144,10 +161,13 @@ export default function OpportunityCard({
       )}
 
       {/* ── Top Controls (Aligned for both variants) ── */}
-      <div className="absolute inset-x-4 top-[27px] z-40 flex items-center justify-between">
+      <div className={cn(
+        "absolute inset-x-4 z-40 flex items-center justify-between",
+        isPartner ? "top-[36px]" : "top-[32px]"
+      )}>
         <div className="flex gap-2 items-center">
-          <div className="bg-[#FF9900] px-4 py-1 rounded-full shadow-md">
-            <span className="text-[#3A424E] text-[11px] font-bold uppercase">{opportunity.opportunity_type || 'PROGRAMAS'}</span>
+          <div className="bg-[#FF9900] px-3 py-0.5 rounded-full shadow-[0px_4px_8px_rgba(0,0,0,0.15)] flex items-center h-[20px]">
+            <span className="text-[#3A424E] text-[10px] font-semibold uppercase">{opportunity.opportunity_type || 'PROGRAMAS'}</span>
           </div>
           {isEncerrado && (
             <div className="bg-[#F1F3F5] border border-[#DEE2E6] px-3 py-1 rounded-full shadow-sm">
@@ -165,7 +185,7 @@ export default function OpportunityCard({
       </div>
 
       {/* ── Cloud Overlay + White Body (Node 42:1488) ── */}
-      <div className="absolute top-[72px] left-0 w-full z-10 pointer-events-none">
+      <div className="absolute top-[84px] left-0 w-full z-10 pointer-events-none">
         <div className="relative w-full h-[35px]">
           <img
             src="/assets/card-background.svg"
@@ -174,7 +194,7 @@ export default function OpportunityCard({
           />
         </div>
         {/* The White Block that covers the bottom of the gradient background */}
-        <div className="bg-white w-full h-[300px] mt-[-1px]" />
+        <div className="bg-white w-full h-[300px] mt-[-2px]" />
       </div>
 
       {/* ── Content Section (Transparent, sitting over the white block) ── */}
@@ -198,19 +218,19 @@ export default function OpportunityCard({
 
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-[13px] font-medium text-[#3A424E]/70">
-              <MapPin size={14} className="text-[#3092BB] shrink-0" />
+              <MapPin size={14} className="shrink-0" style={{ color: currentTheme.btnText }} />
               <span className="truncate">{opportunity.location || 'Nacional / Internacional'}</span>
             </div>
             {(opportunity.type === 'sisu' || opportunity.type === 'prouni') ? (
               <div className="flex items-center gap-2 text-[13px] font-medium text-[#3A424E]/70">
-                <GraduationCap size={14} className="text-[#3092BB] shrink-0" />
+                <GraduationCap size={14} className="shrink-0" style={{ color: currentTheme.btnText }} />
                 <span className="truncate">
                   Corte: {opportunity.min_cutoff_score?.toFixed(1) || '---'} a {opportunity.max_cutoff_score?.toFixed(1) || '---'}
                 </span>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-[13px] font-medium text-[#3A424E]/70">
-                <GraduationCap size={14} className="text-[#3092BB] shrink-0" />
+                <GraduationCap size={14} className="shrink-0" style={{ color: currentTheme.btnText }} />
                 <span className="truncate">{opportunity.education_level || 'Graduação'}</span>
               </div>
             )}
@@ -221,9 +241,9 @@ export default function OpportunityCard({
         <button
           onClick={(e) => { e.stopPropagation(); handleViewDetails(); }}
           className={cn(
-            "w-full h-[32px] rounded-full flex items-center justify-center transition-all mt-2 font-semibold text-[13px] shadow-sm",
-            isEncerrado 
-              ? "bg-[#F1F3F5] text-[#868E96] cursor-pointer hover:bg-[#E9ECEF]" 
+            "w-full h-[32px] rounded-full flex items-center justify-center transition-all mt-2 font-semibold text-[13px] shadow-[0px_8px_16px_rgba(0,0,0,0.12)]",
+            isEncerrado
+              ? "bg-[#F1F3F5] text-[#868E96] cursor-pointer hover:bg-[#E9ECEF]"
               : "hover:brightness-95 active:scale-[0.98]"
           )}
           style={isEncerrado ? {} : { background: currentTheme.btnBg, color: currentTheme.btnText }}

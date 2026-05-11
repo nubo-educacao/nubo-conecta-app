@@ -4,45 +4,76 @@
 // Renderiza seções dinamicamente a partir do array sections fornecido pelo Server Component.
 // A lógica de match, auth e CTA é mantida; a renderização de carrosséis é agora orientada por dados.
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DynamicCTA, { type CTAState } from '@/components/home/DynamicCTA';
 import HeroSearch from '@/components/home/HeroSearch';
 import OpportunityCarousel from '@/components/home/OpportunityCarousel';
 import InstitutionCarousel from '@/components/home/InstitutionCarousel';
 import ImportantDates from '@/components/home/ImportantDates';
-import MatchOnboarding from '@/components/match/MatchOnboarding';
-import MatchResults from '@/components/match/MatchResults';
-import { useMatchResults } from '@/hooks/useMatchResults';
+import { supabase } from '@/lib/supabase';
 import type { IHomeSectionWithData } from './page';
 
 interface HomeClientProps {
   sections: IHomeSectionWithData[];
 }
 
+interface ApplicationSummary {
+  id: string;
+  status: string;
+}
+
 export default function HomeClient({ sections }: HomeClientProps) {
   const { user, loading, setShowAuthModal } = useAuth();
-  const { results, matchState, error: matchError, runMatch, loadExisting } = useMatchResults(
-    user?.id ?? null,
-  );
+  const [applications, setApplications] = useState<ApplicationSummary[]>([]);
+  const [appsLoading, setAppsLoading] = useState(true);
 
   useEffect(() => {
-    if (user) loadExisting();
-  }, [user, loadExisting]);
+    if (!user) {
+      setApplications([]);
+      setAppsLoading(false);
+      return;
+    }
+
+    setAppsLoading(true);
+    supabase
+      .from('student_applications')
+      .select('id, status')
+      .eq('user_id', user.id)
+      .then(({ data }: { data: any[] | null }) => {
+        setApplications(data || []);
+        setAppsLoading(false);
+      });
+  }, [user]);
 
   const onboardingCompleted = user?.user_metadata?.onboarding_completed as boolean | undefined;
 
-  // CTA state logic (mantido da Sprint 3.5)
+  // CTA state logic
   let ctaState: CTAState = 'loading';
-  if (!loading) {
-    if (!user) ctaState = 'visitor';
-    else if (!onboardingCompleted) ctaState = 'no-profile';
-    else if (matchState === 'loading') ctaState = 'loading';
-    else if (matchState === 'done' && results.length > 0) ctaState = 'has-match';
-    else ctaState = 'no-match';
-  }
+  let lastDraftId: string | null = null;
+  let countInProgress = 0;
 
-  const showMatchSection = !!user && !!onboardingCompleted;
+  if (!loading && !appsLoading) {
+    if (!user) {
+      ctaState = 'visitor';
+    } else if (!onboardingCompleted) {
+      ctaState = 'no-profile';
+    } else {
+      const drafts = applications.filter(a => a.status === 'DRAFT');
+      const submitted = applications.filter(a => a.status !== 'DRAFT');
+      
+      countInProgress = drafts.length;
+      if (drafts.length > 0) lastDraftId = drafts[0].id;
+
+      if (submitted.length > 0) {
+        ctaState = 'completed-application';
+      } else if (drafts.length > 0) {
+        ctaState = 'application-in-progress';
+      } else {
+        ctaState = 'no-applications';
+      }
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6 pt-6 pb-5">
@@ -51,12 +82,9 @@ export default function HomeClient({ sections }: HomeClientProps) {
           key={section.id}
           section={section}
           ctaState={ctaState}
-          matchState={matchState}
-          matchResults={results}
-          matchError={matchError}
-          showMatchSection={showMatchSection}
+          lastDraftId={lastDraftId}
+          countInProgress={countInProgress}
           onOpenAuth={() => setShowAuthModal(true)}
-          onRunMatch={runMatch}
         />
       ))}
 
@@ -71,23 +99,17 @@ export default function HomeClient({ sections }: HomeClientProps) {
 interface SectionRendererProps {
   section: IHomeSectionWithData;
   ctaState: CTAState;
-  matchState: string;
-  matchResults: any[];
-  matchError: string | null;
-  showMatchSection: boolean;
+  lastDraftId: string | null;
+  countInProgress: number;
   onOpenAuth: () => void;
-  onRunMatch: () => void;
 }
 
 function SectionRenderer({
   section,
   ctaState,
-  matchState,
-  matchResults,
-  matchError,
-  showMatchSection,
+  lastDraftId,
+  countInProgress,
   onOpenAuth,
-  onRunMatch,
 }: SectionRendererProps) {
   const config = section.config as Record<string, unknown>;
 
@@ -101,38 +123,17 @@ function SectionRenderer({
           <div>
             <DynamicCTA
               state={ctaState}
-              matchCount={matchResults.length}
+              lastDraftId={lastDraftId}
+              countInProgress={countInProgress}
               onOpenAuth={onOpenAuth}
-              onGenerateMatch={onRunMatch}
             />
-            {matchError && (
-              <p className="mt-2 text-xs text-center" style={{ color: '#dc2626', fontFamily: 'Montserrat, sans-serif' }}>
-                {matchError}
-              </p>
-            )}
           </div>
         </div>
       );
 
     case 'match_carousel': {
-      if (!showMatchSection) return null;
-      return (
-        <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full px-4 lg:px-8">
-          <section
-            className="rounded-2xl overflow-hidden"
-            style={{ background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(56,177,228,0.15)' }}
-          >
-            <div className="px-4 pt-4 pb-1 text-sm font-bold" style={{ color: '#38B1E4', fontFamily: 'Montserrat, sans-serif' }}>
-              {section.title}
-            </div>
-            {matchState === 'done' && matchResults.length > 0 ? (
-              <MatchResults results={matchResults} onRegenerate={onRunMatch} isLoading={false} />
-            ) : (
-              <MatchOnboarding onGenerate={onRunMatch} isLoading={matchState === 'loading'} />
-            )}
-          </section>
-        </div>
-      );
+      // O usuário pediu explicitamente para tirar a exibição de matches
+      return null;
     }
 
     case 'opportunity_carousel': {

@@ -192,7 +192,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         .select('course_name')
         .ilike('course_name', `%${courseInput}%`)
         .limit(10);
-      const names = [...new Set((data || []).map(r => r.course_name).filter(Boolean))] as string[];
+      const names = [...new Set((data || []).map((r: any) => r.course_name).filter(Boolean))] as string[];
       setCourseResults(names);
       setShowCourseSuggestions(names.length > 0);
       setCoursesLoading(false);
@@ -239,7 +239,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
           setSocialBenefits(data.income.social_benefits?.toString() || '');
           setAlimony(data.income.alimony?.toString() || '');
           if (data.income.member_incomes && data.income.member_incomes.length > 0) {
-            setMemberIncomes(data.income.member_incomes.map(i => i.toString()));
+            setMemberIncomes(data.income.member_incomes.map((i: any) => i.toString()));
           }
           if (data.income.per_capita_income != null) {
             setManualPerCapita(data.income.per_capita_income);
@@ -366,7 +366,13 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         [s.ling, s.hum, s.nat, s.mat, s.red].some(v => v !== '')
       );
       if (!hasAnyScore) errs.enemScore = true;
-      if (perCapitaIncome === null) errs.income = true;
+      
+      // Income is mandatory
+      const isIncomeFilled = useCalculator 
+        ? (familyCount && parseInt(familyCount) > 0)
+        : (manualPerCapita !== null);
+        
+      if (!isIncomeFilled) errs.income = true;
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -690,8 +696,8 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               <div className="space-y-4 animate-in fade-in duration-300">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <FieldLabel label="Nº de Familiares" icon={Users} />
-                    <input type="number" className={inputCls} placeholder="Ex: 4" value={familyCount} onChange={e => handleFamilyCountChange(e.target.value)} />
+                    <FieldLabel label="Nº de Familiares" icon={Users} required error={errors.income} />
+                    <input type="number" className={`${inputCls} ${errors.income ? 'border-red-500' : ''}`} placeholder="Ex: 1" value={familyCount} onChange={e => { handleFamilyCountChange(e.target.value); if (errors.income) setErrors(prev => ({ ...prev, income: false })); }} />
                   </div>
                   <div>
                     <FieldLabel label="Benefícios (Bruto)" icon={DollarSign} />
@@ -721,11 +727,11 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                   </div>
                 )}
 
-                {familyCount && perCapitaIncome > 0 && (
+                {familyCount && perCapitaIncome !== null && perCapitaIncome > 0 && (
                   <div className="flex items-center justify-between p-4 bg-gradient-to-r from-[#024F86] to-[#38B1E4] rounded-2xl text-white shadow-lg animate-in slide-in-from-top-2 duration-300">
                     <div className="flex flex-col">
                       <span className="text-[10px] font-bold opacity-80 uppercase">Renda Per Capita Calculada</span>
-                      <span className="text-[20px] font-black">{formatCurrency(perCapitaIncome)}</span>
+                      <span className="text-[20px] font-black">{formatCurrency(perCapitaIncome || 0)}</span>
                     </div>
                     <CheckCircle size={24} className="opacity-40" />
                   </div>
