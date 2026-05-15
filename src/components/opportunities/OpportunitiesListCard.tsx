@@ -12,6 +12,7 @@ export interface Opportunity {
   concurrency_tags?: string[][];
   scholarship_tags?: string[][];
   cutoff_score: number | null;
+  cutoff_score_year?: number | null;
   opportunity_type: string;
   year?: number;
   semester?: string;
@@ -61,6 +62,8 @@ const getShiftDetails = (shift: string) => {
 
 export default function OpportunitiesListCard({ opportunities, highlightedOpportunityId }: OpportunitiesListCardProps) {
   
+  console.log('--- DADOS DA TABELA OPCOES DISPONIVEIS ---', JSON.stringify(opportunities, null, 2));
+
   const renderTags = (tags: any) => {
     if (!tags || tags.length === 0) return null;
 
@@ -103,7 +106,11 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
         <h3 className="text-[#3A424E] font-bold text-lg">Opções Disponíveis</h3>
         <div className="flex items-center gap-2">
           <span className="size-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-[10px] font-bold text-[#636E7C] uppercase tracking-wider">Ciclo 2025.1</span>
+          <span className="text-[10px] font-bold text-[#636E7C] uppercase tracking-wider">
+            {opportunities.length > 0 && opportunities[0].year
+              ? `Ciclo ${opportunities[0].year}${opportunities[0].semester && opportunities[0].opportunity_type?.toLowerCase() === 'prouni' ? `.${opportunities[0].semester}` : ''}`
+              : 'Ciclo Vigente'}
+          </span>
         </div>
       </div>
 
@@ -160,7 +167,7 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                   <td className="px-4 py-4 text-right">
                     <span className="text-sm font-bold text-[#3A424E]">
                       {opp.vacancies
-                        ? ((opp.vacancies.broad_competition_offered || 0) + (opp.vacancies.quotas_offered || 0)) || '---'
+                        ? ((Number(opp.vacancies.broad_competition_offered) || 0) + (Number(opp.vacancies.quotas_offered) || 0)) || '---'
                         : '---'}
                     </span>
                   </td>
@@ -172,7 +179,9 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                           {opp.cutoff_score ? opp.cutoff_score.toFixed(1) : '---'}
                         </span>
                       </div>
-                      <span className="text-[9px] text-[#636E7C] font-medium">Nota de corte final</span>
+                      <span className="text-[9px] text-[#636E7C] font-medium">
+                        Nota de corte {opp.cutoff_score_year ? `(${opp.cutoff_score_year})` : 'final'}
+                      </span>
                     </div>
                   </td>
                 </tr>

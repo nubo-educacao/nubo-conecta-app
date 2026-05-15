@@ -2,53 +2,30 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import OpportunityCard from "@/components/opportunities/OpportunityCard";
 import type { IUnifiedOpportunity } from "@/types/opportunities";
+import { useFavorites } from "@/contexts/FavoritesContext";
 
 interface FavoritosTabProps {
   userId: string;
 }
 
-interface FavoriteRow {
-  id: string;
-  course_id: string | null;
-  partner_opportunities_id: string | null;
-}
-
 export default function FavoritosTab({ userId }: FavoritosTabProps) {
-  const [opportunities, setOpportunities] = useState<IUnifiedOpportunity[]>([]);
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
-  const [rawFavorites, setRawFavorites] = useState<FavoriteRow[]>([]);
+  const [allOpportunities, setAllOpportunities] = useState<IUnifiedOpportunity[]>([]);
   const [loading, setLoading] = useState(true);
+  const { favoriteIds } = useFavorites();
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9;
 
   async function loadFavorites() {
     setLoading(true);
-    const { data: favs } = await supabase
-      .from("user_favorites")
-      .select("id, course_id, partner_opportunities_id")
-      .eq("user_id", userId);
-
-    if (!favs || favs.length === 0) {
-      setOpportunities([]);
-      setFavoriteIds(new Set());
-      setRawFavorites([]);
-      setLoading(false);
-      return;
-    }
-
-    setRawFavorites(favs as FavoriteRow[]);
-
-    // Build unified_ids to query v_unified_opportunities
-    const unifiedIds: string[] = [];
-    for (const f of favs as FavoriteRow[]) {
-      if (f.partner_opportunities_id) unifiedIds.push(`partner_${f.partner_opportunities_id}`);
-      if (f.course_id) unifiedIds.push(`mec_${f.course_id}`);
-    }
+    // Since we now have favoriteIds globally, we can just fetch those.
+    const unifiedIds = Array.from(favoriteIds);
 
     if (unifiedIds.length === 0) {
-      setOpportunities([]);
+      setAllOpportunities([]);
       setLoading(false);
       return;
     }
@@ -59,7 +36,7 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
       .in("unified_id", unifiedIds);
 
     if (!rows) {
-      setOpportunities([]);
+      setAllOpportunities([]);
       setLoading(false);
       return;
     }
@@ -88,27 +65,30 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
         : undefined,
     }));
 
-    setOpportunities(mapped);
-    setFavoriteIds(new Set(unifiedIds));
+    setAllOpportunities(mapped);
     setLoading(false);
   }
 
-  useEffect(() => { loadFavorites(); }, [userId]);
+  // Reload the details when favoriteIds change
+  useEffect(() => { 
+    // We only need to fetch if there are IDs we don't have
+    loadFavorites(); 
+  }, [favoriteIds.size]); 
 
-  async function handleFavorite(id: string) {
-    // Optimistic remove
-    setOpportunities((prev) => prev.filter((o) => o.id !== id));
-    setFavoriteIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+  // Filter opportunities to only those that are STILL favorited
+  const activeOpportunities = allOpportunities.filter(opp => favoriteIds.has(opp.id));
 
-    // Find the raw favorite row to delete
-    const isPartner = id.startsWith("partner_");
-    const rawId = id.replace("partner_", "").replace("mec_", "");
-    const row = rawFavorites.find((f) => (isPartner ? f.partner_opportunities_id === rawId : f.course_id === rawId));
+  // Pagination logic
+  const totalPages = Math.ceil(activeOpportunities.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedOpportunities = activeOpportunities.slice(startIndex, startIndex + itemsPerPage);
 
-    if (row) {
-      await supabase.from("user_favorites").delete().eq("id", row.id);
+  // Reset to first page if current page becomes empty (e.g. after unfavoriting)
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
     }
-  }
+  }, [totalPages, currentPage]);
 
   if (loading) {
     return (
@@ -118,7 +98,7 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
     );
   }
 
-  if (opportunities.length === 0) {
+  if (activeOpportunities.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
         <div
@@ -145,15 +125,59 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {opportunities.map((opp) => (
-        <OpportunityCard
-          key={opp.id}
-          opportunity={opp}
-          isFavorited={favoriteIds.has(opp.id)}
-          onFavorite={handleFavorite}
-        />
-      ))}
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {paginatedOpportunities.map((opp) => (
+          <OpportunityCard
+            key={opp.id}
+            opportunity={opp}
+          />
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pb-8">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft size={18} style={{ color: "#3A424E" }} />
+          </button>
+          
+          <div className="flex items-center gap-1.5 mx-2">
+            {Array.from({ length: totalPages }).map((_, i) => {
+              const pageNumber = i + 1;
+              const isActive = currentPage === pageNumber;
+              return (
+                <button
+                  key={pageNumber}
+                  onClick={() => setCurrentPage(pageNumber)}
+                  className={`w-10 h-10 rounded-xl text-sm font-bold transition-all ${
+                    isActive 
+                      ? "text-white shadow-lg shadow-[#38B1E4]/20" 
+                      : "text-[#707A7E] bg-white border border-gray-100 hover:bg-gray-50"
+                  }`}
+                  style={{ 
+                    background: isActive ? "linear-gradient(135deg, #38B1E4 0%, #024F86 100%)" : undefined,
+                    fontFamily: "Montserrat, sans-serif" 
+                  }}
+                >
+                  {pageNumber}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+            className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ChevronRight size={18} style={{ color: "#3A424E" }} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

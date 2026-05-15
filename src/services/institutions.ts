@@ -7,14 +7,8 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { UnifiedInstitution } from '@/types/institutions';
 
-export interface IPartnerInstitution {
-  id: string;
-  name: string;
-  location: string;
-  logo_url: string | null;
-  cover_url: string | null;
-  description: string | null;
-  brand_color: string | null;
+export interface IPartnerInstitution extends UnifiedInstitution {
+  type: 'partner';
 }
 
 export async function getPartnerInstitutions(): Promise<IPartnerInstitution[]> {
@@ -32,19 +26,9 @@ export async function getPartnerInstitutions(): Promise<IPartnerInstitution[]> {
   );
 
   const { data, error } = await supabase
-    .from('institutions')
-    .select(`
-      id,
-      name,
-      partner_institutions (
-        logo_url,
-        cover_url,
-        description,
-        brand_color,
-        location
-      )
-    `)
-    .eq('is_partner', true)
+    .from('v_unified_institutions')
+    .select('id, name, location, logo_url, cover_url, brand_color, description, type, opp_types')
+    .eq('type', 'partner')
     .order('name', { ascending: true })
     .limit(12);
 
@@ -57,17 +41,27 @@ export async function getPartnerInstitutions(): Promise<IPartnerInstitution[]> {
   return (data as any[]).map((row) => ({
     id:          row.id,
     name:        row.name,
-    location:    row.partner_institutions?.location ?? '',
-    logo_url:    row.partner_institutions?.logo_url ?? null,
-    cover_url:   row.partner_institutions?.cover_url ?? null,
-    description: row.partner_institutions?.description ?? null,
-    brand_color: row.partner_institutions?.brand_color ?? null,
+    location:    row.location ?? '',
+    logo_url:    row.logo_url ?? null,
+    cover_url:   row.cover_url ?? null,
+    description: row.description ?? null,
+    brand_color: row.brand_color ?? null,
+    type:        'partner' as const,
+    opp_types:   row.opp_types ?? null,
   }));
 }
 
 // ─── Unified Institutions (Sprint 8.0) ───────────────────────────────────────
 
-export async function getUnifiedInstitutions(): Promise<UnifiedInstitution[]> {
+export interface InstitutionsFilters {
+  page?: number;
+  limit?: number;
+  type?: 'all' | 'partner' | 'other';
+  q?: string;
+}
+
+export async function getUnifiedInstitutions(filters: InstitutionsFilters = {}): Promise<{ data: UnifiedInstitution[], count: number }> {
+  const { page = 0, limit = 15, type = 'all', q } = filters;
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -81,16 +75,38 @@ export async function getUnifiedInstitutions(): Promise<UnifiedInstitution[]> {
     },
   );
 
-  const { data, error } = await supabase
+  let queryBuilder = supabase
     .from('v_unified_institutions')
-    .select('id, name, location, logo_url, cover_url, brand_color, description, type')
-    .order('name', { ascending: true });
+    .select('id, name, location, logo_url, cover_url, brand_color, description, type, opp_types, acronym, academic_organization, administrative_category', { count: 'exact' });
 
-  if (error) {
-    throw new Error(`getUnifiedInstitutions failed: ${error.message} (code: ${error.code})`);
+  // Apply Filters
+  if (type === 'partner') {
+    queryBuilder = queryBuilder.eq('type', 'partner');
+  } else if (type === 'other') {
+    queryBuilder = queryBuilder.eq('type', 'mec');
   }
 
-  return (data ?? []) as UnifiedInstitution[];
+  if (q) {
+    const searchFilter = `name.ilike.%${q}%,location.ilike.%${q}%,acronym.ilike.%${q}%`;
+    queryBuilder = queryBuilder.or(searchFilter);
+  }
+
+  // Execute Data Query
+  queryBuilder = queryBuilder
+    .order('type', { ascending: true })
+    .order('name', { ascending: true })
+    .range(page * limit, (page + 1) * limit - 1);
+
+  const { data, error, count } = await queryBuilder;
+
+  if (error) {
+    throw new Error(`getUnifiedInstitutions failed: ${error.message}`);
+  }
+
+  return {
+    data: (data || []) as UnifiedInstitution[],
+    count: count || 0
+  };
 }
 
 export async function getUnifiedInstitutionById(id: string): Promise<UnifiedInstitution | null> {
@@ -109,7 +125,7 @@ export async function getUnifiedInstitutionById(id: string): Promise<UnifiedInst
 
   const { data, error } = await supabase
     .from('v_unified_institutions')
-    .select('id, name, location, logo_url, cover_url, brand_color, description, type')
+    .select('id, name, location, logo_url, cover_url, brand_color, description, type, opp_types, acronym, academic_organization, administrative_category')
     .eq('id', id)
     .limit(1);
 

@@ -48,7 +48,10 @@ export default function AddDependentSheet({ open, onClose }: AddDependentSheetPr
     setLoading(true);
     setToast(null);
 
+    const newId = crypto.randomUUID();
+
     const { error } = await supabase.from("user_profiles").insert({
+      id: newId,
       parent_user_id: user.id,
       isdependent: true,
       full_name: fullName,
@@ -73,7 +76,7 @@ export default function AddDependentSheet({ open, onClose }: AddDependentSheetPr
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 pointer-events-none">
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -83,13 +86,13 @@ export default function AddDependentSheet({ open, onClose }: AddDependentSheetPr
             onClick={handleClose}
           />
 
-          {/* Sheet */}
+          {/* Sheet / Modal */}
           <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
+            initial={{ y: "100%", opacity: 0, scale: 0.95 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: "100%", opacity: 0, scale: 0.95 }}
             transition={{ type: "spring", damping: 28, stiffness: 220 }}
-            className="absolute bottom-0 left-0 right-0 pointer-events-auto rounded-t-3xl md:rounded-3xl md:left-auto md:right-8 md:bottom-8 md:w-[420px]"
+            className="relative w-full md:w-[420px] pointer-events-auto rounded-t-3xl md:rounded-3xl overflow-hidden"
             style={{
               background: "rgba(255,255,255,0.97)",
               boxShadow: "0 -4px 40px rgba(0,0,0,0.15)",

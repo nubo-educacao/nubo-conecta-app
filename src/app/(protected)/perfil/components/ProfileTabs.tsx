@@ -1,11 +1,12 @@
 "use client";
 
+import { User, Settings, Heart } from "lucide-react";
 import type { TabType } from "../page";
 
-const TABS: { id: TabType; label: string }[] = [
-  { id: "dados", label: "Dados" },
-  { id: "preferencias", label: "Preferências" },
-  { id: "favoritos", label: "Favoritos" },
+const TABS: { id: TabType; label: string; icon: React.ElementType }[] = [
+  { id: "dados", label: "Dados", icon: User },
+  { id: "preferencias", label: "Preferências", icon: Settings },
+  { id: "favoritos", label: "Favoritos", icon: Heart },
 ];
 
 interface ProfileTabsProps {
@@ -15,22 +16,34 @@ interface ProfileTabsProps {
 
 export default function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps) {
   return (
-    <div className="flex gap-1 p-1 rounded-2xl" style={{ background: "rgba(0,0,0,0.05)" }}>
+    <div className="flex items-center justify-center gap-1 sm:gap-3">
       {TABS.map((t) => {
         const isActive = t.id === activeTab;
+        const Icon = t.icon;
         return (
           <button
             key={t.id}
             onClick={() => onTabChange(t.id)}
-            className="flex-1 py-2 rounded-xl text-sm font-semibold transition-all"
+            className={[
+              "flex items-center justify-center gap-1 sm:gap-1.5",
+              "py-2 px-3 sm:px-5",
+              "rounded-full",
+              "text-xs sm:text-sm font-semibold",
+              "whitespace-nowrap transition-all",
+            ].join(" ")}
             style={{
               fontFamily: "Montserrat, sans-serif",
-              background: isActive ? "white" : "transparent",
+              background: isActive ? "#ffffff" : "transparent",
               color: isActive ? "#3092bb" : "#707A7E",
-              boxShadow: isActive ? "0 1px 4px rgba(0,0,0,0.10)" : "none",
+              boxShadow: isActive
+                ? "0 2px 8px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05)"
+                : "none",
+              border: "none",
+              cursor: "pointer",
             }}
           >
-            {t.label}
+            <Icon size={13} strokeWidth={isActive ? 2 : 1.5} className="shrink-0" />
+            <span>{t.label}</span>
           </button>
         );
       })}

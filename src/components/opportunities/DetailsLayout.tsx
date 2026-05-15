@@ -5,7 +5,8 @@ import { motion } from 'framer-motion';
 import {
   ChevronLeft, Share2, Heart, ExternalLink, Info, MapPin,
   Globe, GraduationCap, Award, Users, Clock, Calendar,
-  CheckCircle2, Building2, Sun, Sunset, Moon, SunMoon, Laptop
+  CheckCircle2, Building2, Sun, Sunset, Moon, SunMoon, Laptop,
+  Loader2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -14,25 +15,43 @@ import type { IUnifiedOpportunity } from '@/types/opportunities';
 import SisuProuniCard from './SisuProuniCard';
 import OpportunitiesListCard, { Opportunity } from './OpportunitiesListCard';
 import SisuScoreDisplay from './SisuScoreDisplay';
+import OpportunityCard from './OpportunityCard';
 import { supabase } from '@/lib/supabase';
+import { useProfile } from '@/contexts/ProfileContext';
+import { createApplication } from '@/app/(app)/oportunidades/[id]/actions';
+
+type SisuVacancyRow = Record<string, unknown>;
+type ProuniVacancyRow = Record<string, unknown>;
+type ApprovalRow = Record<string, unknown>;
+
+type VacancyDetails =
+  | { type: 'sisu'; rows: SisuVacancyRow[] }
+  | { type: 'prouni'; rows: ProuniVacancyRow[] }
+  | null;
 
 interface DetailsLayoutProps {
   opportunity: IUnifiedOpportunity;
   relatedOpportunities?: Opportunity[];
   isFavorited?: boolean;
   onFavorite?: () => void;
+  approvalStats?: ApprovalRow[] | null;
 }
 
 export default function DetailsLayout({
   opportunity,
   relatedOpportunities = [],
   isFavorited,
-  onFavorite
+  onFavorite,
+  approvalStats,
 }: DetailsLayoutProps) {
   const router = useRouter();
+  const { activeProfileId } = useProfile();
   const [isRegistrationOpen, setIsRegistrationOpen] = React.useState<boolean | null>(null);
   const [registrationDates, setRegistrationDates] = React.useState<{ start: string; end: string } | null>(null);
   const [campus, setCampus] = React.useState<{ name: string; city: string; state: string } | null>(null);
+  const [applying, setApplying] = React.useState(false);
+  const [applyError, setApplyError] = React.useState<string | null>(null);
+  const [similarOpps, setSimilarOpps] = React.useState<IUnifiedOpportunity[]>([]);
 
   const isPartner = opportunity.is_partner;
   const brandColor = opportunity.brand_color || (isPartner ? '#7030C2' : '#3092BB');
@@ -84,6 +103,98 @@ export default function DetailsLayout({
         if (campusData) setCampus(campusData);
       });
   }, [opportunity.id, isPartner]);
+
+  // Fetch top matched opportunities (MEC + Partner), ordered by match_score desc
+  React.useEffect(() => {
+    const fetchSimilar = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // profile_id in user_opportunity_matches is the activeProfileId (may differ from user.id for dependents)
+      const profileId = activeProfileId || user.id;
+
+      const { data: matches, error: matchErr } = await supabase
+        .from('user_opportunity_matches')
+        .select('unified_opportunity_id, match_score')
+        .eq('profile_id', profileId)
+        .neq('unified_opportunity_id', opportunity.id)
+        .order('match_score', { ascending: false })
+        .limit(10);
+
+      if (!matches || matches.length === 0) return;
+
+      const ids = matches.map((m: any) => m.unified_opportunity_id);
+
+      const { data: opps } = await supabase
+        .from('v_unified_opportunities')
+        .select('unified_id, title, provider_name, location, opportunity_type, type, is_partner, category, badges, brand_color, institution_cover_url, created_at')
+        .in('unified_id', ids);
+
+      if (!opps || opps.length === 0) return;
+
+      const scoreMap = Object.fromEntries(matches.map((m: any) => [m.unified_opportunity_id, m.match_score]));
+      const sorted = [...opps].sort((a: any, b: any) => (scoreMap[b.unified_id] || 0) - (scoreMap[a.unified_id] || 0));
+
+      const mapped = sorted.slice(0, 6).map((o: any) => ({
+        id: o.unified_id,
+        title: o.title,
+        institution_name: o.provider_name,
+        location: o.location,
+        opportunity_type: o.opportunity_type ?? o.type,
+        type: o.type,
+        is_partner: o.is_partner,
+        category: o.category,
+        category_label: o.category,
+        badges: Array.isArray(o.badges) ? o.badges.filter(Boolean) : [],
+        brand_color: o.brand_color,
+        institution_cover_url: o.institution_cover_url,
+        created_at: o.created_at,
+        match_score: scoreMap[o.unified_id] || null,
+        education_level: 'Graduação',
+      } as IUnifiedOpportunity));
+
+      setSimilarOpps(mapped);
+    };
+
+    fetchSimilar();
+  }, [opportunity.id, activeProfileId]);
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: opportunity.title,
+        text: `${opportunity.title} — ${opportunity.institution_name}`,
+        url: window.location.href,
+      });
+    } else {
+      navigator.clipboard?.writeText(window.location.href);
+    }
+  };
+
+  const handleApply = async () => {
+    if (opportunity.external_redirect?.enabled && opportunity.external_redirect?.url) {
+      window.open(opportunity.external_redirect.url, '_blank');
+      return;
+    }
+    if (!opportunity.is_partner) return;
+
+    const partnerOppId = opportunity.id.replace('partner_', '');
+    const profileId = activeProfileId || '';
+    if (!profileId) {
+      setApplyError('Selecione um perfil para continuar.');
+      return;
+    }
+
+    setApplying(true);
+    setApplyError(null);
+    try {
+      const { id } = await createApplication(partnerOppId, profileId);
+      router.push(`/partner-forms/${id}`);
+    } catch {
+      setApplying(false);
+      setApplyError('Erro ao iniciar candidatura. Tente novamente.');
+    }
+  };
 
   // Helper for Category Chips
   const categoryLabel = opportunity.opportunity_type?.toUpperCase() || 'PROGRAMA';
@@ -141,10 +252,10 @@ export default function DetailsLayout({
   return (
     <div className="min-h-full pb-32" style={{ fontFamily: 'Montserrat, sans-serif' }}>
       {/* ── Hero / Cover ── */}
-      <section className="relative h-[220px] w-full">
-        {/* Main Cover Image Container (Pattern from OpportunityCard) */}
+      <section className="relative h-[220px] w-full rounded-b-[40px] md:rounded-t-3xl overflow-hidden">
+        {/* Main Cover Image Container */}
         <div
-          className="absolute inset-x-0 bottom-0 top-0 overflow-hidden rounded-b-[40px] shadow-lg mx-0"
+          className="absolute inset-x-0 bottom-0 top-0 overflow-hidden shadow-lg mx-0"
           style={{
             background: isPartner
               ? brandColor
@@ -153,7 +264,7 @@ export default function DetailsLayout({
         >
           {/* Image Overlay */}
           <img
-            src={opportunity.institution_cover_url || (isPartner ? undefined : "https://images.unsplash.com/photo-1523050853064-855722749e41?q=80&w=2070&auto=format&fit=crop")}
+            src={opportunity.institution_cover_url || "/assets/institution-cover.png"}
             className="w-full h-full object-cover mix-blend-soft-light opacity-60"
             alt=""
             onError={(e) => {
@@ -172,12 +283,20 @@ export default function DetailsLayout({
           >
             <ChevronLeft size={22} />
           </button>
-          <button
-            onClick={onFavorite}
-            className="size-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 hover:bg-white/30 transition-all"
-          >
-            <Heart size={20} className={cn(isFavorited && "fill-red-500 text-red-500 border-none")} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleShare}
+              className="size-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 hover:bg-white/30 transition-all"
+            >
+              <Share2 size={18} />
+            </button>
+            <button
+              onClick={onFavorite}
+              className="size-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 hover:bg-white/30 transition-all"
+            >
+              <Heart size={20} className={cn(isFavorited && 'fill-red-500 text-red-500 border-none')} />
+            </button>
+          </div>
         </div>
 
         {/* Category Chips on Hero */}
@@ -312,7 +431,16 @@ export default function DetailsLayout({
           </div>
           <div className="min-w-0">
             <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">Vagas</p>
-            <p className="text-[13px] font-bold text-[#3A424E] truncate">{opportunity.nu_vagas_autorizadas || '--'} vagas</p>
+            <p className="text-[13px] font-bold text-[#3A424E] truncate">
+              {(() => {
+                const totalVagas = relatedOpportunities.reduce((sum, opp) => {
+                  const broad = Number(opp.vacancies?.broad_competition_offered) || 0;
+                  const quotas = Number(opp.vacancies?.quotas_offered) || 0;
+                  return sum + broad + quotas;
+                }, 0);
+                return totalVagas > 0 ? `${totalVagas} vagas` : (opportunity.nu_vagas_autorizadas || '--') + ' vagas';
+              })()}
+            </p>
           </div>
         </div>
 
@@ -338,14 +466,35 @@ export default function DetailsLayout({
           <>
             <SisuProuniCard
               opportunity_type={opportunity.opportunity_type || 'SISU'}
+              cycle_year={relatedOpportunities[0]?.year}
+              cycle_semester={relatedOpportunities[0]?.semester}
               qt_inscricao_2025={opportunity.qt_inscricao_2025}
-              max_cutoff_score={opportunity.max_cutoff_score}
+              min_cutoff_score={(() => {
+                const validScores = relatedOpportunities.map(o => o.cutoff_score).filter((s): s is number => s != null);
+                return validScores.length > 0 ? Math.min(...validScores) : null;
+              })()}
+              max_cutoff_score={(() => {
+                const validScores = relatedOpportunities.map(o => o.cutoff_score).filter((s): s is number => s != null);
+                return validScores.length > 0 ? Math.max(...validScores) : null;
+              })()}
               vagas_ociosas_2025={opportunity.vagas_ociosas_2025}
-              nu_vagas_autorizadas={opportunity.nu_vagas_autorizadas}
+              nu_vagas_autorizadas={(() => {
+                const total = relatedOpportunities.reduce((sum, opp) => {
+                  const broad = Number(opp.vacancies?.broad_competition_offered) || 0;
+                  const quotas = Number(opp.vacancies?.quotas_offered) || 0;
+                  return sum + broad + quotas;
+                }, 0);
+                return total > 0 ? total : opportunity.nu_vagas_autorizadas;
+              })()}
+              qt_aprovados={approvalStats?.reduce((sum, row) => sum + (Number(row.qt_aprovados) || 0), 0) || null}
             />
 
-            {opportunity.weights && (
-              <SisuScoreDisplay weights={opportunity.weights} />
+            {(opportunity.weights || opportunity.opportunity_type === 'prouni') && (
+              <SisuScoreDisplay 
+                weights={opportunity.weights || { redacao: 1, matematica: 1, linguagens: 1, humanas: 1, natureza: 1 }}
+                opportunity_type={opportunity.opportunity_type}
+                cycle_year={relatedOpportunities[0]?.year}
+              />
             )}
 
             {/* ── Pesos do ENEM ── */}
@@ -398,6 +547,56 @@ export default function DetailsLayout({
               }]}
               highlightedOpportunityId={opportunity.id}
             />
+
+
+            {/* ── Aprovados no Último Ciclo (SisU apenas) ── */}
+            {approvalStats && approvalStats.length > 0 && (
+              <motion.section
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100"
+              >
+                <h3 className="text-[#3A424E] font-bold text-lg mb-4 flex items-center gap-2">
+                  <CheckCircle2 size={20} className="text-emerald-500" />
+                  Aprovados no Último Ciclo
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="text-left text-[10px] text-[#707A7E] font-bold uppercase pb-2">Cota</th>
+                        <th className="text-right text-[10px] text-[#707A7E] font-bold uppercase pb-2">Aprovados</th>
+                        <th className="text-right text-[10px] text-[#707A7E] font-bold uppercase pb-2">Mín.</th>
+                        <th className="text-right text-[10px] text-[#707A7E] font-bold uppercase pb-2">Máx.</th>
+                        <th className="text-right text-[10px] text-[#707A7E] font-bold uppercase pb-2">Média</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {approvalStats.map((row, i) => (
+                        <tr key={i} className="border-b border-gray-50 last:border-0">
+                          <td className="py-2 text-[#3A424E] font-medium text-xs max-w-[120px]" title={String(row.modalidade_concorrencia ?? '')}>
+                            <span className="line-clamp-1">{String(row.tipo_concorrencia ?? row.modalidade_concorrencia ?? '—')}</span>
+                          </td>
+                          <td className="py-2 text-right text-[#3A424E] font-bold">
+                            {row.qt_aprovados != null ? String(row.qt_aprovados) : '—'}
+                          </td>
+                          <td className="py-2 text-right text-[#636E7C]">
+                            {row.nota_minima != null ? Number(row.nota_minima).toFixed(1) : '—'}
+                          </td>
+                          <td className="py-2 text-right text-[#636E7C]">
+                            {row.nota_maxima != null ? Number(row.nota_maxima).toFixed(1) : '—'}
+                          </td>
+                          <td className="py-2 text-right text-[#3092BB] font-bold">
+                            {row.nota_media != null ? Number(row.nota_media).toFixed(1) : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.section>
+            )}
           </>
         ) : (
           <div className="space-y-6">
@@ -441,6 +640,23 @@ export default function DetailsLayout({
           </div>
         )}
       </div>
+
+      {/* ── Outras Oportunidades para Você ── */}
+      {similarOpps.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-[#3A424E] font-black text-lg mb-4 px-6">Outras Oportunidades para Você</h2>
+          <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory -mx-0 px-6 scrollbar-hide">
+            {similarOpps.map((opp) => (
+              <div key={opp.id} className="min-w-[85vw] max-w-[340px] snap-center shrink-0">
+                <OpportunityCard
+                  opportunity={opp}
+                  onClickOverride={(id) => router.push(`/oportunidades/${id}`)}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Institution Card ── */}
       <section className="px-6 mt-12 mb-24">
@@ -494,20 +710,24 @@ export default function DetailsLayout({
           </button>
         </div>
       ) : isRegistrationOpen !== false && (
-        <div className="fixed bottom-0 inset-x-0 p-6 bg-white/80 backdrop-blur-2xl border-t border-gray-100/50 z-50 flex flex-col gap-4 pb-10">
+        <div className="fixed bottom-0 inset-x-0 p-6 bg-white/80 backdrop-blur-2xl border-t border-gray-100/50 z-50 flex flex-col gap-2 pb-10">
+          {applyError && (
+            <p className="text-center text-xs text-red-500 font-medium">{applyError}</p>
+          )}
           <button
-            onClick={() => {
-              if (opportunity.external_redirect?.enabled && opportunity.external_redirect?.url) {
-                window.open(opportunity.external_redirect.url, '_blank');
-              } else {
-                // Application logic
-              }
-            }}
-            className="w-full h-14 rounded-full font-black text-lg text-white shadow-2xl shadow-[#3092BB]/30 transition-transform active:scale-95 flex items-center justify-center gap-2"
+            onClick={handleApply}
+            disabled={applying}
+            className="w-full h-14 rounded-full font-black text-lg text-white shadow-2xl shadow-[#3092BB]/30 transition-transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70"
             style={{ background: brandColor }}
           >
-            {isPartner ? 'Candidatar Agora' : 'Quero me Candidatar'}
-            {opportunity.external_redirect?.enabled && <ExternalLink size={18} />}
+            {applying ? (
+              <Loader2 size={22} className="animate-spin" />
+            ) : (
+              <>
+                {isPartner ? 'Candidatar Agora' : 'Quero me Candidatar'}
+                {opportunity.external_redirect?.enabled && <ExternalLink size={18} />}
+              </>
+            )}
           </button>
         </div>
       )}

@@ -5,6 +5,7 @@ import { X, Check, Loader2, ChevronDown } from 'lucide-react';
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 
 const COUNTRIES = [
   { code: 'BR', name: 'Brasil', dialCode: '+55', mask: '(DD) 99999-9999', flag: '🇧🇷' },
@@ -27,6 +28,7 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ onClose }: AuthModalProps) {
+  const { authMode, setShowAuthModal } = useAuth();
   const [step, setStep] = useState<'PHONE' | 'OTP'>('PHONE');
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
@@ -34,7 +36,7 @@ export default function AuthModal({ onClose }: AuthModalProps) {
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(authMode === 'UPDATE_PHONE');
 
   const formatPhone = (value: string, countryCode: string) => {
     const numbers = value.replace(/\D/g, '');
@@ -81,12 +83,16 @@ export default function AuthModal({ onClose }: AuthModalProps) {
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: formattedPhone,
-        options: { channel: 'whatsapp' },
-      });
-
-      if (error) throw error;
+      if (authMode === 'UPDATE_PHONE') {
+        const { error } = await supabase.auth.updateUser({ phone: formattedPhone });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signInWithOtp({
+          phone: formattedPhone,
+          options: { channel: 'whatsapp' },
+        });
+        if (error) throw error;
+      }
       setStep('OTP');
     } catch (err: any) {
       console.error(err);
@@ -112,11 +118,16 @@ export default function AuthModal({ onClose }: AuthModalProps) {
       const { error } = await supabase.auth.verifyOtp({
         phone: formattedPhone,
         token: otp,
-        type: 'sms', // Padrão WhatsApp OTP verificado via SMS type no Supabase
+        type: authMode === 'UPDATE_PHONE' ? 'phone_change' : 'sms',
       });
 
       if (error) throw error;
-      // AuthContext will handle closing the modal
+      if (authMode === 'UPDATE_PHONE') {
+        setShowAuthModal(false);
+        // Refresh page or let context handle it
+        window.location.reload();
+      }
+      // AuthContext will handle closing the modal on login
     } catch (err: any) {
       console.error(err);
       setError('Código inválido ou expirado. Verifique e tente novamente.');
@@ -163,11 +174,14 @@ export default function AuthModal({ onClose }: AuthModalProps) {
         {/* Header */}
         <div className="flex flex-col items-center gap-1 mb-6">
           <h2 className="font-sans font-bold text-[18px] leading-[24px] text-nubo-primary text-center">
-            {step === 'PHONE' ? 'Entre no Nubo' : 'Verifique seu número'}
+            {step === 'PHONE' 
+              ? (authMode === 'UPDATE_PHONE' ? 'Atualizar Telefone' : 'Entre no Nubo')
+              : 'Verifique seu número'
+            }
           </h2>
           <p className="font-sans font-medium text-[14px] leading-[17.5px] text-nubo-nav-inactive text-center w-full max-w-[270px]">
             {step === 'PHONE'
-              ? 'Entre sem senha. Rápido e seguro.'
+              ? (authMode === 'UPDATE_PHONE' ? 'Informe o novo número com DDD.' : 'Entre sem senha. Rápido e seguro.')
               : `Enviamos um código para ${phone}`
             }
           </p>
@@ -273,23 +287,25 @@ export default function AuthModal({ onClose }: AuthModalProps) {
               </div>
 
               {/* Terms Checkbox - Using Tailwind Tokens */}
-              <div className="flex items-start gap-2 px-1">
-                <div className="relative flex items-center pt-1">
-                  <input
-                    id="terms"
-                    type="checkbox"
-                    checked={acceptedTerms}
-                    onChange={(e) => setAcceptedTerms(e.target.checked)}
-                    className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-nubo-primary bg-white transition-all checked:bg-nubo-primary checked:border-nubo-primary"
-                  />
-                  <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ml-[0.5px] mt-[2px] opacity-0 peer-checked:opacity-100 transition-opacity">
-                    <Check size={14} className="text-white" strokeWidth={3} />
+              {authMode === 'LOGIN' && (
+                <div className="flex items-start gap-2 px-1">
+                  <div className="relative flex items-center pt-1">
+                    <input
+                      id="terms"
+                      type="checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-nubo-primary bg-white transition-all checked:bg-nubo-primary checked:border-nubo-primary"
+                    />
+                    <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ml-[0.5px] mt-[2px] opacity-0 peer-checked:opacity-100 transition-opacity">
+                      <Check size={14} className="text-white" strokeWidth={3} />
+                    </div>
                   </div>
+                  <label htmlFor="terms" className="text-[12px] font-sans font-medium text-nubo-nav-inactive leading-tight select-none cursor-pointer pt-0.5">
+                    Li e concordo com os <a href="/termos-de-uso.pdf" target="_blank" rel="noopener noreferrer" className="text-nubo-primary hover:underline">Termos de Uso</a> e <a href="/politica-de-privacidade.pdf" target="_blank" rel="noopener noreferrer" className="text-nubo-primary hover:underline">Política de Privacidade</a>.
+                  </label>
                 </div>
-                <label htmlFor="terms" className="text-[12px] font-sans font-medium text-nubo-nav-inactive leading-tight select-none cursor-pointer pt-0.5">
-                  Li e concordo com os <a href="/termos-de-uso.pdf" target="_blank" rel="noopener noreferrer" className="text-nubo-primary hover:underline">Termos de Uso</a> e <a href="/politica-de-privacidade.pdf" target="_blank" rel="noopener noreferrer" className="text-nubo-primary hover:underline">Política de Privacidade</a>.
-                </label>
-              </div>
+              )}
 
               {error && (
                 <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-500 text-xs text-center font-sans font-medium">

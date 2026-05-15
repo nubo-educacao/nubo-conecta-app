@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 import { cn } from '@/lib/utils';
+import { useFavorites } from '@/contexts/FavoritesContext';
 
 interface OpportunityCardProps {
   opportunity: IUnifiedOpportunity;
@@ -40,24 +41,27 @@ const BadgeCompatibilidade = ({ score, variant }: { score: number; variant: 'def
 export default function OpportunityCard({
   opportunity,
   onFavorite,
-  isFavorited = false,
+  isFavorited,
   onClickOverride,
   className
 }: OpportunityCardProps) {
   const router = useRouter();
   const { user, setShowAuthModal } = useAuth();
   const isAuthenticated = !!user;
+  const { isFavorited: isFavoritedContext, toggleFavorite } = useFavorites();
 
-  const [localFavorited, setLocalFavorited] = useState(isFavorited);
+  const isActuallyFavorited = isFavorited !== undefined ? isFavorited : isFavoritedContext(opportunity.id);
   const [imgError, setImgError] = useState(false);
-
-  useEffect(() => { setLocalFavorited(isFavorited); }, [isFavorited]);
 
   const handleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated) { setShowAuthModal(true); return; }
-    setLocalFavorited(prev => !prev);
-    onFavorite?.(opportunity.id);
+    
+    if (onFavorite) {
+      onFavorite(opportunity.id);
+    } else {
+      toggleFavorite(opportunity.id);
+    }
   };
 
   const handleViewDetails = () => {
@@ -107,7 +111,7 @@ export default function OpportunityCard({
       variants={{
         hover: {
           scale: 1.01,
-          boxShadow: `0 0 0 2.5px ${currentTheme.hoverBorder}, 0px 24px 48px -12px rgba(181,183,192,0.4)`
+          boxShadow: `0 0 0 1.5px ${currentTheme.hoverBorder}, 0px 24px 48px -12px rgba(181,183,192,0.4)`
         }
       }}
       transition={{ duration: 0.3, ease: "easeOut" }}
@@ -180,7 +184,7 @@ export default function OpportunityCard({
           onClick={handleFavorite}
           className="bg-white/30 hover:bg-white/50 backdrop-blur-sm rounded-full flex items-center justify-center size-[32px] transition-all border border-white/40 shadow-sm"
         >
-          <Heart size={16} color="white" fill={localFavorited ? 'white' : 'none'} strokeWidth={2} />
+          <Heart size={16} color="white" fill={isActuallyFavorited ? 'white' : 'none'} strokeWidth={1.5} />
         </button>
       </div>
 
@@ -218,19 +222,19 @@ export default function OpportunityCard({
 
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-[13px] font-medium text-[#3A424E]/70">
-              <MapPin size={14} className="shrink-0" style={{ color: currentTheme.btnText }} />
+              <MapPin size={14} strokeWidth={1.5} className="shrink-0" style={{ color: currentTheme.btnText }} />
               <span className="truncate">{opportunity.location || 'Nacional / Internacional'}</span>
             </div>
             {(opportunity.type === 'sisu' || opportunity.type === 'prouni') ? (
               <div className="flex items-center gap-2 text-[13px] font-medium text-[#3A424E]/70">
-                <GraduationCap size={14} className="shrink-0" style={{ color: currentTheme.btnText }} />
+                <GraduationCap size={14} strokeWidth={1.5} className="shrink-0" style={{ color: currentTheme.btnText }} />
                 <span className="truncate">
                   Corte: {opportunity.min_cutoff_score?.toFixed(1) || '---'} a {opportunity.max_cutoff_score?.toFixed(1) || '---'}
                 </span>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-[13px] font-medium text-[#3A424E]/70">
-                <GraduationCap size={14} className="shrink-0" style={{ color: currentTheme.btnText }} />
+                <GraduationCap size={14} strokeWidth={1.5} className="shrink-0" style={{ color: currentTheme.btnText }} />
                 <span className="truncate">{opportunity.education_level || 'Graduação'}</span>
               </div>
             )}

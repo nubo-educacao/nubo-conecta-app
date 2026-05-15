@@ -25,6 +25,7 @@ export interface UserProfileData {
   country?: string | null;
   outside_brazil?: boolean;
   onboarding_completed?: boolean;
+  cpf?: string | null;
 }
 
 export interface UserIncomeData {

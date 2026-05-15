@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle2, User, Users } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import PartnerFormEngine, { type PartnerStep } from "@/components/forms/PartnerFormEngine";
 import { type PartnerFormField } from "@/components/forms/FormFieldRenderer";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/contexts/ProfileContext";
 
 interface ApplicationState {
   id: string;
@@ -20,15 +21,23 @@ interface ApplicationState {
 
 type PagePhase = "loading" | "form" | "submitted" | "error";
 
+interface UserProfile {
+  id: string;
+  full_name: string;
+  isdependent: boolean;
+}
+
 export default function PartnerFormsPage() {
   const { id: applicationId } = useParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const { activeProfileId, setActiveProfileId, profiles } = useProfile();
 
   const [phase, setPhase] = useState<PagePhase>("loading");
   const [steps, setSteps] = useState<PartnerStep[]>([]);
   const [fields, setFields] = useState<PartnerFormField[]>([]);
   const [application, setApplication] = useState<ApplicationState | null>(null);
+  const [selectedProfileId, setSelectedProfileId] = useState<string>("");
 
   const localStorageKey = `nubo_draft_${application?.partner_id}_${user!.id}`;
 
@@ -85,11 +94,25 @@ export default function PartnerFormsPage() {
       if (stepsRes.data) setSteps(stepsRes.data as PartnerStep[]);
       if (fieldsRes.data) setFields(fieldsRes.data as PartnerFormField[]);
 
+      // Initialize selected profile from ProfileContext or application user_id
+      setSelectedProfileId(activeProfileId ?? appState.partner_id ?? user!.id);
+
       setPhase("form");
     };
 
     boot();
   }, [user, applicationId]);
+
+  // ── Profile change ─────────────────────────────────────────────────────────
+  const handleProfileChange = async (profileId: string) => {
+    setSelectedProfileId(profileId);
+    setActiveProfileId(profileId);
+    if (!application) return;
+    await supabase
+      .from("student_applications")
+      .update({ user_id: profileId })
+      .eq("id", application.id);
+  };
 
   // ── Draft save ─────────────────────────────────────────────────────────────
   const handleSaveDraft = async (data: Record<string, unknown>) => {
@@ -185,6 +208,62 @@ export default function PartnerFormsPage() {
         >
           <ArrowLeft size={14} /> Minhas candidaturas
         </button>
+
+        {/* ── Titularidade ── */}
+        {profiles.length > 0 && (
+          <div className="px-4 pt-2 pb-4">
+            <p className="text-[11px] text-[#707A7E] font-bold uppercase mb-2">Candidatura para</p>
+            <div className="flex gap-3">
+              {/* Para mim */}
+              <button
+                onClick={() => handleProfileChange(user!.id)}
+                className={`flex-1 flex items-center gap-2 p-3 rounded-2xl border-[1.1px] text-left transition-all ${
+                  selectedProfileId === user!.id
+                    ? "border-[#38B1E4] bg-[rgba(56,177,228,0.05)]"
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                  selectedProfileId === user!.id ? "bg-[#38B1E4]" : "bg-gray-100"
+                }`}>
+                  <User size={15} className={selectedProfileId === user!.id ? "text-white" : "text-gray-400"} />
+                </div>
+                <div className="min-w-0">
+                  <p className={`text-[12px] font-bold truncate ${
+                    selectedProfileId === user!.id ? "text-[#38B1E4]" : "text-[#3a424e]"
+                  }`}>
+                    {profiles.find(p => p.id === user!.id)?.full_name ?? "Para mim"}
+                  </p>
+                </div>
+              </button>
+
+              {/* Dependente */}
+              {profiles.filter(p => p.isdependent).length > 0 && (
+                <div className={`flex-1 flex items-center gap-2 p-3 rounded-2xl border-[1.1px] transition-all ${
+                  selectedProfileId !== user!.id
+                    ? "border-[#38B1E4] bg-[rgba(56,177,228,0.05)]"
+                    : "border-gray-200"
+                }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                    selectedProfileId !== user!.id ? "bg-[#38B1E4]" : "bg-gray-100"
+                  }`}>
+                    <Users size={15} className={selectedProfileId !== user!.id ? "text-white" : "text-gray-400"} />
+                  </div>
+                  <select
+                    className="flex-1 bg-transparent text-[11px] text-[#707a7e] outline-none font-medium"
+                    value={selectedProfileId === user!.id ? "" : selectedProfileId}
+                    onChange={(e) => e.target.value && handleProfileChange(e.target.value)}
+                  >
+                    <option value="" disabled>Dependente...</option>
+                    {profiles.filter(p => p.isdependent).map(d => (
+                      <option key={d.id} value={d.id}>{d.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 px-4 pb-4">
           {application && (

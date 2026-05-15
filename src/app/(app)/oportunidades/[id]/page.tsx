@@ -117,49 +117,176 @@ async function getOpportunity(unifiedId: string): Promise<IUnifiedOpportunity | 
  * getRelatedOpportunities - Fetches all modalities (shifts/quotas) for the same course
  */
 async function getRelatedOpportunities(unifiedId: string): Promise<Opportunity[]> {
+  // Partner opportunities have no modalities to list
+  if (!unifiedId.startsWith('mec_')) return [];
+
   const supabase = await createSupabaseServerClient();
-  const uuid = unifiedId.replace('mec_', '').replace('partner_', '');
+  // unified_id is now mec_<course.id> — use it directly as course_id
+  const courseId = unifiedId.replace('mec_', '');
 
-  // 1. Get the course_id for this opportunity
-  const { data: currentOpp } = await supabase
-    .from('opportunities')
-    .select('course_id, institution_id')
-    .eq('id', uuid)
-    .single();
-
-  if (!currentOpp) return [];
-
-  // 2. Get all opportunities for this course and institution
-  const { data: related } = await supabase
+  const { data: allRelated } = await supabase
     .from('opportunities')
     .select('*')
-    .eq('course_id', currentOpp.course_id)
-    .eq('institution_id', currentOpp.institution_id)
+    .eq('course_id', courseId)
+    .order('year', { ascending: false })
+    .order('semester', { ascending: false })
     .order('shift', { ascending: true });
 
-  if (!related) return [];
+  if (!allRelated || allRelated.length === 0) return [];
 
-  return related.map(r => ({
-    id: `mec_${r.id}`,
-    shift: r.shift,
-    scholarship_type: r.scholarship_type,
-    concurrency_type: r.concurrency_type,
-    concurrency_tags: r.concurrency_tags,
-    scholarship_tags: r.scholarship_tags,
-    cutoff_score: r.cutoff_score,
-    opportunity_type: r.opportunity_type,
-    year: r.year,
-    semester: r.semester,
-    vacancies: r.vacancies ?? null,
-  }));
+  // Filter only the most recent cycle
+  const latestYear = allRelated[0].year;
+  const latestSemester = allRelated[0].semester;
+  
+  const related = allRelated.filter(r => r.year === latestYear && r.semester === latestSemester);
+
+  const oppIds = related.map(r => r.id);
+
+  const [ { data: sisuVacancies }, { data: prouniVacancies } ] = await Promise.all([
+    supabase.from('opportunities_sisu_vacancies').select('*').in('opportunity_id', oppIds),
+    supabase.from('opportunities_prouni_vacancies').select('*').in('opportunity_id', oppIds),
+  ]);
+
+  const mapped = related.map(r => {
+    const sisuVac = sisuVacancies?.find((sv: any) => sv.opportunity_id === r.id);
+    const prouniVac = prouniVacancies?.filter((pv: any) => pv.opportunity_id === r.id) || [];
+    
+    let vacancies = null;
+    let concurrency_type = r.concurrency_type;
+
+    if (sisuVac) {
+       vacancies = {
+         broad_competition_offered: sisuVac.qt_vagas_ofertadas,
+         quotas_offered: 0,
+       };
+       if (sisuVac.tp_cota || sisuVac.ds_mod_concorrencia) {
+         concurrency_type = String(sisuVac.tp_cota ?? sisuVac.ds_mod_concorrencia);
+       }
+    } else if (prouniVac.length > 0) {
+       const ampla = prouniVac.reduce((sum: number, v: any) => sum + (v.bolsas_ampla_ofertada || 0), 0);
+       const cota = prouniVac.reduce((sum: number, v: any) => sum + (v.bolsas_cota_ofertada || 0), 0);
+       vacancies = {
+         broad_competition_offered: ampla,
+         quotas_offered: cota,
+       };
+    } else {
+       vacancies = r.vacancies; // fallback to jsonb if not normalized yet
+    }
+
+    let cutoff_score = r.cutoff_score;
+    let cutoff_score_year = null;
+
+    if (cutoff_score == null) {
+      const pastMatch = allRelated.find(past => {
+         const isOlder = past.year < r.year || (past.year === r.year && (past.semester || '') < (r.semester || ''));
+         const isSameShift = past.shift === r.shift;
+         
+         const isSameQuota = (r.concurrency_tags && past.concurrency_tags)
+           ? JSON.stringify(past.concurrency_tags) === JSON.stringify(r.concurrency_tags)
+           : past.concurrency_type === r.concurrency_type;
+
+         return isOlder && isSameShift && isSameQuota && past.cutoff_score != null;
+      });
+      if (pastMatch) {
+         cutoff_score = pastMatch.cutoff_score;
+         cutoff_score_year = pastMatch.year;
+      }
+    }
+
+    return {
+      id: `mec_${r.id}`,
+      shift: r.shift,
+      scholarship_type: r.scholarship_type,
+      concurrency_type,
+      concurrency_tags: r.concurrency_tags,
+      scholarship_tags: r.scholarship_tags,
+      cutoff_score,
+      cutoff_score_year,
+      opportunity_type: r.opportunity_type,
+      year: r.year,
+      semester: r.semester,
+      vacancies: vacancies ?? null,
+      _raw_tp_cota: sisuVac?.tp_cota ?? sisuVac?.ds_mod_concorrencia ?? null,
+    };
+  });
+
+  // Deduplicate identical modalities
+  const uniqueRelated: Opportunity[] = [];
+  const seen = new Set();
+  
+  for (const item of mapped) {
+    // create a unique signature for this opportunity to filter DB duplicates
+    const key = `${item.year}|${item.semester}|${item.shift}|${item._raw_tp_cota || item.concurrency_type}|${JSON.stringify(item.concurrency_tags)}|${item.cutoff_score}|${item.vacancies?.broad_competition_offered}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      const { _raw_tp_cota, ...cleanItem } = item;
+      uniqueRelated.push(cleanItem as Opportunity);
+    }
+  }
+
+  return uniqueRelated;
+}
+
+type SisuVacancyRow = Record<string, unknown>;
+type ProuniVacancyRow = Record<string, unknown>;
+type ApprovalRow = Record<string, unknown>;
+
+/**
+ * getApprovalStats — queries opportunities_sisu_approvals for approved-student statistics.
+ * Returns null if the table does not exist yet or no data found.
+ */
+async function getApprovalStats(unifiedId: string): Promise<ApprovalRow[] | null> {
+  if (!unifiedId.startsWith('mec_')) return null;
+
+  const supabase = await createSupabaseServerClient();
+  const courseId = unifiedId.replace('mec_', '');
+
+  const { data: opps, error: oppsErr } = await supabase
+    .from('opportunities')
+    .select('id, year, semester')
+    .eq('course_id', courseId)
+    .eq('opportunity_type', 'sisu');
+
+  if (oppsErr || !opps || opps.length === 0) return null;
+
+  const oppIds = opps.map((o) => o.id);
+
+  const { data, error } = await supabase
+    .from('opportunities_sisu_approvals')
+    .select(
+      'opportunity_id, tipo_concorrencia, modalidade_concorrencia, qt_aprovados, nota_minima, nota_maxima, nota_media',
+    )
+    .in('opportunity_id', oppIds)
+    .order('qt_aprovados', { ascending: false });
+
+  if (error || !data || data.length === 0) return null;
+
+  // Filter to only include the latest cycle that has approvals
+  const approvalsWithCycle = data.map(app => {
+    const opp = opps.find(o => o.id === app.opportunity_id);
+    return { ...app, year: opp?.year || 0, semester: opp?.semester || '' };
+  });
+
+  let maxYear = 0;
+  let maxSemester = '';
+  for (const app of approvalsWithCycle) {
+    if (app.year > maxYear || (app.year === maxYear && app.semester > maxSemester)) {
+      maxYear = app.year;
+      maxSemester = app.semester;
+    }
+  }
+
+  const latestApprovals = approvalsWithCycle.filter(app => app.year === maxYear && app.semester === maxSemester);
+  return latestApprovals as ApprovalRow[];
 }
 
 export default async function OpportunityDetailPage({ params }: PageProps) {
   const { id } = await params;
   const unifiedId = decodeURIComponent(id);
-  const [opportunity, relatedOpportunities] = await Promise.all([
+  const [opportunity, relatedOpportunities, approvalStats] = await Promise.all([
     getOpportunity(unifiedId),
-    getRelatedOpportunities(unifiedId)
+    getRelatedOpportunities(unifiedId),
+    getApprovalStats(unifiedId),
   ]);
 
   if (!opportunity) {
@@ -169,9 +296,10 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
   return (
     <AppShell>
       <RequireAuth />
-      <DetailsLayout 
+      <DetailsLayout
         opportunity={opportunity}
         relatedOpportunities={relatedOpportunities}
+        approvalStats={approvalStats}
       />
     </AppShell>
   );
