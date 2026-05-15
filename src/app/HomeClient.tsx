@@ -4,7 +4,7 @@
 // Renderiza seções dinamicamente a partir do array sections fornecido pelo Server Component.
 // A lógica de match, auth e CTA é mantida; a renderização de carrosséis é agora orientada por dados.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DynamicCTA, { type CTAState } from '@/components/home/DynamicCTA';
 import HeroSearch from '@/components/home/HeroSearch';
@@ -27,6 +27,25 @@ export default function HomeClient({ sections }: HomeClientProps) {
   const { user, loading, setShowAuthModal } = useAuth();
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
   const [appsLoading, setAppsLoading] = useState(true);
+  const welcomeBackSentRef = useRef<string>('');
+
+  // Dispatch welcome_back once per authenticated session on Home mount
+  // useSystemIntents (in ChatFAB) listens for 'cloudinha-intent' and surfaces the response
+  useEffect(() => {
+    if (!user) return;
+    const key = `${user.id}::welcome_back`;
+    if (welcomeBackSentRef.current === key) return;
+    welcomeBackSentRef.current = key;
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('cloudinha-intent', {
+          detail: { intent_type: 'system_intent', type: 'welcome_back', metadata: {} },
+        }),
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) {
