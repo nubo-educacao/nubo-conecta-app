@@ -2,36 +2,40 @@
 
 // InstitutionCarousel — Sprint 3.8
 // Premium horizontal scrollable carousel with logo/cover cards.
-// Uses App shadow system and Montserrat typography.
+// Updated to use InstitutionCard.tsx
 
 import { useRef } from 'react';
-import { BookOpen } from 'lucide-react';
-
-interface Institution {
-  id: string;
-  name: string;
-  location: string;
-  logo_url?: string | null;
-  cover_url?: string | null;
-  description?: string | null;
-  brand_color?: string | null;
-}
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import InstitutionCard from '@/components/InstitutionCard';
+import type { UnifiedInstitution } from '@/types/institutions';
 
 interface InstitutionCarouselProps {
-  institutions: Institution[];
+  institutions: UnifiedInstitution[];
   seeAllHref?: string;
+  desktopGridMode?: boolean;
 }
 
 export default function InstitutionCarousel({
   institutions,
   seeAllHref = '/instituicoes',
+  desktopGridMode = false,
 }: InstitutionCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  function scroll(dir: 'left' | 'right') {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === 'left' ? -320 : 320, behavior: 'smooth' });
+  }
+
   if (institutions.length === 0) return null;
+
+  // Desktop: máximo 3 items quando em grid mode (Regra Grid-3 da Sprint 3.5)
+  const desktopItems = desktopGridMode ? institutions.slice(0, 3) : institutions;
 
   return (
     <section className="flex flex-col gap-3">
+      {/* Header */}
       <div className="flex items-center justify-between px-4">
         <h2
           className="text-base font-bold"
@@ -39,91 +43,63 @@ export default function InstitutionCarousel({
         >
           Instituições em destaque
         </h2>
-        <a
-          href={seeAllHref}
-          className="text-xs font-semibold"
-          style={{ color: '#38B1E4', fontFamily: 'Montserrat, sans-serif' }}
-        >
-          Ver todas
-        </a>
+        <div className="flex items-center gap-2">
+          {/* Scroll arrows — desktop, só no modo carrossel */}
+          {!desktopGridMode && (
+            <>
+              <button
+                onClick={() => scroll('left')}
+                className="hidden md:flex items-center justify-center w-7 h-7 rounded-full transition-all hover:bg-black/5"
+                aria-label="Anterior"
+              >
+                <ChevronLeft size={16} style={{ color: '#636e7c' }} />
+              </button>
+              <button
+                onClick={() => scroll('right')}
+                className="hidden md:flex items-center justify-center w-7 h-7 rounded-full transition-all hover:bg-black/5"
+                aria-label="Próximo"
+              >
+                <ChevronRight size={16} style={{ color: '#636e7c' }} />
+              </button>
+            </>
+          )}
+          <a
+            href={seeAllHref}
+            className="text-xs font-semibold"
+            style={{ color: '#38B1E4', fontFamily: 'Montserrat, sans-serif' }}
+          >
+            Ver todas
+          </a>
+        </div>
       </div>
 
+      {/* Mobile: carrossel — oculto em md+ quando desktopGridMode */}
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto pb-2 pl-4 pr-4 snap-x snap-mandatory scroll-smooth"
+        className={`flex gap-4 overflow-x-auto pb-2 pl-4 pr-4 snap-x snap-mandatory scroll-smooth ${
+          desktopGridMode ? 'md:hidden' : ''
+        }`}
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {institutions.map((inst) => (
-          <a
+          <div
             key={inst.id}
-            href={`/instituicoes/${inst.id}`}
-            className="flex-shrink-0 snap-start flex flex-col rounded-[16px] overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg"
-            style={{
-              width: 200,
-              boxShadow: '0px 8px 24px -4px rgba(181,183,192,0.3)',
-              background: '#fff',
-            }}
+            className="flex-shrink-0 snap-start"
+            style={{ width: 'min(361px, 85vw)' }}
           >
-            {/* Cover / Brand Color header */}
-            <div
-              className="relative w-full h-[80px]"
-              style={{
-                background: inst.cover_url
-                  ? undefined
-                  : inst.brand_color
-                    ? inst.brand_color
-                    : 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)',
-              }}
-            >
-              {inst.cover_url && (
-                <img
-                  src={inst.cover_url}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              )}
-              {/* Logo overlay */}
-              {inst.logo_url ? (
-                <div
-                  className="absolute -bottom-4 left-3 w-[36px] h-[36px] rounded-full bg-white border-2 border-white flex items-center justify-center overflow-hidden"
-                  style={{
-                    boxShadow: '0px 2px 8px rgba(0,0,0,0.12)',
-                  }}
-                >
-                  <img src={inst.logo_url} alt={inst.name} className="w-full h-full object-contain p-0.5" />
-                </div>
-              ) : (
-                <div
-                  className="absolute -bottom-4 left-3 w-[36px] h-[36px] rounded-full bg-white border-2 border-white flex items-center justify-center"
-                  style={{
-                    boxShadow: '0px 2px 8px rgba(0,0,0,0.12)',
-                  }}
-                >
-                  <BookOpen size={14} style={{ color: '#38B1E4' }} />
-                </div>
-              )}
-            </div>
-
-            {/* Body */}
-            <div className="px-3 pt-6 pb-3 flex flex-col gap-1">
-              <p
-                className="text-xs font-bold line-clamp-2 leading-tight"
-                style={{ color: '#3a424e', fontFamily: 'Montserrat, sans-serif' }}
-              >
-                {inst.name}
-              </p>
-              {inst.location && (
-                <p
-                  className="text-[10px]"
-                  style={{ color: '#707A7E', fontFamily: 'Montserrat, sans-serif' }}
-                >
-                  {inst.location}
-                </p>
-              )}
-            </div>
-          </a>
+            <InstitutionCard institution={inst} />
+          </div>
         ))}
       </div>
+
+      {/* Desktop: grid — visível apenas em md+ quando desktopGridMode */}
+      {desktopGridMode && (
+        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6 px-4">
+          {desktopItems.map((inst) => (
+            <InstitutionCard key={inst.id} institution={inst} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

@@ -90,7 +90,7 @@ export default function DynamicCTA({
   if (state === 'no-applications') {
     return (
       <Link
-        href="/new-application"
+        href="/oportunidades"
         className={cardBaseClass}
         style={{ background: 'white', borderColor: 'rgba(56,177,228,0.2)', color: '#024F86' }}
       >

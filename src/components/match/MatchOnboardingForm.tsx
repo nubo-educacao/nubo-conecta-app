@@ -221,6 +221,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         if (data.profile) {
           setFullName(data.profile.full_name || '');
           setBirthDate(data.profile.birth_date || '');
+          setCpf(data.profile.cpf || '');
           setEducation(data.profile.education || '');
           setEducationYear(data.profile.education_year || '');
           setOutsideBrazil(data.profile.outside_brazil || false);
@@ -267,7 +268,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
 
         if (data.enemScores && data.enemScores.length > 0) {
           const scores: Record<string, YearScores> = {};
-          let latestYear = '2026';
+          let latestYear = '2025';
           data.enemScores.forEach((s: any) => {
             scores[s.year.toString()] = {
               ling: s.nota_linguagens?.toString() || '',
@@ -394,6 +395,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
       await saveUserData(userId, {
         full_name: fullName,
         birth_date: birthDate,
+        cpf: cpf || null,
         age: calculateAge(birthDate) || undefined,
         education,
         education_year: educationYear || 'N/A',
@@ -559,6 +561,16 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                 />
               </div>
               <div>
+                <FieldLabel label="CPF (Opcional)" icon={Hash} htmlFor="cpf" />
+                <input 
+                  id="cpf"
+                  className={inputCls} 
+                  placeholder="000.000.000-00"
+                  value={cpf}
+                  onChange={e => setCpf(e.target.value)}
+                />
+              </div>
+              <div className="md:col-span-2">
                 <FieldLabel label="Escolaridade" icon={GraduationCap} required error={errors.education} htmlFor="education" />
                 <select id="education" className={inputCls} value={education} onChange={e => setEducation(e.target.value)}>
                   <option value="">Selecione...</option>
@@ -648,7 +660,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                 <div>
                   <FieldLabel label="Ano" />
                   <div className="flex gap-2">
-                    {[2026, 2025, 2024].map(y => (
+                    {[2025, 2024, 2023].map(y => (
                       <button
                         key={y}
                         type="button"

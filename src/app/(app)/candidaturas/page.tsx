@@ -83,33 +83,6 @@ const cardVariants = {
 
 const SHOW_STEPPER_FOR: AppStatus[] = ["SUBMITTED", "IN_REVIEW", "APPROVED"];
 
-// Simple Cloudinha SVG illustration
-function CloudinhaIllustration() {
-  return (
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <circle cx="32" cy="32" r="32" fill="rgba(48,146,187,0.08)" />
-      <ellipse cx="32" cy="30" rx="18" ry="14" fill="#38B1E4" />
-      <ellipse cx="20" cy="34" rx="8" ry="6" fill="#38B1E4" />
-      <ellipse cx="44" cy="34" rx="8" ry="6" fill="#38B1E4" />
-      <ellipse cx="32" cy="26" rx="12" ry="10" fill="#5AC8F0" />
-      {/* eyes */}
-      <circle cx="28" cy="25" r="2.5" fill="white" />
-      <circle cx="36" cy="25" r="2.5" fill="white" />
-      <circle cx="28.8" cy="25.8" r="1.2" fill="#024F86" />
-      <circle cx="36.8" cy="25.8" r="1.2" fill="#024F86" />
-      {/* smile */}
-      <path d="M28 30 Q32 33 36 30" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-      {/* body legs */}
-      <rect x="26" y="42" width="5" height="8" rx="2.5" fill="#024F86" />
-      <rect x="33" y="42" width="5" height="8" rx="2.5" fill="#024F86" />
-      {/* body */}
-      <rect x="22" y="38" width="20" height="10" rx="5" fill="#024F86" />
-      {/* star badge */}
-      <circle cx="48" cy="14" r="6" fill="#FFD700" />
-      <text x="45.5" y="18" fontSize="8" fill="#024F86" fontWeight="bold">★</text>
-    </svg>
-  );
-}
 
 export default function CandidaturasPage() {
   const { user, setShowAuthModal } = useAuth();
@@ -136,17 +109,17 @@ export default function CandidaturasPage() {
         const mapped = (data || []).map((row: Record<string, unknown>) => {
           const opp = (row.partner_opportunities as Record<string, unknown> | null) ?? {};
           const inst = (opp.institutions as Record<string, string> | null) ?? {};
-          const pi  = (opp.partner_institutions as Record<string, string> | null) ?? {};
+          const pi = (opp.partner_institutions as Record<string, string> | null) ?? {};
           return {
-            id:               row.id as string,
-            partner_id:       row.partner_id as string,
-            status:           row.status as string,
-            created_at:       row.created_at as string,
-            updated_at:       row.updated_at as string,
+            id: row.id as string,
+            partner_id: row.partner_id as string,
+            status: row.status as string,
+            created_at: row.created_at as string,
+            updated_at: row.updated_at as string,
             eligibility_score: row.eligibility_score as number | null,
             opportunity_name: (opp.name as string) ?? null,
             institution_name: (inst.name as string) ?? null,
-            logo_url:         pi.logo_url ?? null,
+            logo_url: pi.logo_url ?? null,
           };
         });
         setApplications(mapped);
@@ -155,7 +128,7 @@ export default function CandidaturasPage() {
   }, [user]);
 
   const handleCardClick = (app: ApplicationCard) => {
-    router.push(`/new-application/${app.partner_id}`);
+    router.push(`/partner-forms/${app.id}`);
   };
 
   return (
@@ -168,7 +141,7 @@ export default function CandidaturasPage() {
             <p className="text-[13px] text-[#636e7c] mt-0.5">Acompanhe suas inscrições</p>
           </div>
           <button
-            onClick={() => router.push("/new-application")}
+            onClick={() => router.push("/oportunidades")}
             className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#3092bb] text-white text-xs font-semibold shadow-md hover:shadow-lg transition-all"
           >
             <Plus size={14} /> Nova
@@ -186,7 +159,7 @@ export default function CandidaturasPage() {
           /* Not logged in empty state */
           <div className="flex items-center justify-center pt-4">
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 w-full max-w-sm flex flex-col items-center gap-2 text-center">
-              <CloudinhaIllustration />
+              <img src="/assets/cloudinha-candidaturas.png" alt="" className="w-[120px] h-[120px]" />
               <p className="text-sm font-semibold text-[#3a424e] mt-1">Nenhuma candidatura por aqui</p>
               <p className="text-xs text-[#707a7e]">Faça login e explore suas oportunidades</p>
               <button
@@ -201,7 +174,7 @@ export default function CandidaturasPage() {
           /* Logged in but no applications */
           <div className="flex items-center justify-center pt-4">
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 w-full max-w-sm flex flex-col items-center gap-2 text-center">
-              <CloudinhaIllustration />
+              <img src="/assets/cloudinha-candidaturas.png" alt="" className="w-[120px] h-[120px]" />
               <p className="text-sm font-semibold text-[#3a424e] mt-1">Nenhuma candidatura por aqui</p>
               <p className="text-xs text-[#707a7e]">Explore oportunidades e inicie sua primeira candidatura</p>
               <button

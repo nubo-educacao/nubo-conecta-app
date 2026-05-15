@@ -13,4 +13,8 @@ export interface UnifiedInstitution {
   brand_color: string | null;
   description: string | null;
   type: InstitutionType;
+  opp_types?: string[] | null;
+  acronym?: string | null;
+  academic_organization?: string | null;
+  administrative_category?: string | null;
 }

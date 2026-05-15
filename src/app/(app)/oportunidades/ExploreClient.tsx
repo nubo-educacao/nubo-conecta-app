@@ -8,7 +8,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useRef, useCallback } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import FilterModal from './FilterModal';
 import type { IUnifiedOpportunity, ExploreFilters } from '@/types/opportunities';
@@ -24,9 +24,11 @@ const CATEGORY_PILLS = [
 interface ExploreClientProps {
   opportunities: IUnifiedOpportunity[];
   filters: ExploreFilters;
+  currentPage: number;
+  pageSize: number;
 }
 
-export default function ExploreClient({ opportunities, filters }: ExploreClientProps) {
+export default function ExploreClient({ opportunities, filters, currentPage, pageSize }: ExploreClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filterModalOpen, setFilterModalOpen] = useState(false);
@@ -35,8 +37,9 @@ export default function ExploreClient({ opportunities, filters }: ExploreClientP
   const updateParam = useCallback(
     (updates: Record<string, string | undefined>) => {
       const params = new URLSearchParams(searchParams.toString());
-      // Preserve tab=explore
+      // Preserve tab=explore, reset page on filter change
       params.set('tab', 'explore');
+      params.delete('page');
       for (const [key, value] of Object.entries(updates)) {
         if (value === undefined || value === '') {
           params.delete(key);
@@ -48,6 +51,14 @@ export default function ExploreClient({ opportunities, filters }: ExploreClientP
     },
     [router, searchParams],
   );
+
+  const goToPage = (p: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', 'explore');
+    if (p > 0) params.set('page', String(p));
+    else params.delete('page');
+    router.push(`?${params.toString()}`, { scroll: true });
+  };
 
   const handleSearch = useCallback(
     (value: string) => {
@@ -131,7 +142,7 @@ export default function ExploreClient({ opportunities, filters }: ExploreClientP
         })}
       </div>
 
-      {/* Results grid — Figma node 22:1948 */}
+      {/* Results grid */}
       {opportunities.length === 0 ? (
         <p
           className="text-center py-12 text-[14px]"
@@ -140,11 +151,49 @@ export default function ExploreClient({ opportunities, filters }: ExploreClientP
           Nenhuma oportunidade encontrada.
         </p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
-          {opportunities.map((opp) => (
-            <OpportunityCard key={opp.id} opportunity={opp} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+            {opportunities.map((opp) => (
+              <OpportunityCard key={opp.id} opportunity={opp} />
+            ))}
+          </div>
+
+          {/* Pagination controls */}
+          <div className="flex items-center justify-between pt-2">
+            <p
+              className="text-[12px]"
+              style={{ color: '#636e7c', fontFamily: 'Montserrat, sans-serif' }}
+            >
+              {currentPage * pageSize + 1}–{currentPage * pageSize + opportunities.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 0}
+                className="flex items-center justify-center w-9 h-9 rounded-full transition-all disabled:opacity-30"
+                style={{ background: 'rgba(48,146,187,0.1)' }}
+                aria-label="Página anterior"
+              >
+                <ChevronLeft size={16} style={{ color: '#3092bb' }} />
+              </button>
+              <span
+                className="text-[13px] font-bold px-3 py-1.5 rounded-full"
+                style={{ background: '#3092bb', color: '#fff', fontFamily: 'Montserrat, sans-serif' }}
+              >
+                {currentPage + 1}
+              </span>
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={opportunities.length < pageSize}
+                className="flex items-center justify-center w-9 h-9 rounded-full transition-all disabled:opacity-30"
+                style={{ background: 'rgba(48,146,187,0.1)' }}
+                aria-label="Próxima página"
+              >
+                <ChevronRight size={16} style={{ color: '#3092bb' }} />
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       <FilterModal

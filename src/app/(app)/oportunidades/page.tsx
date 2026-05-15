@@ -12,6 +12,8 @@ import { getUnifiedOpportunities } from '@/services/opportunities';
 import OpportunitiesClient from './OpportunitiesClient';
 import type { ExploreFilters } from '@/types/opportunities';
 
+const PAGE_SIZE = 15;
+
 interface PageProps {
   searchParams: Promise<{
     // legado Sprint 02 — mantido para compatibilidade
@@ -25,6 +27,7 @@ interface PageProps {
     shift?: string;
     min_igc?: string;
     price_range?: string;
+    page?: string;
   }>;
 }
 
@@ -34,6 +37,8 @@ export default async function OpportunitiesPage({ searchParams }: PageProps) {
   // Derivar tab ativo: ?tab= tem prioridade sobre legado ?mode=
   const activeTab: 'para-voce' | 'explore' =
     params.tab === 'explore' || params.mode === 'explorar' ? 'explore' : 'para-voce';
+
+  const currentPage = Math.max(0, parseInt(params.page ?? '0') || 0);
 
   const filters: ExploreFilters = {
     q:        params.q,
@@ -47,11 +52,11 @@ export default async function OpportunitiesPage({ searchParams }: PageProps) {
     price_range: params.price_range as ExploreFilters['price_range'],
   };
 
-  // Server-side fetch — fails loud if DB is down (PLAYBOOK § 1)
+  // Server-side fetch com paginação de 15 itens
   const opportunities = await getUnifiedOpportunities({ 
     mode: activeTab === 'explore' ? 'explorar' : 'para-voce', 
-    page: 0, 
-    limit: 30,
+    page: currentPage, 
+    limit: PAGE_SIZE,
     ...filters
   });
 
@@ -61,6 +66,8 @@ export default async function OpportunitiesPage({ searchParams }: PageProps) {
         opportunities={opportunities}
         activeTab={activeTab}
         filters={filters}
+        currentPage={currentPage}
+        pageSize={PAGE_SIZE}
       />
     </AppShell>
   );

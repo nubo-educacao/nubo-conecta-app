@@ -12,7 +12,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, Sparkles } from 'lucide-react';
+import { RefreshCw, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import MatchOnboardingForm from '@/components/match/MatchOnboardingForm';
@@ -23,14 +23,24 @@ interface OpportunitiesClientProps {
   opportunities: IUnifiedOpportunity[];
   activeTab: 'para-voce' | 'explore';
   filters: ExploreFilters;
+  currentPage: number;
+  pageSize: number;
 }
 
-export default function OpportunitiesClient({ opportunities, activeTab, filters }: OpportunitiesClientProps) {
+export default function OpportunitiesClient({ opportunities, activeTab, filters, currentPage, pageSize }: OpportunitiesClientProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [isRefining, setIsRefining] = useState(false);
   
   const onboardingCompleted = user?.user_metadata?.onboarding_completed as boolean | undefined;
+
+  // Helpers para navegar de página mantendo todos os outros params
+  const goToPage = (p: number) => {
+    const params = new URLSearchParams();
+    params.set('tab', activeTab);
+    if (p > 0) params.set('page', String(p));
+    router.push(`?${params.toString()}`, { scroll: true });
+  };
 
   // Reset refinement state when switching tabs
   useEffect(() => {
@@ -42,7 +52,7 @@ export default function OpportunitiesClient({ opportunities, activeTab, filters 
   };
 
   return (
-    <div className="flex flex-col gap-4 px-4 pt-6 pb-24 mx-auto w-full max-w-7xl">
+    <div className="flex flex-col gap-4 px-4 pt-6 pb-10 mx-auto w-full max-w-7xl">
       {/* PageHeader — Figma: Bold 20px #3a424e + Regular 13px #636e7c */}
       <div className="flex flex-col gap-1">
         <h1
@@ -170,11 +180,49 @@ export default function OpportunitiesClient({ opportunities, activeTab, filters 
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
-                  {opportunities.map((opp) => (
-                    <OpportunityCard key={opp.id} opportunity={opp} />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+                    {opportunities.map((opp) => (
+                      <OpportunityCard key={opp.id} opportunity={opp} />
+                    ))}
+                  </div>
+
+                  {/* Pagination controls */}
+                  <div className="flex items-center justify-between pt-2">
+                    <p
+                      className="text-[12px]"
+                      style={{ color: '#636e7c', fontFamily: 'Montserrat, sans-serif' }}
+                    >
+                      {currentPage * pageSize + 1}–{currentPage * pageSize + opportunities.length} de muitas oportunidades
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => goToPage(currentPage - 1)}
+                        disabled={currentPage === 0}
+                        className="flex items-center justify-center w-9 h-9 rounded-full transition-all disabled:opacity-30"
+                        style={{ background: 'rgba(48,146,187,0.1)' }}
+                        aria-label="Página anterior"
+                      >
+                        <ChevronLeft size={16} style={{ color: '#3092bb' }} />
+                      </button>
+                      <span
+                        className="text-[13px] font-bold px-3 py-1.5 rounded-full"
+                        style={{ background: '#3092bb', color: '#fff', fontFamily: 'Montserrat, sans-serif' }}
+                      >
+                        {currentPage + 1}
+                      </span>
+                      <button
+                        onClick={() => goToPage(currentPage + 1)}
+                        disabled={opportunities.length < pageSize}
+                        className="flex items-center justify-center w-9 h-9 rounded-full transition-all disabled:opacity-30"
+                        style={{ background: 'rgba(48,146,187,0.1)' }}
+                        aria-label="Próxima página"
+                      >
+                        <ChevronRight size={16} style={{ color: '#3092bb' }} />
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -190,7 +238,7 @@ export default function OpportunitiesClient({ opportunities, activeTab, filters 
             </p>
           }
         >
-          <ExploreClient opportunities={opportunities} filters={filters} />
+          <ExploreClient opportunities={opportunities} filters={filters} currentPage={currentPage} pageSize={pageSize} />
         </Suspense>
       )}
     </div>

@@ -135,10 +135,23 @@ export default function TopBar({ title }: TopBarProps) {
             >
               {/* Avatar */}
               <span
-                className="flex items-center justify-center rounded-full h-8 w-8 shrink-0 text-white text-sm font-bold"
+                className="flex items-center justify-center rounded-full h-8 w-8 shrink-0 text-white text-sm font-bold overflow-hidden"
                 style={{ background: "linear-gradient(135deg, #38B1E4 0%, #024F86 100%)" }}
               >
-                {user ? userInitial : <User className="h-4 w-4" strokeWidth={1.5} />}
+                {user ? (
+                  activeProfile?.avatar_url ? (
+                    <img 
+                      src={activeProfile.avatar_url} 
+                      alt={userLabel} 
+                      className="w-full h-full object-cover" 
+                      style={{ imageRendering: "auto", transform: "translateZ(0)" }}
+                    />
+                  ) : (
+                    userInitial
+                  )
+                ) : (
+                  <User className="h-4 w-4" strokeWidth={1.5} />
+                )}
               </span>
 
               {/* Label — apenas desktop */}
@@ -212,33 +225,44 @@ export default function TopBar({ title }: TopBarProps) {
                 {/* Perfis */}
                 {profiles.length > 0 && (
                   <div className="py-1 border-b border-black/5">
-                    {profiles.map((p) => {
-                      const isActive = p.id === activeProfileId;
-                      const label = p.full_name ?? (p.isdependent ? "Dependente" : "Titular");
-                      return (
-                        <button
-                          key={p.id}
-                          onClick={() => handleSwitchProfile(p.id)}
-                          className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm transition-colors hover:bg-black/5"
-                          style={{
-                            color: isActive ? "#3092bb" : "#3A424E",
-                            fontFamily: "Montserrat, sans-serif",
-                            fontWeight: isActive ? 600 : 400,
-                          }}
-                        >
-                          <span
-                            className="flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold shrink-0"
-                            style={{ background: "linear-gradient(135deg, #38B1E4 0%, #024F86 100%)" }}
+                    {[...profiles]
+                      .sort((a, b) => (a.id === activeProfileId ? -1 : b.id === activeProfileId ? 1 : 0))
+                      .map((p) => {
+                        const isActive = p.id === activeProfileId;
+                        const label = p.full_name ?? (p.isdependent ? "Dependente" : "Titular");
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => handleSwitchProfile(p.id)}
+                            className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm transition-colors hover:bg-black/5"
+                            style={{
+                              color: isActive ? "#3092bb" : "#3A424E",
+                              fontFamily: "Montserrat, sans-serif",
+                              fontWeight: isActive ? 600 : 400,
+                            }}
                           >
-                            {label.charAt(0).toUpperCase()}
-                          </span>
-                          <span className="truncate flex-1 text-left">
-                            {p.isdependent ? `Trocar para: ${label}` : label}
-                          </span>
-                          {isActive && <Check size={14} style={{ color: "#3092bb" }} />}
-                        </button>
-                      );
-                    })}
+                            <span
+                              className="flex items-center justify-center w-6 h-6 rounded-full text-white text-[10px] font-bold shrink-0 overflow-hidden"
+                              style={{ background: "linear-gradient(135deg, #38B1E4 0%, #024F86 100%)" }}
+                            >
+                              {p.avatar_url ? (
+                                <img 
+                                  src={p.avatar_url} 
+                                  alt={label} 
+                                  className="w-full h-full object-cover" 
+                                  style={{ imageRendering: "auto", transform: "translateZ(0)" }}
+                                />
+                              ) : (
+                                label.charAt(0).toUpperCase()
+                              )}
+                            </span>
+                            <span className="truncate flex-1 text-left">
+                              {isActive ? label : `Trocar para: ${label}`}
+                            </span>
+                            {isActive && <Check size={14} style={{ color: "#3092bb" }} />}
+                          </button>
+                        );
+                      })}
                   </div>
                 )}
 

@@ -3,6 +3,7 @@ import { Montserrat } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
+import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import CloudBackground from "@/components/CloudBackground";
 import ChatFAB from "@/components/chat/ChatFAB";
 import GlobalAuthModal from "@/components/auth/GlobalAuthModal";
@@ -31,11 +32,13 @@ export default function RootLayout({
         <CloudBackground />
         <AuthProvider>
           <ProfileProvider>
-            <div className="relative z-10 min-h-screen">
-              {children}
-            </div>
-            <ChatFAB />
-            <GlobalAuthModal />
+            <FavoritesProvider>
+              <div className="relative z-10 min-h-screen">
+                {children}
+              </div>
+              <ChatFAB />
+              <GlobalAuthModal />
+            </FavoritesProvider>
           </ProfileProvider>
         </AuthProvider>
       </body>

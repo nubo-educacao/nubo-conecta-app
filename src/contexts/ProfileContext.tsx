@@ -8,6 +8,7 @@ export interface ProfileSummary {
   id: string;
   full_name: string | null;
   isdependent: boolean;
+  avatar_url?: string | null;
 }
 
 interface ProfileContextValue {
@@ -23,7 +24,12 @@ const LS_KEY = "nubo:active_profile_id";
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [activeProfileId, setActiveProfileIdState] = useState<string | null>(null);
+  const [activeProfileId, setActiveProfileIdState] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(LS_KEY);
+    }
+    return null;
+  });
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
 
   const setActiveProfileId = useCallback((id: string) => {
@@ -37,7 +43,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     // titular
     const { data: titular } = await supabase
       .from("user_profiles")
-      .select("id, full_name, isdependent")
+      .select("id, full_name, isdependent, avatar_url")
       .eq("id", user.id)
       .limit(1)
       .single();
@@ -45,7 +51,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     // dependentes
     const { data: dependentes } = await supabase
       .from("user_profiles")
-      .select("id, full_name, isdependent")
+      .select("id, full_name, isdependent, avatar_url")
       .eq("parent_user_id", user.id);
 
     const all: ProfileSummary[] = [];
@@ -62,19 +68,22 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Restaura do localStorage ou usa user.id
-    const stored = localStorage.getItem(LS_KEY);
-    setActiveProfileIdState(stored ?? user.id);
+    // Se não tinha nada no localStorage (ou no estado inicial), usa o user.id
+    if (!activeProfileId) {
+      const stored = localStorage.getItem(LS_KEY);
+      setActiveProfileIdState(stored ?? user.id);
+    }
 
     refreshProfiles();
   }, [user, refreshProfiles]);
 
-  // Limpa no logout (user passa a null pelo AuthContext)
+  // Limpa no logout (user passa a null pelo AuthContext e loading é false)
+  const { loading } = useAuth();
   useEffect(() => {
-    if (!user) {
+    if (!loading && !user) {
       localStorage.removeItem(LS_KEY);
     }
-  }, [user]);
+  }, [user, loading]);
 
   return (
     <ProfileContext.Provider value={{ activeProfileId, setActiveProfileId, profiles, refreshProfiles }}>
