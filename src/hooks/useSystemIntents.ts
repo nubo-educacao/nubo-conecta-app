@@ -165,6 +165,67 @@ export function useSystemIntents({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, userId, accessToken]);
 
+  // Escutar CustomEvents do PartnerFormEngine (step_change, validation_error)
+  useEffect(() => {
+    if (!userId || !accessToken) return;
+
+    const handleCloudinhaIntent = async (e: Event) => {
+      const { type: intentType, metadata } = (e as CustomEvent).detail ?? {};
+      if (!intentType || !['step_change', 'validation_error', 'welcome_back'].includes(intentType)) return;
+
+      console.log('[SystemIntent] CustomEvent recebido:', intentType, metadata);
+      let cancelled = false;
+
+      try {
+        const stream = streamChat(
+          {
+            chatInput: intentType,
+            userId,
+            active_profile_id: profileId,
+            sessionId,
+            intent_type: 'system_intent',
+            ui_context: { current_page: pathname, page_data: metadata ?? {} },
+          },
+          accessToken,
+        );
+
+        let hasContent = false;
+        for await (const event of stream) {
+          if (cancelled) break;
+          if (event.type === 'text' && event.content) {
+            setPendingMessages((prev) => {
+              if (hasContent && prev.length > 0) {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  content: updated[updated.length - 1].content + event.content,
+                };
+                return updated;
+              }
+              return [...prev, { id: genId(), sender: 'model' as const, content: event.content!, timestamp: new Date() }];
+            });
+            if (!hasContent) {
+              hasContent = true;
+              if (!isDrawerOpen) setUnreadCount((n) => n + 1);
+            }
+          }
+          if (event.type === 'intent_metadata' && event.open_drawer && !isDrawerOpen) {
+            const delay = event.delay_ms ?? 0;
+            openTimerRef.current = setTimeout(() => { onOpen(); openTimerRef.current = null; }, delay);
+          }
+        }
+      } catch (err) {
+        console.warn('[SystemIntent] Falha ao processar CustomEvent:', err);
+      }
+
+      return () => { cancelled = true; };
+    };
+
+    window.addEventListener('cloudinha-intent', handleCloudinhaIntent);
+    return () => window.removeEventListener('cloudinha-intent', handleCloudinhaIntent);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, accessToken]);
+
   // Consumir mensagens (para injetar no ChatDrawer quando abre)
   const consumeMessages = useCallback((): ChatMessage[] => {
     const msgs = [...pendingMessages];
