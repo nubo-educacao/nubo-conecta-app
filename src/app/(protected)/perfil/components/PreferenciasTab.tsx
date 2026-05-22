@@ -17,7 +17,7 @@ const SHIFTS_OPTIONS = ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EAD'];
 const PROGRAMS = [
   { value: "sisu", label: "SISU" },
   { value: "prouni", label: "ProUni" },
-  { value: "bolsa", label: "Bolsa" },
+  { value: "programa de bolsa", label: "Programa de Bolsa" },
   { value: "indiferente", label: "Indiferente" },
 ];
 

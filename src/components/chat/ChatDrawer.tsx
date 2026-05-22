@@ -161,7 +161,7 @@ export default function ChatDrawer({ onClose, initialMessages = [] }: ChatDrawer
           {/* Body */}
           <div className="flex-1 overflow-y-auto flex flex-col min-h-0 bg-slate-50/30">
             {hasMessages && (
-              <ChatMessageList messages={messages} isStreaming={isStreaming} />
+              <ChatMessageList messages={messages} isStreaming={isStreaming} onCloseDrawer={onClose} />
             )}
 
             {activeTool && <ToolBadge toolName={activeTool} />}

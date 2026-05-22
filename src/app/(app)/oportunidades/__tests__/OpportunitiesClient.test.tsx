@@ -163,7 +163,7 @@ describe('OpportunitiesClient', () => {
   it('aba "para-voce" renderiza OpportunityCard para parceiros', () => {
     render(
       <OpportunitiesClient
-        opportunities={[makeOpp({ is_partner: true, title: 'Bootcamp TechCorp', type: 'partner', opportunity_type: 'bootcamp' })]}
+        opportunities={[makeOpp({ is_partner: true, title: 'Programa TechCorp', type: 'partner', opportunity_type: 'programa educacional' })]}
         activeTab="para-voce"
         filters={emptyFilters}
       />,

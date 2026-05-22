@@ -186,7 +186,7 @@ export default function PartnerFormsPage() {
         answers: updatedAnswers
       })
       .eq("id", application.id)
-      .then(({ error }) => {
+      .then(({ error }: { error: any }) => {
         if (error) {
           console.error("Failed to update student application in background:", error);
         }

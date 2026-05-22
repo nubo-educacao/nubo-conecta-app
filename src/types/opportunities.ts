@@ -31,7 +31,7 @@ export interface IUnifiedOpportunity {
   is_partner: boolean;
   /** Source type — drives category chip and card variant selection */
   type: OpportunitySourceType;
-  /** Sub-type (e.g. 'bolsa', 'bootcamp', 'mentoria') for partners; 'sisu'|'prouni' for MEC */
+  /** Sub-type ('programa de bolsa'|'programa educacional') for partners; 'sisu'|'prouni' for MEC */
   opportunity_type: string;
   category: OpportunityCategory;
   /** Human-readable category label for display (e.g. "Universidades Públicas") */

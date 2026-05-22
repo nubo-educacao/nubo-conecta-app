@@ -45,7 +45,7 @@ const SHIFTS_OPTIONS = ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EAD'];
 const STATIC_PROGRAM_OPTIONS = [
   { label: 'Sisu', value: 'sisu' },
   { label: 'Prouni', value: 'prouni' },
-  { label: 'Bolsa', value: 'bolsa' },
+  { label: 'Programa de Bolsa', value: 'programa de bolsa' },
   { label: 'Indiferente', value: 'indiferente' },
 ];
 
@@ -115,9 +115,64 @@ const inputCls = 'bg-white/40 border border-white/60 focus:border-[#38B1E4] focu
 
 type YearScores = { ling: string; hum: string; nat: string; mat: string; red: string };
 
+const sendSystemIntent = (type: 'step_change' | 'validation_error', metadata: Record<string, unknown>) => {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('cloudinha-intent', { detail: { intent_type: 'system_intent', type, metadata } }));
+};
+
 export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboardingFormProps) {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [step, setStep] = useState<1 | 2 | 3>(1);
+
+  // System intent tracking
+  const hasSentAddressIntent = useRef(false);
+  const hasSentIncomeIntent = useRef(false);
+
+  const triggerAddressIntent = () => {
+    if (!hasSentAddressIntent.current) {
+      hasSentAddressIntent.current = true;
+      sendSystemIntent('step_change', {
+        current_step: 2,
+        step_name: 'Endereço',
+        form_type: 'match_onboarding'
+      });
+    }
+  };
+
+  const triggerIncomeIntent = () => {
+    if (!hasSentIncomeIntent.current) {
+      hasSentIncomeIntent.current = true;
+      sendSystemIntent('step_change', {
+        current_step: 3,
+        step_name: 'Renda Familiar',
+        form_type: 'match_onboarding'
+      });
+    }
+  };
+
+  // Trigger step change intents
+  useEffect(() => {
+    if (isLoadingData) return;
+    if (step === 1) {
+      sendSystemIntent('step_change', {
+        current_step: 1,
+        step_name: 'Dados Pessoais',
+        form_type: 'match_onboarding'
+      });
+    } else if (step === 2) {
+      sendSystemIntent('step_change', {
+        current_step: 4,
+        step_name: 'Notas do ENEM',
+        form_type: 'match_onboarding'
+      });
+    } else if (step === 3) {
+      sendSystemIntent('step_change', {
+        current_step: 5,
+        step_name: 'Interesses e Filtros',
+        form_type: 'match_onboarding'
+      });
+    }
+  }, [step, isLoadingData]);
 
   // ── Step 1 State (Identificação) ──────────────────────────────────────────
   const [fullName, setFullName] = useState('');
@@ -348,34 +403,82 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
 
   const validateStep = () => {
     const errs: Record<string, boolean> = {};
+    const errorDetails: { field: string; error_message: string }[] = [];
+
     if (step === 1) {
-      if (!fullName.trim() || fullName.trim().split(' ').length < 2) errs.fullName = true;
-      if (!birthDate) errs.birthDate = true;
-      if (!education) errs.education = true;
+      if (!fullName.trim() || fullName.trim().split(' ').length < 2) {
+        errs.fullName = true;
+        errorDetails.push({ field: 'Nome Completo', error_message: 'Por favor, digite seu nome completo (nome e sobrenome).' });
+      }
+      if (!birthDate) {
+        errs.birthDate = true;
+        errorDetails.push({ field: 'Data de Nascimento', error_message: 'A data de nascimento é obrigatória.' });
+      }
+      if (!education) {
+        errs.education = true;
+        errorDetails.push({ field: 'Escolaridade', error_message: 'Selecione o seu nível de escolaridade.' });
+      }
       if (!outsideBrazil) {
-        if (zipCode.length < 8) errs.zipCode = true;
-        if (!city) errs.city = true;
-        if (!state) errs.state = true;
-        if (!street) errs.street = true;
-        if (!streetNumber) errs.streetNumber = true;
+        if (zipCode.length < 8) {
+          errs.zipCode = true;
+          errorDetails.push({ field: 'CEP', error_message: 'O CEP informado é inválido ou está incompleto.' });
+        }
+        if (!city) {
+          errs.city = true;
+          errorDetails.push({ field: 'Cidade', error_message: 'A cidade é obrigatória no endereço.' });
+        }
+        if (!state) {
+          errs.state = true;
+          errorDetails.push({ field: 'UF', error_message: 'O estado (UF) é obrigatório.' });
+        }
+        if (!street) {
+          errs.street = true;
+          errorDetails.push({ field: 'Rua', error_message: 'O nome da rua é obrigatório.' });
+        }
+        if (!streetNumber) {
+          errs.streetNumber = true;
+          errorDetails.push({ field: 'Número', error_message: 'O número da residência é obrigatório.' });
+        }
       } else {
-        if (!country) errs.country = true;
-        if (!city) errs.city = true;
+        if (!country) {
+          errs.country = true;
+          errorDetails.push({ field: 'País', error_message: 'O país de residência é obrigatório.' });
+        }
+        if (!city) {
+          errs.city = true;
+          errorDetails.push({ field: 'Cidade', error_message: 'A cidade é obrigatória no endereço.' });
+        }
       }
     } else if (step === 2) {
       const hasAnyScore = Object.values(scoresByYear).some(s =>
         [s.ling, s.hum, s.nat, s.mat, s.red].some(v => v !== '')
       );
-      if (!hasAnyScore) errs.enemScore = true;
+      if (!hasAnyScore) {
+        errs.enemScore = true;
+        errorDetails.push({ field: 'Notas do ENEM', error_message: 'Por favor, insira pelo menos uma nota do ENEM para que possamos calcular seu match.' });
+      }
       
       // Income is mandatory
       const isIncomeFilled = useCalculator 
         ? (familyCount && parseInt(familyCount) > 0)
         : (manualPerCapita !== null);
         
-      if (!isIncomeFilled) errs.income = true;
+      if (!isIncomeFilled) {
+        errs.income = true;
+        errorDetails.push({ field: 'Renda Per Capita', error_message: 'A informação de renda familiar é obrigatória.' });
+      }
     }
+
     setErrors(errs);
+
+    if (errorDetails.length > 0) {
+      sendSystemIntent('validation_error', {
+        field: errorDetails[0].field,
+        error_message: errorDetails[0].error_message,
+        form_type: 'match_onboarding'
+      });
+    }
+
     return Object.keys(errs).length === 0;
   };
 
@@ -462,7 +565,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
       await generateMatchAsync();
       
       // Polling for completion
-      let status = 'processing';
+      let status = await getMatchStatus(userId);
       let retryCount = 0;
       const maxRetries = 30; // 60 seconds max polling
 
@@ -600,6 +703,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                         placeholder="00000-000"
                         value={zipCode}
                         onChange={handleCEPChange}
+                        onFocus={triggerAddressIntent}
                         maxLength={8}
                       />
                       {cepLoading && <Loader2 size={16} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-[#38B1E4]" />}
@@ -607,34 +711,34 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                   </div>
                   <div className="col-span-1">
                     <FieldLabel label="UF" error={errors.state} />
-                    <input className={inputCls} value={state} readOnly />
+                    <input className={inputCls} value={state} readOnly onFocus={triggerAddressIntent} />
                   </div>
                   <div className="col-span-2">
                     <FieldLabel label="Cidade" error={errors.city} />
-                    <input className={inputCls} value={city} readOnly />
+                    <input className={inputCls} value={city} readOnly onFocus={triggerAddressIntent} />
                   </div>
                   <div className="col-span-2">
                     <FieldLabel label="Rua" error={errors.street} htmlFor="street" />
-                    <input id="street" className={inputCls} value={street} onChange={e => setStreet(e.target.value)} />
+                    <input id="street" className={inputCls} value={street} onChange={e => setStreet(e.target.value)} onFocus={triggerAddressIntent} />
                   </div>
                   <div className="col-span-1">
                     <FieldLabel label="Nº" error={errors.streetNumber} htmlFor="streetNumber" />
-                    <input id="streetNumber" className={inputCls} value={streetNumber} onChange={e => setStreetNumber(e.target.value)} />
+                    <input id="streetNumber" className={inputCls} value={streetNumber} onChange={e => setStreetNumber(e.target.value)} onFocus={triggerAddressIntent} />
                   </div>
                   <div className="col-span-1">
                     <FieldLabel label="Compl." />
-                    <input className={inputCls} value={complement} onChange={e => setComplement(e.target.value)} />
+                    <input className={inputCls} value={complement} onChange={e => setComplement(e.target.value)} onFocus={triggerAddressIntent} />
                   </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div>
                     <FieldLabel label="País" icon={Globe} error={errors.country} />
-                    <input className={inputCls} value={country} onChange={e => setCountry(e.target.value)} />
+                    <input className={inputCls} value={country} onChange={e => setCountry(e.target.value)} onFocus={triggerAddressIntent} />
                   </div>
                   <div>
                     <FieldLabel label="Cidade" error={errors.city} />
-                    <input className={inputCls} value={city} onChange={e => setCity(e.target.value)} />
+                    <input className={inputCls} value={city} onChange={e => setCity(e.target.value)} onFocus={triggerAddressIntent} />
                   </div>
                 </div>
               )}
@@ -709,11 +813,11 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <FieldLabel label="Nº de Familiares" icon={Users} required error={errors.income} />
-                    <input type="number" className={`${inputCls} ${errors.income ? 'border-red-500' : ''}`} placeholder="Ex: 1" value={familyCount} onChange={e => { handleFamilyCountChange(e.target.value); if (errors.income) setErrors(prev => ({ ...prev, income: false })); }} />
+                    <input type="number" className={`${inputCls} ${errors.income ? 'border-red-500' : ''}`} placeholder="Ex: 1" value={familyCount} onChange={e => { handleFamilyCountChange(e.target.value); if (errors.income) setErrors(prev => ({ ...prev, income: false })); }} onFocus={triggerIncomeIntent} />
                   </div>
                   <div>
                     <FieldLabel label="Benefícios (Bruto)" icon={DollarSign} />
-                    <input type="number" className={inputCls} placeholder="R$ 0,00" value={socialBenefits} onChange={e => setSocialBenefits(e.target.value)} />
+                    <input type="number" className={inputCls} placeholder="R$ 0,00" value={socialBenefits} onChange={e => setSocialBenefits(e.target.value)} onFocus={triggerIncomeIntent} />
                   </div>
                 </div>
                 
@@ -733,6 +837,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                             arr[i] = e.target.value;
                             setMemberIncomes(arr);
                           }}
+                          onFocus={triggerIncomeIntent}
                         />
                       ))}
                     </div>

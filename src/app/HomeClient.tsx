@@ -151,8 +151,18 @@ function SectionRenderer({
       );
 
     case 'match_carousel': {
-      // O usuário pediu explicitamente para tirar a exibição de matches
-      return null;
+      const opps = section.opportunities ?? [];
+      if (opps.length === 0) return null;
+      return (
+        <div className="max-w-7xl mx-auto w-full">
+          <OpportunityCarousel
+            title={section.title}
+            opportunities={opps}
+            seeAllHref={(config.see_all_href as string) ?? '/oportunidades?tab=para-voce'}
+            desktopGridMode={(config.desktop_grid_mode as boolean) ?? false}
+          />
+        </div>
+      );
     }
 
     case 'opportunity_carousel': {
