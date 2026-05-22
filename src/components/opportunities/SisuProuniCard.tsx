@@ -4,6 +4,8 @@ import React from 'react';
 import { Users, Award, GraduationCap, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+import { useProgram } from '@/hooks/useProgram';
+
 interface SisuProuniCardProps {
   qt_inscricao_2025?: string | number | null;
   min_cutoff_score?: number | null;
@@ -14,6 +16,49 @@ interface SisuProuniCardProps {
   qt_aprovados?: number | null;
   cycle_year?: number;
   cycle_semester?: string;
+}
+
+function renderMarkdown(text: string, accentColor: string): React.ReactNode {
+  if (!text) return null;
+
+  const regex = /(\*\*.*?\*\*|\*.*?\*|\[.*?\]\(.*?\))/g;
+  const parts = text.split(regex);
+
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={index} className="font-bold text-[#3A424E]">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return (
+        <em key={index} className="italic">
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+    if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
+      const match = part.match(/\[(.*?)\]\((.*?)\)/);
+      if (match) {
+        const [, linkText, url] = match;
+        return (
+          <a
+            key={index}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-bold underline hover:opacity-80 transition-opacity"
+            style={{ color: accentColor }}
+          >
+            {linkText}
+          </a>
+        );
+      }
+    }
+    return part;
+  });
 }
 
 export default function SisuProuniCard({
@@ -30,13 +75,11 @@ export default function SisuProuniCard({
   const isSisu = opportunity_type.toLowerCase() === 'sisu';
   const accentColor = isSisu ? '#3092BB' : '#7030C2';
 
+  const { title, description } = useProgram(opportunity_type, cycle_year, cycle_semester);
+
   const badgeText = cycle_year 
     ? `${opportunity_type} ${cycle_year}${cycle_semester && !isSisu ? `.${cycle_semester}` : ''}`.toUpperCase()
     : `${opportunity_type} 2025`.toUpperCase();
-
-  const description = isSisu
-    ? "O SiSU (Sistema de Seleção Unificada) utiliza a nota do ENEM para classificar candidatos em vagas de instituições públicas. A concorrência é baseada na nota de corte, que varia diariamente durante o período de inscrição."
-    : "O ProUni concede bolsas de estudo integrais e parciais em instituições privadas. Além da nota do ENEM, o programa considera critérios de renda e escolaridade do candidato.";
 
   return (
     <div className="space-y-6">
@@ -47,10 +90,10 @@ export default function SisuProuniCard({
         className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100"
       >
         <h3 className="text-[#3A424E] font-bold text-lg mb-3">
-          Sobre o {isSisu ? 'SiSU' : 'ProUni'}
+          {title}
         </h3>
         <p className="text-sm text-[#636E7C] leading-relaxed">
-          {description}
+          {renderMarkdown(description, accentColor)}
         </p>
       </motion.section>
 

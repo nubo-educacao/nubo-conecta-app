@@ -40,6 +40,9 @@ interface FormEngineProps {
     onComputeEligibility?: (data: Record<string, unknown>) => EligibilityResult[];
     onStepChange?: (stepName: string) => void;
     onValidationError?: (errors: { question: string; error: string }[]) => void;
+    /** When true, final button says "Continuar para inscrição oficial" instead of "Enviar Candidatura" */
+    isRedirectFlow?: boolean;
+    onStepIndexChange?: (index: number) => void;
 }
 
 const sendSystemIntent = (
@@ -66,6 +69,8 @@ export default function PartnerFormEngine({
     onComputeEligibility,
     onStepChange,
     onValidationError,
+    isRedirectFlow,
+    onStepIndexChange,
 }: FormEngineProps) {
     const methods = useForm({ defaultValues, mode: 'onSubmit' });
     const { handleSubmit, control, trigger, getValues } = methods;
@@ -83,6 +88,10 @@ export default function PartnerFormEngine({
     const [submitting, setSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [savingDraft, setSavingDraft] = useState(false);
+
+    useEffect(() => {
+        onStepIndexChange?.(showReview ? -1 : currentStepIndex);
+    }, [currentStepIndex, showReview, onStepIndexChange]);
 
     // Field changes → localStorage only (no network)
     const lsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -321,7 +330,9 @@ export default function PartnerFormEngine({
                         {submitting
                             ? <Loader2 className="animate-spin" size={14} />
                             : isSubmitted
-                            ? 'Candidatura enviada!'
+                            ? (isRedirectFlow ? 'Redirecionado!' : 'Candidatura enviada!')
+                            : isRedirectFlow
+                            ? <><Send size={14} /> Continuar para inscrição oficial</>
                             : <><Send size={14} /> Enviar Candidatura</>
                         }
                     </button>
