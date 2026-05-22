@@ -16,7 +16,7 @@ import { useState } from 'react';
 
 const CATEGORY_PILLS = [
   { label: 'Todas',         value: '' },
-  { label: 'Bolsa Integral', value: 'bolsa-integral' },
+  { label: 'Programa de Bolsa', value: 'programa de bolsa' },
   { label: 'Prouni',        value: 'prouni' },
   { label: 'Sisu',          value: 'sisu' },
 ];

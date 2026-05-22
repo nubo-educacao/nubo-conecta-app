@@ -4,13 +4,15 @@
 // Scrollable list of chat messages. Auto-scrolls to bottom on new messages.
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { ChatMessage } from '@/services/chatService';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Copy, Check } from 'lucide-react';
 
-function MessageBubble({ msg }: { msg: ChatMessage }) {
+function MessageBubble({ msg, onCloseDrawer }: { msg: ChatMessage; onCloseDrawer?: () => void }) {
   const [copied, setCopied] = useState(false);
+  const router = useRouter();
 
   const handleCopy = async () => {
     if (!msg.content) return;
@@ -66,20 +68,36 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
                     {children}
                   </pre>
                 ),
-                a: ({ href, children }) => (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`underline font-semibold ${
-                      msg.sender === 'user'
-                        ? 'text-white hover:text-sky-100'
-                        : 'text-[#38B1E4] hover:text-[#024F86]'
-                    }`}
-                  >
-                    {children}
-                  </a>
-                ),
+                a: ({ href, children }) => {
+                  const isInternal = href?.startsWith('/');
+                  if (isInternal) {
+                    return (
+                      <button
+                        onClick={() => {
+                          router.push(href!);
+                          onCloseDrawer?.();
+                        }}
+                        className="underline font-semibold text-[#38B1E4] hover:text-[#024F86] cursor-pointer"
+                      >
+                        {children}
+                      </button>
+                    );
+                  }
+                  return (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`underline font-semibold ${
+                        msg.sender === 'user'
+                          ? 'text-white hover:text-sky-100'
+                          : 'text-[#38B1E4] hover:text-[#024F86]'
+                      }`}
+                    >
+                      {children}
+                    </a>
+                  );
+                },
               }}
             >
               {msg.content}
@@ -124,9 +142,10 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 interface ChatMessageListProps {
   messages: ChatMessage[];
   isStreaming: boolean;
+  onCloseDrawer?: () => void;
 }
 
-export default function ChatMessageList({ messages, isStreaming }: ChatMessageListProps) {
+export default function ChatMessageList({ messages, isStreaming, onCloseDrawer }: ChatMessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -138,7 +157,7 @@ export default function ChatMessageList({ messages, isStreaming }: ChatMessageLi
   return (
     <div className="flex flex-col gap-3 px-4 py-4 overflow-y-auto flex-1">
       {messages.map((msg) => (
-        <MessageBubble key={msg.id} msg={msg} />
+        <MessageBubble key={msg.id} msg={msg} onCloseDrawer={onCloseDrawer} />
       ))}
       <div ref={bottomRef} />
     </div>

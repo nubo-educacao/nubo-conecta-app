@@ -191,7 +191,7 @@ describe('ExploreClient', () => {
   });
 
   it('renderiza OpportunityCard para oportunidades parceiras (is_partner=true)', () => {
-    const opps = [makeOpp({ id: 'partner_001', title: 'Bootcamp TechCorp', is_partner: true, type: 'partner', opportunity_type: 'bootcamp' })];
+    const opps = [makeOpp({ id: 'partner_001', title: 'Programa TechCorp', is_partner: true, type: 'partner', opportunity_type: 'programa educacional' })];
     render(<ExploreClient opportunities={opps} filters={emptyFilters} />);
     expect(screen.getByTestId('opportunity-card')).toBeDefined();
   });

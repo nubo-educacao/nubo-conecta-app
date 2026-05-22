@@ -20,9 +20,38 @@ export interface IHomeSectionWithData extends IHomeSection {
   dates?: IImportantDate[];
 }
 
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
 export default async function HomePage() {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
+
+  let userState: string | null = null;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('state')
+      .eq('id', user.id)
+      .single();
+    if (profile?.state) {
+      userState = profile.state;
+    }
+  }
+
   // 1. Buscar seções do CMS
-  const sections = await getHomeSections();
+  const sections = await getHomeSections(userState);
 
   // 2. Se CMS tem seções, buscar dados para cada uma
   if (sections.length > 0) {
@@ -105,7 +134,14 @@ async function populateSections(sections: IHomeSection[]): Promise<IHomeSectionW
             enriched.dates = await getImportantDates();
             break;
           }
-          // 'match_results' e 'static' não precisam de data fetch server-side
+          case 'match_results': {
+            const data = await getUnifiedOpportunities({ mode: 'para-voce', page: 0, limit });
+            // Only keep opportunities with a match score if we want strict matches, 
+            // or just use the personalized list. 'para-voce' already sorts by score if user is logged in.
+            enriched.opportunities = data;
+            break;
+          }
+          // 'static' não precisa de data fetch server-side
         }
       } catch (e) {
         console.error(`[Home CMS] Erro ao popular seção "${section.title}":`, e);

@@ -14,7 +14,7 @@ interface UnifiedOpportunityRow {
   title: string;
   provider_name: string;
   type: string;                       // 'sisu' | 'prouni' | 'partner'
-  opportunity_type: string;           // specific subtype (e.g. 'bolsa')
+  opportunity_type: string;           // 'programa de bolsa'|'programa educacional' for partners; 'sisu'|'prouni' for MEC
   category: string;
   is_partner: boolean;
   location: string;
@@ -212,8 +212,8 @@ export async function getUnifiedOpportunities(
   if (options.q) {
     query = query.ilike('title', `%${options.q}%`);
   }
-  if (options.category === 'bolsa-integral') {
-    query = query.eq('opportunity_type', 'prouni'); // Simplificação para o catálogo
+  if (options.category === 'programa de bolsa') {
+    query = query.eq('opportunity_type', 'programa de bolsa'); // Simplificação para o catálogo
   } else if (options.category) {
     query = query.eq('type', options.category);
   }

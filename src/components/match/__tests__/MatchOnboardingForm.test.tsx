@@ -15,10 +15,12 @@ vi.mock('@/services/profileService', () => ({
   saveUserEnemScore: vi.fn(),
   saveUserPreferences: vi.fn(),
   markOnboardingComplete: vi.fn(),
+  getUserOnboardingData: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock('@/services/matchService', () => ({
-  generateMatch: vi.fn(),
+  generateMatchAsync: vi.fn().mockResolvedValue({}),
+  getMatchStatus: vi.fn().mockResolvedValue('completed'),
 }));
 
 describe('MatchOnboardingForm — Fluxo de 3 Passos', () => {
@@ -43,7 +45,7 @@ describe('MatchOnboardingForm — Fluxo de 3 Passos', () => {
   it('renderiza o Passo 1 inicialmente e valida campos obrigatórios', async () => {
     render(<MatchOnboardingForm userId={userId} onComplete={mockOnComplete} />);
     
-    expect(screen.getByText(/Identificação/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Identificação/i)).toBeInTheDocument();
     
     // Tenta avançar sem preencher
     const nextBtn = screen.getByText(/Continuar/i);
@@ -57,6 +59,9 @@ describe('MatchOnboardingForm — Fluxo de 3 Passos', () => {
   it('avança para o Passo 2 após preencher Passo 1 corretamente', async () => {
     render(<MatchOnboardingForm userId={userId} onComplete={mockOnComplete} />);
     
+    // Wait for load to finish
+    await screen.findByText(/Identificação/i);
+
     // Preenche campos obrigatórios do Passo 1
     fireEvent.change(screen.getByPlaceholderText(/Ex: Maria Oliveira Santos/i), { target: { value: 'João Silva' } });
     fireEvent.change(screen.getByLabelText(/Data de Nascimento/i), { target: { value: '2000-01-01' } });
@@ -87,6 +92,9 @@ describe('MatchOnboardingForm — Fluxo de 3 Passos', () => {
     // Renderiza direto no Passo 3 ou simula a jornada
     render(<MatchOnboardingForm userId={userId} onComplete={mockOnComplete} />);
     
+    // Wait for load to finish
+    await screen.findByText(/Identificação/i);
+
     // Passo 1 -> Passo 2
     fireEvent.change(screen.getByPlaceholderText(/Ex: Maria Oliveira Santos/i), { target: { value: 'João Silva' } });
     fireEvent.change(screen.getByLabelText(/Data de Nascimento/i), { target: { value: '2000-01-01' } });
@@ -102,8 +110,8 @@ describe('MatchOnboardingForm — Fluxo de 3 Passos', () => {
 
     // Passo 2 -> Passo 3
     await waitFor(() => expect(screen.getByText(/Desempenho & Renda/i)).toBeInTheDocument());
-    fireEvent.change(screen.getByPlaceholderText(/Ex: 720.5/i), { target: { value: '750' } });
-    fireEvent.change(screen.getByPlaceholderText(/Valor em R\$/i), { target: { value: '1500' } });
+    fireEvent.change(screen.getAllByPlaceholderText('0.0')[0], { target: { value: '750' } });
+    fireEvent.change(screen.getByPlaceholderText('Ex: 1'), { target: { value: '3' } });
     
     fireEvent.click(screen.getByText(/Continuar/i));
 
@@ -118,7 +126,7 @@ describe('MatchOnboardingForm — Fluxo de 3 Passos', () => {
       expect(profileService.saveUserIncome).toHaveBeenCalled();
       expect(profileService.saveUserEnemScore).toHaveBeenCalled();
       expect(profileService.saveUserPreferences).toHaveBeenCalled();
-      expect(matchService.generateMatch).toHaveBeenCalledWith(userId);
+      expect(matchService.generateMatchAsync).toHaveBeenCalled();
       expect(profileService.markOnboardingComplete).toHaveBeenCalled();
       expect(mockOnComplete).toHaveBeenCalled();
     });

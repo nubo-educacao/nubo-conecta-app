@@ -9,11 +9,9 @@ import { useRouter } from 'next/navigation';
 import { Search, ArrowRight } from 'lucide-react';
 
 const QUICK_FILTERS = [
-  { label: 'Graduação', q: 'graduação' },
-  { label: 'Pós-Graduação', q: 'pós-graduação' },
-  { label: 'Programas', q: 'programas' },
-  { label: 'Bolsas', q: 'bolsas' },
-  { label: 'Intercâmbio', q: 'intercâmbio' },
+  { label: 'Programa de Bolsa', category: 'programa de bolsa' },
+  { label: 'Prouni', category: 'prouni' },
+  { label: 'Sisu', category: 'sisu' },
 ];
 
 export default function HeroSearch() {
@@ -24,11 +22,11 @@ export default function HeroSearch() {
     e.preventDefault();
     const q = query.trim();
     if (!q) return;
-    router.push(`/oportunidades?q=${encodeURIComponent(q)}`);
+    router.push(`/oportunidades?tab=explore&q=${encodeURIComponent(q)}`);
   }
 
-  function handlePillClick(q: string) {
-    router.push(`/oportunidades?q=${encodeURIComponent(q)}`);
+  function handlePillClick(category: string) {
+    router.push(`/oportunidades?tab=explore&category=${encodeURIComponent(category)}`);
   }
 
   return (
@@ -95,10 +93,10 @@ export default function HeroSearch() {
 
         {/* Pills de filtro rápido */}
         <div className="flex flex-wrap gap-2">
-          {QUICK_FILTERS.map(({ label, q }) => (
+          {QUICK_FILTERS.map(({ label, category }) => (
             <button
               key={label}
-              onClick={() => handlePillClick(q)}
+              onClick={() => handlePillClick(category)}
               className="px-4 py-1.5 rounded-full text-sm font-medium transition-all hover:bg-white/25 active:scale-[0.97]"
               style={{
                 background: 'rgba(255,255,255,0.16)',

@@ -192,9 +192,14 @@ export default function PartnerFormEngine({
                     });
                 }
             }
-            if (collectedErrors.length > 0) {
+             if (collectedErrors.length > 0) {
                 onValidationError?.(collectedErrors);
-                sendSystemIntent('validation_error', { errors: collectedErrors, applicationId });
+                sendSystemIntent('validation_error', {
+                    field: collectedErrors[0].question,
+                    error_message: collectedErrors[0].error,
+                    form_type: 'partner_application',
+                    applicationId
+                });
             }
             return;
         }
@@ -220,9 +225,9 @@ export default function PartnerFormEngine({
             if (nextStep) {
                 onStepChange?.(nextStep.step_name);
                 sendSystemIntent('step_change', {
-                    step: nextStep.step_name,
-                    stepIndex: nextIndex,
-                    total: totalSteps,
+                    current_step: nextIndex + 1,
+                    step_name: nextStep.step_name,
+                    form_type: 'partner_application',
                     applicationId,
                 });
             }

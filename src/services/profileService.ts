@@ -4,7 +4,7 @@
 //   user_profiles.id      = auth UUID (PK)
 //   user_preferences.user_id = FK (UNIQUE)
 //   user_income.user_id      = FK (UNIQUE)
-//   user_preferences: program_preference ∈ {'sisu','prouni','indiferente'}
+//   user_preferences: program_preference ∈ {'sisu','prouni','programa de bolsa','indiferente'}
 //   user_preferences: university_preference ∈ {'publica','privada','indiferente'}
 
 import { supabase } from '@/lib/supabase';
@@ -42,7 +42,7 @@ export interface UserPreferencesData {
   family_income_per_capita?: number | null;
   quota_types?: string[] | null;
   preferred_shifts?: string[] | null;
-  // Must match DB check constraint: 'sisu' | 'prouni' | 'indiferente'
+  // Must match DB check constraint: 'sisu' | 'prouni' | 'programa de bolsa' | 'indiferente'
   program_preference?: string | null;
   // Must match DB check constraint: 'publica' | 'privada' | 'indiferente'
   university_preference?: string | null;

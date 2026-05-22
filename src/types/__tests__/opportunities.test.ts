@@ -60,15 +60,15 @@ describe('IUnifiedOpportunity type contract', () => {
   it('accepts a partner opportunity with external_redirect', () => {
     const opp: IUnifiedOpportunity = {
       id: 'partner_00000000-0000-0000-0000-000000000003',
-      title: 'Bootcamp de Engenharia de Software',
+      title: 'Programa de Engenharia de Software',
       institution_name: 'TechCorp Parceira',
       is_partner: true,
       type: 'partner',
-      opportunity_type: 'bootcamp',
+      opportunity_type: 'programa educacional',
       category: 'educational_programs',
       category_label: 'Programas Educacionais',
       location: 'Nacional',
-      education_level: 'Bootcamp',
+      education_level: 'Graduação',
       badges: ['Gratuito para cotistas'],
       created_at: '2026-03-01T00:00:00.000Z',
       external_redirect: {
@@ -86,15 +86,15 @@ describe('IUnifiedOpportunity type contract', () => {
   it('accepts a partner opportunity with external_redirect disabled and no url', () => {
     const opp: IUnifiedOpportunity = {
       id: 'partner_00000000-0000-0000-0000-000000000004',
-      title: 'Mentoria de Carreira',
-      institution_name: 'Parceira Mentoria S.A.',
+      title: 'Programa de Bolsa Integral',
+      institution_name: 'Parceira Educação S.A.',
       is_partner: true,
       type: 'partner',
-      opportunity_type: 'mentoria',
+      opportunity_type: 'programa de bolsa',
       category: 'educational_programs',
       category_label: 'Programas Educacionais',
       location: 'Nacional',
-      education_level: 'Mentoria',
+      education_level: 'Graduação',
       badges: [],
       created_at: '2026-02-01T00:00:00.000Z',
       external_redirect: {
