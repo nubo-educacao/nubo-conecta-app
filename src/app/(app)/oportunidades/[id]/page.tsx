@@ -2,6 +2,9 @@
 // Server Component — fetches single opportunity from enriched v_unified_opportunities.
 // Decomposed into DetailsLayout for maintainability and pixel-perfect Figma parity.
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { notFound } from 'next/navigation';
@@ -27,6 +30,9 @@ async function createSupabaseServerClient() {
       cookies: {
         getAll: () => cookieStore.getAll(),
         setAll: () => {},
+      },
+      global: {
+        fetch: (url: RequestInfo | URL, init?: RequestInit) => fetch(url, { ...init, cache: 'no-store' }),
       },
     },
   );
@@ -75,6 +81,57 @@ async function getOpportunity(unifiedId: string): Promise<IUnifiedOpportunity | 
       .eq('id', unifiedId.replace('partner_', ''))
       .maybeSingle();
     description = partnerData?.description;
+  } else {
+    let programType = oppData.type;
+    
+    let latestOpportunity = null;
+    if (unifiedId.startsWith('mec_')) {
+      const courseId = unifiedId.replace('mec_', '');
+      const { data } = await supabase
+        .from('opportunities')
+        .select('opportunity_type, year, semester')
+        .eq('course_id', courseId)
+        .order('year', { ascending: false })
+        .order('semester', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        latestOpportunity = data;
+        programType = data.opportunity_type;
+      }
+    }
+
+    let programQuery = supabase
+      .from('programs')
+      .select('status, redirect_url')
+      .eq('type', programType);
+
+    if (latestOpportunity && latestOpportunity.year) {
+      programQuery = programQuery
+        .eq('cycle_year', latestOpportunity.year)
+        .eq('cycle_semester', latestOpportunity.semester || '1');
+    } else {
+      programQuery = programQuery
+        .order('cycle_year', { ascending: false })
+        .order('cycle_semester', { ascending: false })
+        .limit(1);
+    }
+
+    const { data: programData, error: programError } = await programQuery.maybeSingle();
+
+    if (programError) {
+      console.error('[getOpportunity] Failed to fetch program status:', programError.message);
+    }
+
+    if (programData) {
+      oppData.status = programData.status;
+      oppData.external_redirect_url = programData.redirect_url;
+      oppData.external_redirect_enabled = !!programData.redirect_url;
+      console.log(`[getOpportunity] Enriched ${unifiedId}: status=${programData.status}, redirect=${programData.redirect_url}`);
+    } else {
+      console.warn(`[getOpportunity] No program found for ${unifiedId} (type=${programType}). Status remains '${oppData.status}'.`);
+    }
   }
 
   return {
@@ -91,8 +148,9 @@ async function getOpportunity(unifiedId: string): Promise<IUnifiedOpportunity | 
     badges:           Array.isArray(oppData.badges) ? oppData.badges.filter(Boolean) : [],
     created_at:       oppData.created_at,
     match_score:      matchScore, // Use hydrated score
+    status:           oppData.status ?? undefined,
     external_redirect: oppData.external_redirect_url
-      ? { enabled: oppData.external_redirect_enabled, url: oppData.external_redirect_url }
+      ? { enabled: oppData.external_redirect_enabled || !!oppData.external_redirect_url, url: oppData.external_redirect_url }
       : undefined,
     // Deep Details Metadata
     institution_id:       oppData.institution_id,

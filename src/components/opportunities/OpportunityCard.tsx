@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, MapPin, Star, GraduationCap } from 'lucide-react';
+import { Heart, MapPin, Star, GraduationCap, Lock, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
@@ -101,7 +101,8 @@ export default function OpportunityCard({
     ? '/assets/card-header-default.png'
     : (hasCoverImage ? coverUrl : '/assets/card-header-partner.png');
 
-  const isEncerrado = opportunity.status === 'inactive';
+  const isClosed = opportunity.status === 'closed';
+  const isIncoming = opportunity.status === 'incoming';
 
   return (
     <motion.div
@@ -173,10 +174,21 @@ export default function OpportunityCard({
           <div className="bg-[#FF9900] px-3 py-0.5 rounded-full shadow-[0px_4px_8px_rgba(0,0,0,0.15)] flex items-center h-[20px]">
             <span className="text-[#3A424E] text-[10px] font-semibold uppercase">{opportunity.opportunity_type || 'PROGRAMAS'}</span>
           </div>
-          {isEncerrado && (
-            <div className="bg-[#F1F3F5] border border-[#DEE2E6] px-3 py-1 rounded-full shadow-sm">
-              <span className="text-[#868E96] text-[10px] font-bold uppercase tracking-wider">Encerrado</span>
+          {isClosed && (
+            <div className="bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-white/10 shadow-lg">
+              <Lock size={9} className="text-white/80" strokeWidth={2.5} />
+              <span className="text-white/90 text-[10px] font-bold uppercase tracking-wider">Encerrado</span>
             </div>
+          )}
+          {isIncoming && (
+            <motion.div
+              animate={{ boxShadow: ['0 0 0px rgba(255,153,0,0)', '0 0 12px rgba(255,153,0,0.4)', '0 0 0px rgba(255,153,0,0)'] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              className="bg-gradient-to-r from-amber-500/90 to-orange-400/90 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-white/20 shadow-lg"
+            >
+              <Clock size={9} className="text-white" strokeWidth={2.5} />
+              <span className="text-white text-[10px] font-bold uppercase tracking-wider">Em breve</span>
+            </motion.div>
           )}
         </div>
 
@@ -244,15 +256,10 @@ export default function OpportunityCard({
         {/* Action Button */}
         <button
           onClick={(e) => { e.stopPropagation(); handleViewDetails(); }}
-          className={cn(
-            "w-full h-[32px] rounded-full flex items-center justify-center transition-all mt-2 font-semibold text-[13px] shadow-[0px_8px_16px_rgba(0,0,0,0.12)]",
-            isEncerrado
-              ? "bg-[#F1F3F5] text-[#868E96] cursor-pointer hover:bg-[#E9ECEF]"
-              : "hover:brightness-95 active:scale-[0.98]"
-          )}
-          style={isEncerrado ? {} : { background: currentTheme.btnBg, color: currentTheme.btnText }}
+          className="w-full h-[32px] rounded-full flex items-center justify-center transition-all mt-2 font-semibold text-[13px] shadow-[0px_8px_16px_rgba(0,0,0,0.12)] hover:brightness-95 active:scale-[0.98]"
+          style={{ background: currentTheme.btnBg, color: currentTheme.btnText }}
         >
-          {isEncerrado ? 'Ver detalhes' : 'Candidatar'}
+          {isClosed || isIncoming ? 'Ver detalhes' : 'Candidatar'}
         </button>
       </div>
     </motion.div>

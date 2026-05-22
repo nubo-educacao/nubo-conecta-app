@@ -7,6 +7,9 @@
 //   Texto ativo:  text-white font-semibold text-[13px] (Montserrat SemiBold)
 //   Texto inativo: text-[#636e7c] font-semibold text-[13px]
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import AppShell from '@/components/layout/AppShell';
 import { getUnifiedOpportunities } from '@/services/opportunities';
 import OpportunitiesClient from './OpportunitiesClient';

@@ -16,6 +16,8 @@ import SisuProuniCard from './SisuProuniCard';
 import OpportunitiesListCard, { Opportunity } from './OpportunitiesListCard';
 import SisuScoreDisplay from './SisuScoreDisplay';
 import OpportunityCard from './OpportunityCard';
+import CriteriaSection from './CriteriaSection';
+import ImportantDatesSection from './ImportantDatesSection';
 import { supabase } from '@/lib/supabase';
 import { useProfile } from '@/contexts/ProfileContext';
 import { createApplication } from '@/app/(app)/oportunidades/[id]/actions';
@@ -48,6 +50,7 @@ export default function DetailsLayout({
   const { activeProfileId } = useProfile();
   const [isRegistrationOpen, setIsRegistrationOpen] = React.useState<boolean | null>(null);
   const [registrationDates, setRegistrationDates] = React.useState<{ start: string; end: string } | null>(null);
+  const [mecImportantDates, setMecImportantDates] = React.useState<{ title: string; start_date: string; end_date: string | null }[]>([]);
   const [campus, setCampus] = React.useState<{ name: string; city: string; state: string } | null>(null);
   const [applying, setApplying] = React.useState(false);
   const [applyError, setApplyError] = React.useState<string | null>(null);
@@ -56,7 +59,7 @@ export default function DetailsLayout({
   const isPartner = opportunity.is_partner;
   const brandColor = opportunity.brand_color || (isPartner ? '#7030C2' : '#3092BB');
 
-  const isEncerrado = opportunity.status === 'inactive';
+  const partnerStatus = opportunity.status as string | undefined;
 
   React.useEffect(() => {
     if (isPartner) {
@@ -64,29 +67,40 @@ export default function DetailsLayout({
       return;
     }
 
+    let cancelled = false;
     const checkDates = async () => {
+      const type = opportunity.opportunity_type?.toLowerCase();
+      const nowIso = new Date().toISOString();
       const { data } = await supabase
         .from('important_dates')
-        .select('start_date, end_date')
-        .eq('type', opportunity.opportunity_type?.toLowerCase())
-        .ilike('title', '%Inscrições%')
-        .order('start_date', { ascending: false })
-        .limit(1)
-        .single();
+        .select('title, start_date, end_date')
+        .ilike('type', `%${type}%`)
+        .or(`end_date.gte.${nowIso},and(end_date.is.null,start_date.gte.${nowIso})`)
+        .order('start_date', { ascending: true })
+        .limit(10);
 
-      if (data) {
-        const now = new Date();
-        const start = new Date(data.start_date);
-        const end = new Date(data.end_date);
+      if (cancelled) return;
 
-        setRegistrationDates({ start: data.start_date, end: data.end_date });
-        setIsRegistrationOpen(now >= start && now <= end);
+      if (data && data.length > 0) {
+        // Only pass future dates to the display component
+        const futureDates = data as { title: string; start_date: string; end_date: string | null }[];
+        setMecImportantDates(futureDates);
+        // Find registration dates for open/close check
+        const inscricao = data.find((d: any) => d.title?.toLowerCase().includes('inscrições'));
+        if (inscricao) {
+          const now = new Date();
+          setRegistrationDates({ start: inscricao.start_date, end: inscricao.end_date! });
+          setIsRegistrationOpen(now >= new Date(inscricao.start_date) && now <= new Date(inscricao.end_date!));
+        } else {
+          setIsRegistrationOpen(true);
+        }
       } else {
-        setIsRegistrationOpen(true); // Default to open if no date found
+        setIsRegistrationOpen(true);
       }
     };
 
     checkDates();
+    return () => { cancelled = true; };
   }, [opportunity.opportunity_type, isPartner]);
 
   // Fetch campus data for MEC opportunities
@@ -460,6 +474,19 @@ export default function DetailsLayout({
         </div>
       </section>
 
+      {/* ── Important Dates ── */}
+      <div className="px-6 mt-8">
+        <ImportantDatesSection
+          isPartner={isPartner}
+          opportunityType={opportunity.opportunity_type}
+          startsAt={opportunity.starts_at}
+          endsAt={opportunity.ends_at}
+          mecDates={mecImportantDates}
+          institutionId={opportunity.institution_id}
+          opportunityId={opportunity.id?.replace('partner_', '').replace('mec_', '')}
+        />
+      </div>
+
       {/* ── Statistics / Program Specifics ── */}
       <div className="px-6 mt-8 space-y-8">
         {!isPartner ? (
@@ -600,22 +627,10 @@ export default function DetailsLayout({
           </>
         ) : (
           <div className="space-y-6">
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="bg-[#F8FBFF] rounded-[32px] p-8 border border-blue-100/50"
-            >
-              <h3 className="text-[#3A424E] font-black text-xl mb-6 flex items-center gap-3">
-                <div className="size-10 rounded-2xl bg-[#3092BB]/10 flex items-center justify-center text-[#3092BB]">
-                  <CheckCircle2 size={24} />
-                </div>
-                Critérios de Elegibilidade
-              </h3>
-              <div className="space-y-4">
-                {renderFormattedCriteria(opportunity.eligibility_criteria)}
-              </div>
-            </motion.section>
+            <CriteriaSection
+              partnerOpportunityId={opportunity.id.replace('partner_', '')}
+              legacyCriteria={opportunity.eligibility_criteria}
+            />
 
             {opportunity.benefits && (
               <motion.section
@@ -700,37 +715,68 @@ export default function DetailsLayout({
       </section>
 
       {/* ── Sticky Bottom CTA ── */}
-      {isEncerrado ? (
-        <div className="fixed bottom-0 inset-x-0 p-6 bg-white/80 backdrop-blur-2xl border-t border-gray-100/50 z-50 flex flex-col gap-4 pb-10">
-          <button
-            disabled
-            className="w-full h-14 rounded-full font-black text-lg text-[#868E96] shadow-none flex items-center justify-center gap-2 bg-[#F1F3F5] border border-[#DEE2E6] cursor-not-allowed"
-          >
-            Encerrado
-          </button>
-        </div>
-      ) : isRegistrationOpen !== false && (
-        <div className="fixed bottom-0 inset-x-0 p-6 bg-white/80 backdrop-blur-2xl border-t border-gray-100/50 z-50 flex flex-col gap-2 pb-10">
-          {applyError && (
-            <p className="text-center text-xs text-red-500 font-medium">{applyError}</p>
-          )}
-          <button
-            onClick={handleApply}
-            disabled={applying}
-            className="w-full h-14 rounded-full font-black text-lg text-white shadow-2xl shadow-[#3092BB]/30 transition-transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70"
-            style={{ background: brandColor }}
-          >
-            {applying ? (
-              <Loader2 size={22} className="animate-spin" />
-            ) : (
-              <>
-                {isPartner ? 'Candidatar Agora' : 'Quero me Candidatar'}
-                {opportunity.external_redirect?.enabled && <ExternalLink size={18} />}
-              </>
-            )}
-          </button>
-        </div>
-      )}
+      {(() => {
+        // Source of truth: opportunity.status from server enrichment (programs table)
+        // Fallback order:
+        //   1. Server-enriched status (opened/closed/incoming) — from programs table
+        //   2. Partner status from partner_opportunities
+        //   3. important_dates registration check (legacy, only for unenriched MEC)
+        let effectiveStatus: string | undefined;
+
+        if (opportunity.status && opportunity.status !== 'approved') {
+          // Server successfully enriched from programs table
+          effectiveStatus = opportunity.status;
+        } else if (isPartner) {
+          effectiveStatus = partnerStatus;
+        } else {
+          // Enrichment failed (status still 'approved') — fallback to important_dates
+          effectiveStatus = isRegistrationOpen === null
+            ? undefined  // Still loading, don't render yet
+            : (isRegistrationOpen ? 'opened' : 'closed');
+        }
+
+        if (!effectiveStatus || effectiveStatus === 'inactive') return null;
+
+        const shell = "fixed bottom-0 inset-x-0 p-6 bg-white/80 backdrop-blur-2xl border-t border-gray-100/50 z-50 flex flex-col pb-10";
+
+        if (effectiveStatus === 'closed') {
+          return (
+            <div className={`${shell} gap-4`}>
+              <button disabled className="w-full h-14 rounded-full font-black text-lg text-[#868E96] shadow-none flex items-center justify-center gap-2 bg-[#F1F3F5] border border-[#DEE2E6] cursor-not-allowed">
+                Inscrições encerradas
+              </button>
+            </div>
+          );
+        }
+
+        if (effectiveStatus === 'incoming') {
+          return (
+            <div className={`${shell} gap-4`}>
+              <button disabled className="w-full h-14 rounded-full font-black text-lg text-amber-600 shadow-none flex items-center justify-center gap-2 bg-amber-50/50 border border-amber-200/50 cursor-not-allowed">
+                Inscrições em breve
+              </button>
+            </div>
+          );
+        }
+
+        const shadow = isPartner ? 'shadow-[#7030C2]/30' : 'shadow-[#3092BB]/30';
+        const label = isPartner ? 'Candidatar Agora' : 'Quero me Candidatar';
+        return (
+          <div className={`${shell} gap-2`}>
+            {applyError && <p className="text-center text-xs text-red-500 font-medium">{applyError}</p>}
+            <button
+              onClick={handleApply}
+              disabled={applying}
+              className={`w-full h-14 rounded-full font-black text-lg text-white shadow-2xl ${shadow} transition-transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70`}
+              style={{ background: brandColor }}
+            >
+              {applying ? <Loader2 size={22} className="animate-spin" /> : (
+                <>{label}{opportunity.external_redirect?.enabled && <ExternalLink size={18} />}</>
+              )}
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -85,6 +85,81 @@ interface GetUnifiedOpportunitiesOptions extends Partial<import('@/types/opportu
  * Must be called from a Server Component or Server Action.
  * @throws Error if Supabase query fails (Fail Fast — PLAYBOOK § 1)
  */
+/**
+ * Dynamically resolves MEC opportunities status/redirect from programs table
+ */
+async function enrichMecOpportunities(
+  opportunities: IUnifiedOpportunity[],
+  supabase: any,
+): Promise<IUnifiedOpportunity[]> {
+  const mecOpps = opportunities.filter(opp => !opp.is_partner);
+  if (mecOpps.length === 0) return opportunities;
+
+  // 1. Fetch cycle info for these courses to get their exact year and semester
+  const courseIds = mecOpps.map(opp => opp.id.replace('mec_', ''));
+  const { data: courseCycles, error: cyclesError } = await supabase
+    .from('opportunities')
+    .select('course_id, year, semester, opportunity_type')
+    .in('course_id', courseIds);
+
+  if (cyclesError) {
+    console.error('[enrichMecOpportunities] Failed to fetch course cycles:', cyclesError.message);
+    return opportunities;
+  }
+
+  const latestCycleMap = new Map<string, { year: number; semester: string; type: string }>();
+  if (courseCycles) {
+    for (const row of courseCycles) {
+      const existing = latestCycleMap.get(row.course_id);
+      const currentYear = row.year;
+      const currentSem = row.semester || '1';
+      if (!existing || currentYear > existing.year || (currentYear === existing.year && currentSem > existing.semester)) {
+        latestCycleMap.set(row.course_id, { year: currentYear, semester: currentSem, type: row.opportunity_type });
+      }
+    }
+  }
+
+  // 2. Fetch all programs
+  const { data: programs, error: programsError } = await supabase
+    .from('programs')
+    .select('type, cycle_year, cycle_semester, status, redirect_url');
+
+  if (programsError) {
+    console.error('[enrichMecOpportunities] Failed to fetch programs:', programsError.message);
+    return opportunities;
+  }
+
+  if (programs && programs.length > 0) {
+    const programMap = new Map<string, any>();
+    for (const prog of programs) {
+      const key = `${prog.type.toLowerCase()}|${prog.cycle_year}|${prog.cycle_semester}`;
+      programMap.set(key, prog);
+    }
+
+    opportunities.forEach(opp => {
+      if (!opp.is_partner) {
+        const cid = opp.id.replace('mec_', '');
+        const cycle = latestCycleMap.get(cid);
+        if (cycle) {
+          const key = `${cycle.type.toLowerCase()}|${cycle.year}|${cycle.semester}`;
+          const prog = programMap.get(key);
+          if (prog) {
+            opp.status = prog.status;
+            if (prog.redirect_url) {
+              opp.external_redirect = {
+                enabled: true,
+                url: prog.redirect_url
+              };
+            }
+          }
+        }
+      }
+    });
+  }
+
+  return opportunities;
+}
+
 export async function getUnifiedOpportunities(
   options: GetUnifiedOpportunitiesOptions,
 ): Promise<IUnifiedOpportunity[]> {
@@ -101,6 +176,9 @@ export async function getUnifiedOpportunities(
         // Server Components cannot set cookies — setAll is a no-op here
         setAll: () => {},
       },
+      global: {
+        fetch: (url: RequestInfo | URL, init?: RequestInit) => fetch(url, { ...init, cache: 'no-store' }),
+      },
     },
   );
 
@@ -116,7 +194,8 @@ export async function getUnifiedOpportunities(
       });
       
       if (!error && data) {
-        return (data as UnifiedOpportunityRow[]).map(mapRowToOpportunity);
+        const mapped = (data as UnifiedOpportunityRow[]).map(mapRowToOpportunity);
+        return await enrichMecOpportunities(mapped, supabase);
       }
       // If RPC doesn't exist yet or fails, fall through to view-based query below
       console.warn('[opportunities] get_opportunities_for_user unavailable, using view fallback:', error?.message);
@@ -176,11 +255,13 @@ export async function getUnifiedOpportunities(
 
   const mapped = (data as UnifiedOpportunityRow[]).map(mapRowToOpportunity);
 
+  const enriched = await enrichMecOpportunities(mapped, supabase);
+
   // If user is authenticated, we want to fetch the match scores for these opportunities 
   // so the Explore tab can also show the match badge.
   const { data: authData } = await supabase.auth.getUser();
-  if (authData.user && mapped.length > 0) {
-    const unifiedIds = mapped.map(opp => opp.id);
+  if (authData.user && enriched.length > 0) {
+    const unifiedIds = enriched.map(opp => opp.id);
     const { data: matchData } = await supabase
       .from('user_opportunity_matches')
       .select('unified_opportunity_id, match_score')
@@ -189,7 +270,7 @@ export async function getUnifiedOpportunities(
 
     if (matchData) {
       const matchMap = new Map(matchData.map((m: any) => [m.unified_opportunity_id, m.match_score]));
-      mapped.forEach(opp => {
+      enriched.forEach(opp => {
         const score = matchMap.get(opp.id);
         if (score !== undefined) {
           opp.match_score = score;
@@ -200,8 +281,8 @@ export async function getUnifiedOpportunities(
 
   if (mode === 'para-voce') {
     // In-memory sort: parceiras primeiro, depois por recência (apenas para não-logados)
-    mapped.sort((a, b) => Number(b.is_partner) - Number(a.is_partner));
+    enriched.sort((a, b) => Number(b.is_partner) - Number(a.is_partner));
   }
 
-  return mapped;
+  return enriched;
 }

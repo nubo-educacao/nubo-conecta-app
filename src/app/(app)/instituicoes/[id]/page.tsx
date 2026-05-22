@@ -22,6 +22,7 @@ import ShareInstitutionButton from './ShareInstitutionButton';
 import CoverImage from './CoverImage';
 import Paginator from './Paginator';
 import CampusFilter from './CampusFilter';
+import ImportantDatesSection from '@/components/opportunities/ImportantDatesSection';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -101,6 +102,31 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
       ? { enabled: row.external_redirect_enabled, url: row.external_redirect_url }
       : undefined,
   }));
+
+  // ── Fetch MEC Dates se for Sisu ou Prouni ─────────────────────────────────
+  let mecImportantDates: { title: string; start_date: string; end_date: string | null }[] = [];
+  let opportunityTypeForMec: string | undefined = undefined;
+  if (!isPartner) {
+    const isSisu = institution.name.toLowerCase().includes('sisu');
+    const isProuni = institution.name.toLowerCase().includes('prouni');
+    if (isSisu) opportunityTypeForMec = 'sisu';
+    else if (isProuni) opportunityTypeForMec = 'prouni';
+
+    if (opportunityTypeForMec) {
+      const nowIso = new Date().toISOString();
+      const { data } = await supabase
+        .from('important_dates')
+        .select('title, start_date, end_date')
+        .ilike('type', `%${opportunityTypeForMec}%`)
+        .or(`end_date.gte.${nowIso},and(end_date.is.null,start_date.gte.${nowIso})`)
+        .order('start_date', { ascending: true })
+        .limit(10);
+      
+      if (data) {
+        mecImportantDates = data as any[];
+      }
+    }
+  }
 
   // ── Header gradient ───────────────────────────────────────────────────────
   const headerGradient = isPartner && institution.brand_color
@@ -240,6 +266,18 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
               >
                 {count} {(count ?? 0) === 1 ? 'oportunidade disponível' : 'oportunidades disponíveis'}
               </span>
+            </div>
+          )}
+
+          {/* Calendário da Instituição */}
+          {(isPartner || opportunityTypeForMec) && (
+            <div className="mt-4">
+              <ImportantDatesSection
+                isPartner={isPartner}
+                opportunityType={opportunityTypeForMec}
+                institutionId={id}
+                mecDates={mecImportantDates}
+              />
             </div>
           )}
 

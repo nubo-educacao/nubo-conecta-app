@@ -10,6 +10,7 @@ import { type PartnerFormField } from "@/components/forms/FormFieldRenderer";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/contexts/ProfileContext";
+import { evaluateJsonLogic } from "@/utils/jsonLogic";
 
 interface ApplicationState {
   id: string;
@@ -17,6 +18,8 @@ interface ApplicationState {
   answers: Record<string, unknown>;
   partner_id: string;
   partner_name: string;
+  user_id?: string;
+  external_redirect?: { enabled: boolean; url?: string };
 }
 
 type PagePhase = "loading" | "form" | "submitted" | "error";
@@ -38,8 +41,11 @@ export default function PartnerFormsPage() {
   const [fields, setFields] = useState<PartnerFormField[]>([]);
   const [application, setApplication] = useState<ApplicationState | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string>("");
+  const [formKey, setFormKey] = useState<string>("");
+  const [stepIndex, setStepIndex] = useState(0);
+  const [profileData, setProfileData] = useState<Record<string, any>>({});
 
-  const localStorageKey = `nubo_draft_${application?.partner_id}_${user!.id}`;
+  const localStorageKey = `nubo_draft_${application?.partner_id}_${formKey}`;
 
   useEffect(() => {
     // user is guaranteed by AuthGuard in (protected) layout
@@ -49,8 +55,8 @@ export default function PartnerFormsPage() {
       const { data: existingApp, error: appErr } = await supabase
         .from("student_applications")
         .select(`
-          id, status, answers, partner_id,
-          partner_opportunities:partner_id ( name )
+          id, status, answers, partner_id, user_id,
+          partner_opportunities:partner_id ( name, external_redirect_config )
         `)
         .eq("id", applicationId)
         .single();
@@ -68,11 +74,13 @@ export default function PartnerFormsPage() {
         answers: existingApp.answers as Record<string, unknown>,
         partner_id: existingApp.partner_id,
         partner_name: opp?.name ?? "Candidatura",
+        user_id: existingApp.user_id,
+        external_redirect: opp?.external_redirect_config as ApplicationState['external_redirect'],
       };
 
       setApplication(appState);
 
-      if (appState.status === "SUBMITTED" || appState.status === "APPROVED") {
+      if (["SUBMITTED", "APPROVED", "redirected"].includes(appState.status)) {
         setPhase("submitted");
         return;
       }
@@ -91,11 +99,25 @@ export default function PartnerFormsPage() {
           .order("sort_order")
       ]);
 
+      const loadedFields = (fieldsRes.data as PartnerFormField[]) || [];
       if (stepsRes.data) setSteps(stepsRes.data as PartnerStep[]);
-      if (fieldsRes.data) setFields(fieldsRes.data as PartnerFormField[]);
+      if (fieldsRes.data) setFields(loadedFields);
 
       // Initialize selected profile from ProfileContext or application user_id
-      setSelectedProfileId(activeProfileId ?? appState.partner_id ?? user!.id);
+      const initialProfileId = activeProfileId ?? existingApp.user_id ?? user!.id;
+      setSelectedProfileId(initialProfileId);
+      setFormKey(initialProfileId);
+
+      // Fetch profile data
+      const { data: profileRow } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("id", initialProfileId)
+        .maybeSingle();
+
+      if (profileRow) {
+        setProfileData(profileRow);
+      }
 
       setPhase("form");
     };
@@ -108,10 +130,67 @@ export default function PartnerFormsPage() {
     setSelectedProfileId(profileId);
     setActiveProfileId(profileId);
     if (!application) return;
-    await supabase
+
+    // Fetch new profile data
+    const { data: profileRow } = await supabase
+      .from("user_profiles")
+      .select("*")
+      .eq("id", profileId)
+      .maybeSingle();
+
+    let newProfileData: Record<string, any> = {};
+    if (profileRow) {
+      newProfileData = profileRow;
+    }
+
+    // 1. Build mapped data for the new profile using loaded fields
+    const newMappedData: Record<string, any> = {};
+    if (profileRow && fields.length > 0) {
+      fields.forEach(field => {
+        if (field.mapping_source && field.mapping_source.startsWith("user_profiles.")) {
+          const column = field.mapping_source.split(".")[1];
+          const value = profileRow[column];
+          if (value !== undefined && value !== null) {
+            newMappedData[field.field_name] = value;
+          }
+        }
+      });
+    }
+
+    // 2. Merge into application answers
+    const updatedAnswers = {
+      ...application.answers,
+      ...newMappedData
+    };
+
+    // Sync localStorage draft for the new profile to prevent stale draft from overwriting new mapped values
+    try {
+      const targetLocalStorageKey = `nubo_draft_${application.partner_id}_${profileId}`;
+      const existingLsDraft = JSON.parse(localStorage.getItem(targetLocalStorageKey) ?? "{}");
+      const updatedLsDraft = { ...existingLsDraft, ...newMappedData };
+      localStorage.setItem(targetLocalStorageKey, JSON.stringify(updatedLsDraft));
+    } catch (e) {
+      console.error("Failed to sync localStorage draft:", e);
+    }
+
+    // Update all local states synchronously in a single batch
+    setProfileData(newProfileData);
+    setApplication(prev => prev ? { ...prev, user_id: profileId, answers: updatedAnswers } : null);
+    setFormKey(profileId);
+
+    // Update student_applications row in the background (non-blocking for instant click feedback)
+    supabase
       .from("student_applications")
-      .update({ user_id: profileId })
-      .eq("id", application.id);
+      .update({ 
+        user_id: profileId,
+        answers: updatedAnswers
+      })
+      .eq("id", application.id)
+      .then(({ error }) => {
+        if (error) {
+          console.error("Failed to update student application in background:", error);
+        }
+      });
   };
 
   // ── Draft save ─────────────────────────────────────────────────────────────
@@ -123,30 +202,80 @@ export default function PartnerFormsPage() {
     });
   };
 
+  // ── Eligibility computation ─────────────────────────────────────────────────
+  const computeEligibility = (data: Record<string, unknown>) => {
+    const criterionFields = fields.filter((f) => f.is_criterion && f.criterion_rule);
+    return criterionFields.map((f) => {
+      const userAnswer = data[f.field_name];
+      let met = false;
+      try {
+        met = !!evaluateJsonLogic(f.criterion_rule!, { [f.field_name]: userAnswer });
+      } catch { /* rule evaluation failed — treat as unmet */ }
+      return {
+        question_text: f.question_text,
+        met,
+        user_answer: userAnswer != null ? String(userAnswer) : undefined,
+      };
+    });
+  };
+
   // ── Final submit ───────────────────────────────────────────────────────────
+  const isRedirect = !!application?.external_redirect?.enabled;
+
   const handleSubmitForm = async (data: Record<string, unknown>) => {
     if (!application) return { success: false };
+
+    const finalStatus = isRedirect ? 'redirected' : 'SUBMITTED';
 
     const { data: result, error } = await supabase.rpc("submit_application_v1", {
       p_application_id: application.id,
       p_answers: data,
+      p_final_status: finalStatus,
     });
 
     if (error || !result?.success) return { success: false };
 
+    if (isRedirect && application.external_redirect?.url) {
+      window.open(application.external_redirect.url, '_blank');
+    }
+
     setPhase("submitted");
-    return { success: true };
+    return { success: true, eligibilityResults: computeEligibility(data) };
   };
 
   // ── Merge localStorage draft ───────────────────────────────────────────────
   const defaultValues = (() => {
     const dbAnswers = application?.answers ?? {};
     if (!application) return dbAnswers;
+
+    // Build initial values mapped from profileData
+    const mappedProfileData: Record<string, any> = {};
+    if (profileData && fields.length > 0) {
+      fields.forEach(field => {
+        if (field.mapping_source && field.mapping_source.startsWith("user_profiles.")) {
+          const column = field.mapping_source.split(".")[1];
+          const value = profileData[column];
+          if (value !== undefined && value !== null) {
+            mappedProfileData[field.field_name] = value;
+          }
+        }
+      });
+    }
+
     try {
       const lsDraft = JSON.parse(localStorage.getItem(localStorageKey) ?? "{}");
-      return { ...dbAnswers, ...lsDraft };
+      return {
+        ...profileData,
+        ...dbAnswers,
+        ...mappedProfileData,
+        ...lsDraft
+      };
     } catch {
-      return dbAnswers;
+      return {
+        ...profileData,
+        ...dbAnswers,
+        ...mappedProfileData
+      };
     }
   })();
 
@@ -183,9 +312,14 @@ export default function PartnerFormsPage() {
           >
             <CheckCircle2 size={32} className="text-green-500" />
           </motion.div>
-          <h2 className="text-lg font-bold text-[#024F86] mb-1">Candidatura enviada!</h2>
+          <h2 className="text-lg font-bold text-[#024F86] mb-1">
+            {application?.status === 'redirected' ? 'Redirecionado!' : 'Candidatura enviada!'}
+          </h2>
           <p className="text-xs text-[#3A424E]/60 mb-6">
-            Sua candidatura para <strong>{application?.partner_name}</strong> foi registrada e seu match foi atualizado.
+            {application?.status === 'redirected'
+              ? <>Você foi redirecionado para o portal oficial de <strong>{application?.partner_name}</strong>. Finalize sua inscrição por lá.</>
+              : <>Sua candidatura para <strong>{application?.partner_name}</strong> foi registrada e seu match foi atualizado.</>
+            }
           </p>
           <button
             onClick={() => router.push("/candidaturas")}
@@ -210,7 +344,7 @@ export default function PartnerFormsPage() {
         </button>
 
         {/* ── Titularidade ── */}
-        {profiles.length > 0 && (
+        {stepIndex === 0 && profiles.length > 0 && (
           <div className="px-4 pt-2 pb-4">
             <p className="text-[11px] text-[#707A7E] font-bold uppercase mb-2">Candidatura para</p>
             <div className="flex gap-3">
@@ -250,6 +384,7 @@ export default function PartnerFormsPage() {
                     <Users size={15} className={selectedProfileId !== user!.id ? "text-white" : "text-gray-400"} />
                   </div>
                   <select
+                    data-testid="dependent-select"
                     className="flex-1 bg-transparent text-[11px] text-[#707a7e] outline-none font-medium"
                     value={selectedProfileId === user!.id ? "" : selectedProfileId}
                     onChange={(e) => e.target.value && handleProfileChange(e.target.value)}
@@ -268,6 +403,7 @@ export default function PartnerFormsPage() {
         <div className="flex-1 px-4 pb-4">
           {application && (
             <PartnerFormEngine
+              key={formKey}
               partnerName={application.partner_name}
               applicationId={application.id}
               steps={steps}
@@ -276,6 +412,9 @@ export default function PartnerFormsPage() {
               localStorageKey={localStorageKey}
               onSaveDraft={handleSaveDraft}
               onSubmitForm={handleSubmitForm}
+              onComputeEligibility={fields.some(f => f.is_criterion) ? computeEligibility : undefined}
+              isRedirectFlow={isRedirect}
+              onStepIndexChange={setStepIndex}
             />
           )}
         </div>

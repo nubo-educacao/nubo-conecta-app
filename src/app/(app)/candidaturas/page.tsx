@@ -21,55 +21,16 @@ interface ApplicationCard {
   logo_url: string | null;
 }
 
-type AppStatus = "DRAFT" | "SUBMITTED" | "IN_REVIEW" | "APPROVED" | "REJECTED";
+type AppStatus = "DRAFT" | "pending" | "SUBMITTED" | "redirected" | "IN_REVIEW" | "APPROVED" | "REJECTED";
 
-const STATUS_CONFIG: Record<string, { label: string; bgColor: string; textColor: string; dotColor: string }> = {
-  DRAFT: {
-    label: "Rascunho",
-    bgColor: "bg-gray-100",
-    textColor: "text-gray-500",
-    dotColor: "bg-gray-400",
-  },
-  SUBMITTED: {
-    label: "Enviada",
-    bgColor: "bg-blue-50",
-    textColor: "text-blue-600",
-    dotColor: "bg-blue-500",
-  },
-  IN_REVIEW: {
-    label: "Em Análise",
-    bgColor: "bg-amber-50",
-    textColor: "text-amber-600",
-    dotColor: "bg-amber-400",
-  },
-  APPROVED: {
-    label: "Aprovada",
-    bgColor: "bg-green-50",
-    textColor: "text-[#25d366]",
-    dotColor: "bg-[#25d366]",
-  },
-  REJECTED: {
-    label: "Reprovada",
-    bgColor: "bg-red-50",
-    textColor: "text-red-600",
-    dotColor: "bg-red-500",
-  },
-};
-
-const STATUS_ICON_BG: Record<string, string> = {
-  DRAFT: "bg-gray-100",
-  SUBMITTED: "bg-blue-100",
-  IN_REVIEW: "bg-amber-100",
-  APPROVED: "bg-green-100",
-  REJECTED: "bg-red-100",
-};
-
-const STATUS_ICON_TEXT: Record<string, string> = {
-  DRAFT: "text-gray-400",
-  SUBMITTED: "text-blue-500",
-  IN_REVIEW: "text-amber-500",
-  APPROVED: "text-[#25d366]",
-  REJECTED: "text-red-500",
+const STATUS_MAP: Record<string, { label: string; bgColor: string; textColor: string; dotColor: string; iconBg: string; iconText: string }> = {
+  DRAFT:      { label: "Rascunho",      bgColor: "bg-gray-100",  textColor: "text-gray-500",     dotColor: "bg-gray-400",    iconBg: "bg-gray-100",   iconText: "text-gray-400" },
+  pending:    { label: "Pendente",       bgColor: "bg-gray-50",   textColor: "text-gray-600",     dotColor: "bg-gray-400",    iconBg: "bg-gray-100",   iconText: "text-gray-400" },
+  SUBMITTED:  { label: "Enviada",        bgColor: "bg-blue-50",   textColor: "text-blue-600",     dotColor: "bg-blue-500",    iconBg: "bg-blue-100",   iconText: "text-blue-500" },
+  redirected: { label: "Redirecionado",  bgColor: "bg-purple-50", textColor: "text-purple-600",   dotColor: "bg-purple-500",  iconBg: "bg-purple-100", iconText: "text-purple-500" },
+  IN_REVIEW:  { label: "Em Análise",     bgColor: "bg-amber-50",  textColor: "text-amber-600",    dotColor: "bg-amber-400",   iconBg: "bg-amber-100",  iconText: "text-amber-500" },
+  APPROVED:   { label: "Aprovada",       bgColor: "bg-green-50",  textColor: "text-[#25d366]",    dotColor: "bg-[#25d366]",   iconBg: "bg-green-100",  iconText: "text-[#25d366]" },
+  REJECTED:   { label: "Reprovada",      bgColor: "bg-red-50",    textColor: "text-red-600",      dotColor: "bg-red-500",     iconBg: "bg-red-100",    iconText: "text-red-500" },
 };
 
 const cardVariants = {
@@ -99,8 +60,10 @@ export default function CandidaturasPage() {
         id, partner_id, status, created_at, updated_at, eligibility_score,
         partner_opportunities:partner_id (
           name,
-          institutions:institution_id ( name ),
-          partner_institutions:institution_id ( logo_url )
+          institutions:institution_id (
+            name,
+            partner_institutions ( logo_url )
+          )
         )
       `)
       .eq("user_id", user.id)
@@ -108,8 +71,10 @@ export default function CandidaturasPage() {
       .then(({ data }: { data: any[] | null }) => {
         const mapped = (data || []).map((row: Record<string, unknown>) => {
           const opp = (row.partner_opportunities as Record<string, unknown> | null) ?? {};
-          const inst = (opp.institutions as Record<string, string> | null) ?? {};
-          const pi = (opp.partner_institutions as Record<string, string> | null) ?? {};
+          const inst = (opp.institutions as Record<string, any> | null) ?? {};
+          const pi = Array.isArray(inst.partner_institutions)
+            ? (inst.partner_institutions[0] || {})
+            : (inst.partner_institutions || {});
           return {
             id: row.id as string,
             partner_id: row.partner_id as string,
@@ -190,9 +155,7 @@ export default function CandidaturasPage() {
           <div className="space-y-3">
             {applications.map((app, i) => {
               const status = (app.status || "DRAFT") as AppStatus;
-              const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.DRAFT;
-              const iconBg = STATUS_ICON_BG[status] ?? STATUS_ICON_BG.DRAFT;
-              const iconText = STATUS_ICON_TEXT[status] ?? STATUS_ICON_TEXT.DRAFT;
+              const cfg = STATUS_MAP[status] ?? STATUS_MAP.DRAFT;
               const showStepper = SHOW_STEPPER_FOR.includes(status);
 
               const updatedDate = new Date(app.updated_at).toLocaleDateString("pt-BR", {
@@ -214,11 +177,11 @@ export default function CandidaturasPage() {
                   {/* Card header */}
                   <div className="flex items-start gap-3 p-4 pb-3">
                     {/* Status icon */}
-                    <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
+                    <div className={`w-10 h-10 rounded-xl ${cfg.iconBg} flex items-center justify-center shrink-0`}>
                       {app.logo_url ? (
                         <img src={app.logo_url} alt="" className="w-6 h-6 object-contain" />
                       ) : (
-                        <span className={`text-lg font-black ${iconText}`}>
+                        <span className={`text-lg font-black ${cfg.iconText}`}>
                           {(app.opportunity_name ?? "P")[0].toUpperCase()}
                         </span>
                       )}
@@ -246,7 +209,7 @@ export default function CandidaturasPage() {
                   {/* Stepper */}
                   {showStepper && (
                     <div className="px-4 pb-4 pt-1 border-t border-gray-50">
-                      <ApplicationStepper status={status} compact />
+                      <ApplicationStepper status={status as "DRAFT" | "SUBMITTED" | "IN_REVIEW" | "APPROVED" | "REJECTED"} compact />
                     </div>
                   )}
                 </motion.button>
