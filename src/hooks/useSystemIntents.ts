@@ -10,7 +10,8 @@
  * Quando o backend responde:
  *   - A resposta da Cloudinha (real, gerada pelo LLM) é armazenada como pendingMessage
  *   - O FAB exibe um badge com o contador de mensagens não lidas
- *   - Se o backend envia intent_metadata com open_drawer=true, o drawer abre após delay_ms
+ *   - Se o backend envia intent_metadata com open_drawer=true, sinaliza hasPriorityMessage
+ *     para o FAB exibir animação de pulso — NÃO abre o drawer automaticamente
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -27,12 +28,12 @@ interface UseSystemIntentsOptions {
   sessionId: string;
   accessToken: string;
   isDrawerOpen: boolean;
-  onOpen: () => void;
 }
 
 interface UseSystemIntentsReturn {
   pendingMessages: ChatMessage[];
   unreadCount: number;
+  hasPriorityMessage: boolean;
   consumeMessages: () => ChatMessage[];
 }
 
@@ -42,25 +43,21 @@ export function useSystemIntents({
   sessionId,
   accessToken,
   isDrawerOpen,
-  onOpen,
 }: UseSystemIntentsOptions): UseSystemIntentsReturn {
   const pathname = usePathname();
   const [pendingMessages, setPendingMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [hasPriorityMessage, setHasPriorityMessage] = useState(false);
 
   // Rastreia qual rota+userId já foi disparado para evitar duplicatas
   // Formato: "userId::pathname"
   const dispatchedRef = useRef<string>('');
-  const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Zerar badge quando drawer é aberto
+  // Zerar badge e prioridade quando drawer é aberto
   useEffect(() => {
     if (isDrawerOpen) {
       setUnreadCount(0);
-      if (openTimerRef.current) {
-        clearTimeout(openTimerRef.current);
-        openTimerRef.current = null;
-      }
+      setHasPriorityMessage(false);
     }
   }, [isDrawerOpen]);
 
@@ -139,11 +136,7 @@ export function useSystemIntents({
           if (event.type === 'intent_metadata') {
             console.log('[SystemIntent] intent_metadata recebido:', event);
             if (event.open_drawer && !isDrawerOpen) {
-              const delay = event.delay_ms ?? 5000;
-              openTimerRef.current = setTimeout(() => {
-                onOpen();
-                openTimerRef.current = null;
-              }, delay);
+              setHasPriorityMessage(true);
             }
           }
         }
@@ -156,10 +149,6 @@ export function useSystemIntents({
 
     return () => {
       cancelled = true;
-      if (openTimerRef.current) {
-        clearTimeout(openTimerRef.current);
-        openTimerRef.current = null;
-      }
     };
   // Intencionalmente inclui userId e accessToken para retentar quando auth carrega
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -210,8 +199,7 @@ export function useSystemIntents({
             }
           }
           if (event.type === 'intent_metadata' && event.open_drawer && !isDrawerOpen) {
-            const delay = event.delay_ms ?? 0;
-            openTimerRef.current = setTimeout(() => { onOpen(); openTimerRef.current = null; }, delay);
+            setHasPriorityMessage(true);
           }
         }
       } catch (err) {
@@ -235,5 +223,5 @@ export function useSystemIntents({
     return msgs;
   }, [pendingMessages]);
 
-  return { pendingMessages, unreadCount, consumeMessages };
+  return { pendingMessages, unreadCount, hasPriorityMessage, consumeMessages };
 }

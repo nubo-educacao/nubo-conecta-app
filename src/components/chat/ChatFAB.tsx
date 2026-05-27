@@ -29,17 +29,12 @@ export default function ChatFAB() {
   // Usado pelo onOpen para leitura síncrona sem depender de closure
   const pendingMessagesRef = useRef<ChatMessage[]>([]);
 
-  const { pendingMessages, unreadCount } = useSystemIntents({
+  const { pendingMessages, unreadCount, hasPriorityMessage } = useSystemIntents({
     userId: user?.id ?? '',
     profileId: user?.id ?? '',
     sessionId,
     accessToken: session?.access_token ?? '',
     isDrawerOpen: isOpen,
-    onOpen: () => {
-      // Lê o ref — sempre tem o valor atual, sem stale closure
-      setDrawerMessages([...pendingMessagesRef.current]);
-      setIsOpen(true);
-    },
   });
 
   // Sincronizar ref com o state atual (síncrono, sem delay de useEffect)
@@ -60,7 +55,7 @@ export default function ChatFAB() {
       {/* FAB button */}
       <button
         onClick={handleToggle}
-        className="fixed z-30 flex items-center justify-center rounded-full shadow-lg transition-all hover:scale-105 active:scale-95"
+        className={`fixed z-30 flex items-center justify-center rounded-full shadow-lg transition-all hover:scale-105 active:scale-95${!isOpen && hasPriorityMessage ? ' animate-pulse' : ''}`}
         style={{
           bottom: 'calc(env(safe-area-inset-bottom) + 76px)',
           right: '16px',
@@ -69,8 +64,10 @@ export default function ChatFAB() {
           background: isOpen
             ? 'rgba(255,255,255,0.9)'
             : 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)',
-          border: isOpen ? '2px solid rgba(56,177,228,0.4)' : 'none',
-          boxShadow: '0 8px 24px rgba(2,79,134,0.35)',
+          border: isOpen ? '2px solid rgba(56,177,228,0.4)' : (!isOpen && hasPriorityMessage ? '2px solid rgba(56,177,228,0.7)' : 'none'),
+          boxShadow: !isOpen && hasPriorityMessage
+            ? '0 8px 32px rgba(56,177,228,0.55)'
+            : '0 8px 24px rgba(2,79,134,0.35)',
         }}
         aria-label={isOpen ? 'Fechar Cloudinha' : 'Abrir Cloudinha'}
       >
