@@ -3,8 +3,9 @@
 // useChat — Sprint 03 Épico 1C
 // Manages chat UI state: messages, streaming, tool activity, and follow-up suggestions.
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { streamChat, type ChatMessage, type ChatEvent } from '@/services/chatService';
+import { supabase } from '@/lib/supabase';
 
 function genId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -31,6 +32,45 @@ export function useChat({
   const [isStreaming, setIsStreaming] = useState(false);
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  // Carregar histórico da sessão ao montar o drawer
+  useEffect(() => {
+    if (!sessionId || !supabase) return;
+
+    async function loadHistory() {
+      try {
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .select('id, sender, content, created_at')
+          .eq('session_id', sessionId)
+          .neq('sender', 'system')
+          .order('created_at', { ascending: true });
+
+        if (error || !data || data.length === 0) return;
+
+        const historical: ChatMessage[] = data.map((row: { id: string; sender: string; content: string; created_at: string }) => ({
+          id: row.id,
+          sender: row.sender as 'user' | 'model',
+          content: row.content,
+          timestamp: new Date(row.created_at),
+        }));
+
+        setMessages((prev) => {
+          // Evitar duplicatas: IDs do banco vs initialMessages
+          const existingIds = new Set(prev.map((m) => m.id));
+          const newHistorical = historical.filter((m) => !existingIds.has(m.id));
+          if (newHistorical.length === 0) return prev;
+          return [...newHistorical, ...prev];
+        });
+      } catch (e) {
+        console.warn('[useChat] Falha ao carregar histórico:', e);
+      }
+    }
+
+    loadHistory();
+  // Executa apenas na montagem; sessionId não muda durante o ciclo de vida do drawer
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const sendMessage = useCallback(
     async (input: string) => {
