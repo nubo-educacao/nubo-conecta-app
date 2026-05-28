@@ -76,7 +76,7 @@ export default function InstitutionCarousel({
       {/* Mobile: carrossel — oculto em md+ quando desktopGridMode */}
       <div
         ref={scrollRef}
-        className={`flex gap-4 overflow-x-auto pb-2 pl-4 pr-4 snap-x snap-mandatory scroll-smooth ${
+        className={`flex gap-4 overflow-x-auto pb-2 pl-4 pr-4 snap-x snap-mandatory scroll-smooth scroll-pl-4 ${
           desktopGridMode ? 'md:hidden' : ''
         }`}
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}

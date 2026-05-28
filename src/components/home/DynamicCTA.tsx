@@ -1,12 +1,12 @@
 'use client';
 
-// DynamicCTA — Sprint 05 Home Refactor
+// DynamicCTA — Sprint 15.0 Figma Aligned & Premium Refactor
 // Five-state CTA that adapts to user authentication, profile and application status.
-// 1. Visitante: Criar conta
-// 2. Autenticado, sem perfil: Completar perfil
-// 3. Perfil ok, sem candidaturas: "Você ainda não fez nenhuma candidatura"
-// 4. Candidatura em rascunho: "Candidatura em andamento"
-// 5. Concluiu pelo menos 1: "Buscar Novas Vagas" + "Minhas Inscrições"
+// 1. visitor: Crie sua conta (Figma node 273-3973 / 273-4018)
+// 2. no-profile: Complete seu perfil (Figma node 273-3958 / 273-4004)
+// 3. no-applications: Primeira candidatura (Figma node 273-3949 / 273-3996)
+// 4. application-in-progress: Candidatura em andamento (Figma node 273-3937 / 273-3985)
+// 5. completed-application: Buscar Novas Vagas + Minhas Inscrições (Adapted visual style)
 
 import Link from 'next/link';
 import { LogIn, UserCog, Search, ClipboardList, Loader2, Plus } from 'lucide-react';
@@ -34,30 +34,35 @@ export default function DynamicCTA({
 }: DynamicCTAProps) {
   if (state === 'loading') {
     return (
-      <div className="flex justify-center py-8">
-        <Loader2 size={24} className="animate-spin" style={{ color: '#38B1E4' }} />
+      <div className="flex justify-center items-center py-8 min-h-[88px] md:min-h-[96px] w-full">
+        <Loader2 size={28} className="animate-spin text-[#38B1E4]" />
       </div>
     );
   }
 
-  // Common card styles
-  const cardBaseClass = "w-full rounded-2xl px-6 py-5 flex items-center gap-4 transition-all hover:shadow-md active:scale-[0.99] border";
-  
+  // Base card styles with premium aesthetics (Geometria de Marca, smooth active scale, premium shadow)
+  const cardBaseClass = "w-full min-h-[88px] md:min-h-[96px] rounded-[20px] px-5 py-4 md:px-6 md:py-5 flex items-center gap-4 md:gap-5 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border text-left cursor-pointer focus:outline-none";
+
   if (state === 'visitor') {
     return (
       <button
         onClick={onOpenAuth}
         className={cardBaseClass}
-        style={{ background: 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)', borderColor: 'rgba(255,255,255,0.1)', color: 'white' }}
+        style={{ 
+          background: 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)', 
+          borderColor: 'rgba(255, 255, 255, 0.15)', 
+          color: 'white',
+          boxShadow: '0 8px 30px rgba(2, 79, 134, 0.15)'
+        }}
       >
-        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-white/20">
-          <LogIn size={24} color="white" />
+        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 md:w-[52px] md:h-[52px] rounded-[14px] bg-white/20 backdrop-blur-md shadow-inner transition-transform duration-300 group-hover:scale-105">
+          <LogIn size={24} className="text-white" />
         </div>
-        <div className="text-left">
-          <h3 className="font-bold text-base leading-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Criar conta
+        <div className="flex flex-col gap-0.5 justify-center">
+          <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            Crie sua conta
           </h3>
-          <p className="text-xs opacity-90" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <p className="text-xs md:text-sm opacity-90 leading-normal" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Entre para descobrir suas oportunidades ideais
           </p>
         </div>
@@ -70,16 +75,21 @@ export default function DynamicCTA({
       <Link
         href="/oportunidades?tab=para-voce"
         className={cardBaseClass}
-        style={{ background: '#FFF8E6', borderColor: '#FFE4A3', color: '#B45309' }}
+        style={{ 
+          background: '#FFFDF5', 
+          borderColor: '#FEF3C7', 
+          color: '#B45309',
+          boxShadow: '0 8px 30px rgba(217, 119, 6, 0.05)'
+        }}
       >
-        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-[#FFE4A3]">
-          <UserCog size={24} color="#B45309" />
+        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 md:w-[52px] md:h-[52px] rounded-[14px] bg-[#FEF3C7] shadow-sm">
+          <UserCog size={24} className="text-[#B45309]" />
         </div>
-        <div className="text-left">
-          <h3 className="font-bold text-base leading-tight" style={{ color: '#92400E', fontFamily: 'Montserrat, sans-serif' }}>
-            Completar perfil
+        <div className="flex flex-col gap-0.5 justify-center">
+          <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#92400E]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            Complete seu perfil
           </h3>
-          <p className="text-xs opacity-80" style={{ color: '#B45309', fontFamily: 'Montserrat, sans-serif' }}>
+          <p className="text-xs md:text-sm text-[#B45309]/90 leading-normal" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Adicione seus dados para ver oportunidades para você
           </p>
         </div>
@@ -92,16 +102,21 @@ export default function DynamicCTA({
       <Link
         href="/oportunidades"
         className={cardBaseClass}
-        style={{ background: 'white', borderColor: 'rgba(56,177,228,0.2)', color: '#024F86' }}
+        style={{ 
+          background: '#FFFFFF', 
+          borderColor: 'rgba(56, 177, 228, 0.25)', 
+          color: '#024F86',
+          boxShadow: '0 8px 30px rgba(56, 177, 228, 0.06)'
+        }}
       >
-        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-[#024F86]/10">
-          <Plus size={24} color="#024F86" />
+        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 md:w-[52px] md:h-[52px] rounded-[14px] bg-[#024F86]/10 shadow-sm">
+          <Plus size={24} className="text-[#024F86]" />
         </div>
-        <div className="text-left">
-          <h3 className="font-bold text-base leading-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Você ainda não fez nenhuma candidatura
+        <div className="flex flex-col gap-0.5 justify-center">
+          <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#024F86]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            Primeira candidatura
           </h3>
-          <p className="text-xs text-[#636E7C]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <p className="text-xs md:text-sm text-[#636E7C] leading-normal" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Comece agora e conquiste sua vaga
           </p>
         </div>
@@ -115,16 +130,21 @@ export default function DynamicCTA({
       <Link
         href={href}
         className={cardBaseClass}
-        style={{ background: '#F0F9FF', borderColor: '#BAE6FD', color: '#0369A1' }}
+        style={{ 
+          background: '#F0F9FF', 
+          borderColor: '#BAE6FD', 
+          color: '#0369A1',
+          boxShadow: '0 8px 30px rgba(3, 105, 161, 0.05)'
+        }}
       >
-        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-[#BAE6FD]">
-          <ClipboardList size={24} color="#0369A1" />
+        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 md:w-[52px] md:h-[52px] rounded-[14px] bg-[#BAE6FD] shadow-sm">
+          <ClipboardList size={24} className="text-[#0369A1]" />
         </div>
-        <div className="text-left">
-          <h3 className="font-bold text-base leading-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+        <div className="flex flex-col gap-0.5 justify-center">
+          <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#0369A1]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Candidatura em andamento
           </h3>
-          <p className="text-xs opacity-80" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <p className="text-xs md:text-sm text-[#0284C7] leading-normal" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Continue de onde você parou
           </p>
         </div>
@@ -132,20 +152,26 @@ export default function DynamicCTA({
     );
   }
 
-  // completed-application (Final state: 2 buttons)
+  // completed-application (Adapted to the premium design language with 2 buttons)
   return (
     <div className="flex flex-col sm:flex-row gap-4 w-full">
       <Link
         href="/oportunidades"
-        className="flex-1 rounded-2xl px-5 py-6 flex flex-col gap-3 transition-all hover:shadow-md active:scale-[0.98] border border-transparent"
-        style={{ background: 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)', color: 'white' }}
+        className="flex-1 rounded-[20px] px-5 py-5 md:px-6 md:py-6 flex flex-col gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.98] border border-transparent"
+        style={{ 
+          background: 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)', 
+          color: 'white',
+          boxShadow: '0 8px 30px rgba(2, 79, 134, 0.12)'
+        }}
       >
-        <Search size={28} color="white" />
-        <div>
-          <h3 className="font-bold text-lg leading-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+        <div className="flex items-center justify-center w-12 h-12 rounded-[14px] bg-white/20 backdrop-blur-md">
+          <Search size={26} className="text-white" />
+        </div>
+        <div className="flex flex-col gap-1 text-left">
+          <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Buscar Novas Vagas
           </h3>
-          <p className="text-sm opacity-80" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <p className="text-xs md:text-sm opacity-90" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Explore oportunidades
           </p>
         </div>
@@ -153,22 +179,27 @@ export default function DynamicCTA({
 
       <Link
         href="/candidaturas"
-        className="flex-1 rounded-2xl px-5 py-6 flex flex-col gap-3 transition-all hover:shadow-md active:scale-[0.98] bg-white border border-[#E2E8F0]"
+        className="flex-1 rounded-[20px] px-5 py-5 md:px-6 md:py-6 flex flex-col gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.98] bg-white border border-[#E2E8F0]"
+        style={{
+          boxShadow: '0 8px 30px rgba(100, 116, 139, 0.05)'
+        }}
       >
-        <div className="relative w-fit">
-          <ClipboardList size={28} color="#F59E0B" />
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center justify-center w-12 h-12 rounded-[14px] bg-[#F59E0B]/10">
+            <ClipboardList size={26} className="text-[#F59E0B]" />
+          </div>
           {countInProgress > 0 && (
-            <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#EF4444] text-white text-[10px] font-bold flex items-center justify-center border-2 border-white">
+            <div className="w-6 h-6 rounded-full bg-[#EF4444] text-white text-[11px] font-bold flex items-center justify-center shadow-sm">
               {countInProgress}
             </div>
           )}
         </div>
-        <div>
-          <h3 className="font-bold text-lg leading-tight text-[#1E293B]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+        <div className="flex flex-col gap-1 text-left">
+          <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#1E293B]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Minhas Inscrições
           </h3>
-          <p className="text-sm text-[#64748B]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            {countInProgress} em andamento
+          <p className="text-xs md:text-sm text-[#64748B]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            {countInProgress} {countInProgress === 1 ? 'candidatura' : 'candidaturas'} em andamento
           </p>
         </div>
       </Link>
