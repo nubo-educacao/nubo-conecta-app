@@ -251,6 +251,27 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
             </p>
           )}
 
+          {/* Website Link */}
+          {institution.website_url && (
+            <div className="mt-1 flex">
+              <a
+                href={institution.website_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl text-white transition-all hover:scale-[1.02] shadow-sm hover:shadow-md active:scale-95 duration-150"
+                style={{
+                  background: institution.brand_color || '#3092bb',
+                  fontFamily: 'Montserrat, sans-serif'
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                </svg>
+                Visitar site
+              </a>
+            </div>
+          )}
+
           {/* Box de contagem de oportunidades */}
           {(count ?? 0) > 0 && (
             <div

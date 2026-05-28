@@ -77,7 +77,7 @@ export async function getUnifiedInstitutions(filters: InstitutionsFilters = {}):
 
   let queryBuilder = supabase
     .from('v_unified_institutions')
-    .select('id, name, location, logo_url, cover_url, brand_color, description, type, opp_types, acronym, academic_organization, administrative_category', { count: 'exact' });
+    .select('id, name, location, logo_url, cover_url, brand_color, description, type, opp_types, acronym, academic_organization, administrative_category, website_url', { count: 'exact' });
 
   // Apply Filters
   if (type === 'partner') {
@@ -125,7 +125,7 @@ export async function getUnifiedInstitutionById(id: string): Promise<UnifiedInst
 
   const { data, error } = await supabase
     .from('v_unified_institutions')
-    .select('id, name, location, logo_url, cover_url, brand_color, description, type, opp_types, acronym, academic_organization, administrative_category')
+    .select('id, name, location, logo_url, cover_url, brand_color, description, type, opp_types, acronym, academic_organization, administrative_category, website_url')
     .eq('id', id)
     .limit(1);
 
