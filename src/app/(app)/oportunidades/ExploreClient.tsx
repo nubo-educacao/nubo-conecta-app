@@ -77,9 +77,7 @@ export default function ExploreClient({ opportunities, filters, currentPage, pag
   const handleFilterApply = (partial: Partial<ExploreFilters>) => {
     updateParam({
       location: partial.location,
-      shift:    partial.shift,
-      min_igc:  partial.min_igc?.toString(),
-      price_range: partial.price_range,
+      modality: partial.modality,
     });
     setFilterModalOpen(false);
   };
@@ -200,9 +198,7 @@ export default function ExploreClient({ opportunities, filters, currentPage, pag
         open={filterModalOpen}
         onClose={() => setFilterModalOpen(false)}
         location={filters.location}
-        shift={filters.shift}
-        min_igc={filters.min_igc}
-        price_range={filters.price_range}
+        modality={filters.modality}
         onApply={handleFilterApply}
       />
     </div>
