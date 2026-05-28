@@ -214,6 +214,70 @@ export function useSystemIntents({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, accessToken]);
 
+  // Tutorial para usuários anônimos: dispara 1x por sessão via sessionStorage
+  useEffect(() => {
+    const TUTORIAL_KEY = 'nubo_tutorial_shown';
+    if (typeof window === 'undefined') return;
+    if (sessionStorage.getItem(TUTORIAL_KEY)) return;
+
+    sessionStorage.setItem(TUTORIAL_KEY, 'true');
+
+    // UUID nulo é aceito pelo backend como sentinela para usuários anônimos
+    const ANON_UUID = '00000000-0000-0000-0000-000000000000';
+    const effectiveUserId = userId || ANON_UUID;
+    const effectiveProfileId = profileId || ANON_UUID;
+
+    let cancelled = false;
+
+    async function dispatchTutorial() {
+      try {
+        const stream = streamChat(
+          {
+            chatInput: 'tutorial',
+            userId: effectiveUserId,
+            active_profile_id: effectiveProfileId,
+            sessionId,
+            intent_type: 'system_intent',
+            ui_context: { current_page: pathname },
+          },
+          accessToken,
+        );
+
+        let hasContent = false;
+        for await (const event of stream) {
+          if (cancelled) break;
+          if (event.type === 'text' && event.content) {
+            setPendingMessages((prev) => {
+              if (hasContent && prev.length > 0) {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  content: updated[updated.length - 1].content + event.content,
+                };
+                return updated;
+              }
+              return [...prev, { id: genId(), sender: 'model' as const, content: event.content!, timestamp: new Date() }];
+            });
+            if (!hasContent) {
+              hasContent = true;
+              if (!isDrawerOpen) setUnreadCount((n) => n + 1);
+            }
+          }
+          if (event.type === 'intent_metadata' && event.open_drawer && !isDrawerOpen) {
+            setHasPriorityMessage(true);
+          }
+        }
+      } catch (e) {
+        console.warn('[SystemIntent] Falha ao disparar tutorial:', e);
+      }
+    }
+
+    dispatchTutorial();
+    return () => { cancelled = true; };
+  // Executa apenas 1x na montagem — sessionStorage garante deduplicação entre renders
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Consumir mensagens (para injetar no ChatDrawer quando abre)
   const consumeMessages = useCallback((): ChatMessage[] => {
     const msgs = [...pendingMessages];
