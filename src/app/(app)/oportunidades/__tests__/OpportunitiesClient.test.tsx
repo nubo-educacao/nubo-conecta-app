@@ -28,6 +28,12 @@ vi.mock('@/components/opportunities/OpportunityCard', () => ({
 }));
 
 // ExploreClient stub — verificamos apenas que ele é montado na aba "explore"
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 'user-test-id', user_metadata: { onboarding_completed: true } },
+  }),
+}));
+
 vi.mock('../ExploreClient', () => ({
   default: () => <div data-testid="explore-client" />,
 }));

@@ -5,6 +5,7 @@
 // A lógica de match, auth e CTA é mantida; a renderização de carrosséis é agora orientada por dados.
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DynamicCTA, { type CTAState } from '@/components/home/DynamicCTA';
 import HeroSearch from '@/components/home/HeroSearch';
@@ -12,6 +13,7 @@ import OpportunityCarousel from '@/components/home/OpportunityCarousel';
 import InstitutionCarousel from '@/components/home/InstitutionCarousel';
 import ImportantDates from '@/components/home/ImportantDates';
 import { supabase } from '@/lib/supabase';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import type { IHomeSectionWithData } from './page';
 
 interface HomeClientProps {
@@ -25,6 +27,11 @@ interface ApplicationSummary {
 
 export default function HomeClient({ sections }: HomeClientProps) {
   const { user, loading, setShowAuthModal } = useAuth();
+  const router = useRouter();
+
+  // Geolocation integration with auto DB sync for matches
+  const { requestLocation, permissionState } = useGeolocation(user?.id);
+
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
   const [appsLoading, setAppsLoading] = useState(true);
   const welcomeBackSentRef = useRef<string>('');
@@ -46,6 +53,26 @@ export default function HomeClient({ sections }: HomeClientProps) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  // Request browser geolocation permission on first visit to home
+  useEffect(() => {
+    if (permissionState === 'prompt') {
+      requestLocation();
+    }
+  }, [permissionState, requestLocation]);
+
+  // Refresh page data when user location updates to load nearest opportunities
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleUpdate = () => {
+      router.refresh();
+    };
+    window.addEventListener('nubo-matches-updated', handleUpdate);
+    return () => {
+      window.removeEventListener('nubo-matches-updated', handleUpdate);
+    };
+  }, [router]);
 
   useEffect(() => {
     if (!user) {

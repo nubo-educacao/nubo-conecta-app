@@ -1,15 +1,14 @@
 'use client';
 
-// DynamicCTA — Sprint 05 Home Refactor
-// Five-state CTA that adapts to user authentication, profile and application status.
-// 1. Visitante: Criar conta
-// 2. Autenticado, sem perfil: Completar perfil
-// 3. Perfil ok, sem candidaturas: "Você ainda não fez nenhuma candidatura"
-// 4. Candidatura em rascunho: "Candidatura em andamento"
-// 5. Concluiu pelo menos 1: "Buscar Novas Vagas" + "Minhas Inscrições"
+// DynamicCTA — Sprint 15.0 Figma High-Fidelity Refactor
+// Matches the exact design specifications for WEB (600px) and MOBILE (330px) breakpoints:
+// 1. visitor: Navy blue gradient with CTA button & Cloudinha avatar
+// 2. no-profile: Cream/amber border with "AÇÃO NECESSÁRIA" badge, title, progress bar (5 dashes) & Cloudinha avatar
+// 3. no-applications: White background with dashed blue border, "⚡ Começar agora" button, title, description & Cloudinha avatar with heart overlay
+// 4. application-in-progress: Light blue background, solid blue progress bar, "65% concluído" & Cloudinha avatar
 
 import Link from 'next/link';
-import { LogIn, UserCog, Search, ClipboardList, Loader2, Plus } from 'lucide-react';
+import { ChevronRight, Loader2, Sparkles, Search, ClipboardList } from 'lucide-react';
 
 export type CTAState = 
   | 'loading' 
@@ -34,34 +33,76 @@ export default function DynamicCTA({
 }: DynamicCTAProps) {
   if (state === 'loading') {
     return (
-      <div className="flex justify-center py-8">
-        <Loader2 size={24} className="animate-spin" style={{ color: '#38B1E4' }} />
+      <div className="flex justify-center items-center py-8 min-h-[96px] w-full">
+        <Loader2 size={28} className="animate-spin text-[#38B1E4]" />
       </div>
     );
   }
 
-  // Common card styles
-  const cardBaseClass = "w-full rounded-2xl px-6 py-5 flex items-center gap-4 transition-all hover:shadow-md active:scale-[0.99] border";
-  
+  // Common styles for premium card experience
+  const cardBorderRadius = "rounded-2xl md:rounded-[20px]";
+
   if (state === 'visitor') {
     return (
-      <button
+      <div
         onClick={onOpenAuth}
-        className={cardBaseClass}
-        style={{ background: 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)', borderColor: 'rgba(255,255,255,0.1)', color: 'white' }}
+        className={`w-full ${cardBorderRadius} p-5 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border border-transparent text-left cursor-pointer`}
+        style={{ 
+          background: 'linear-gradient(135deg, #024F86 0%, #01375E 100%)', 
+          color: 'white',
+          boxShadow: '0 8px 32px rgba(2, 79, 134, 0.15)'
+        }}
       >
-        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-white/20">
-          <LogIn size={24} color="white" />
+        {/* Left Side: Avatar + Text */}
+        <div className="flex items-center gap-4 flex-1">
+          {/* Cloudinha Avatar (Hidden on Mobile top right, shown on desktop left) */}
+          <div className="relative hidden md:flex flex-shrink-0 w-[72px] h-[72px] rounded-full bg-white/10 items-center justify-center overflow-hidden border border-white/10 shadow-inner">
+            <img src="/assets/cloudinha-candidaturas.png" alt="Cloudinha" className="w-[60px] h-[60px] object-contain" />
+          </div>
+
+          <div className="flex flex-col gap-0.5 flex-1 pr-12 md:pr-0">
+            <span className="text-[11px] md:text-xs font-semibold text-[#38B1E4] tracking-wider uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Rápido e fácil!
+            </span>
+            {/* Desktop Title */}
+            <h3 className="hidden md:block font-bold text-lg md:text-xl leading-tight tracking-tight text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Crie sua conta e descubra vagas para você
+            </h3>
+            {/* Mobile Title */}
+            <h3 className="block md:hidden font-bold text-base leading-tight tracking-tight text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Descubra vagas para você
+            </h3>
+            
+            {/* Desktop Description */}
+            <p className="hidden md:block text-xs md:text-sm text-white/80 leading-normal" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Mais de 12 mil oportunidades te esperando
+            </p>
+            {/* Mobile Description */}
+            <p className="block md:hidden text-xs text-white/80 leading-normal" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              +12 mil oportunidades disponíveis
+            </p>
+          </div>
+
+          {/* Cloudinha Avatar (Shown on Mobile top right) */}
+          <div className="relative flex md:hidden absolute top-4 right-4 flex-shrink-0 w-12 h-12 rounded-full bg-white/10 items-center justify-center overflow-hidden border border-white/10">
+            <img src="/assets/cloudinha-candidaturas.png" alt="Cloudinha" className="w-10 h-10 object-contain" />
+          </div>
         </div>
-        <div className="text-left">
-          <h3 className="font-bold text-base leading-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Criar conta
-          </h3>
-          <p className="text-xs opacity-90" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Entre para descobrir suas oportunidades ideais
-          </p>
+
+        {/* Right Side: CTA Button */}
+        <div className="w-full md:w-auto">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenAuth?.();
+            }}
+            className="w-full md:w-auto px-6 py-3 rounded-xl bg-white text-[#024F86] text-sm font-bold shadow-sm transition-all hover:bg-slate-50 active:scale-95"
+            style={{ fontFamily: 'Montserrat, sans-serif' }}
+          >
+            Criar conta →
+          </button>
         </div>
-      </button>
+      </div>
     );
   }
 
@@ -69,19 +110,48 @@ export default function DynamicCTA({
     return (
       <Link
         href="/oportunidades?tab=para-voce"
-        className={cardBaseClass}
-        style={{ background: '#FFF8E6', borderColor: '#FFE4A3', color: '#B45309' }}
+        className={`w-full ${cardBorderRadius} p-5 md:p-6 flex items-center justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border border-[#FFE4A3] text-left cursor-pointer`}
+        style={{ 
+          background: '#FFFDF6',
+          boxShadow: '0 8px 24px rgba(217, 119, 6, 0.04)'
+        }}
       >
-        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-[#FFE4A3]">
-          <UserCog size={24} color="#B45309" />
+        <div className="flex items-center gap-4 flex-1">
+          {/* Cloudinha Avatar */}
+          <div className="relative flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center overflow-hidden">
+            <img src="/assets/cloudinha-candidaturas.png" alt="Cloudinha" className="w-12 h-12 md:w-14 md:h-14 object-contain" />
+          </div>
+
+          <div className="flex flex-col gap-1.5 flex-1">
+            {/* Badge */}
+            <span className="px-2 py-0.5 rounded-md bg-[#F59E0B] text-white text-[9px] font-bold tracking-wider w-fit uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Ação necessária
+            </span>
+            
+            <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#92400E]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Complete seu perfil
+            </h3>
+            
+            {/* Description (Web only) */}
+            <p className="hidden md:block text-xs md:text-sm text-[#B45309] opacity-90" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Perfis completos recebem 3× mais convites de empresas
+            </p>
+
+            {/* Dash Indicators (Progress) */}
+            <div className="flex items-center gap-1 mt-1">
+              {[1, 2, 3, 4, 5].map((idx) => (
+                <div 
+                  key={idx} 
+                  className={`h-1.5 w-8 rounded-full ${idx <= 3 ? 'bg-[#F59E0B]' : 'bg-[#E2E8F0]'}`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="text-left">
-          <h3 className="font-bold text-base leading-tight" style={{ color: '#92400E', fontFamily: 'Montserrat, sans-serif' }}>
-            Completar perfil
-          </h3>
-          <p className="text-xs opacity-80" style={{ color: '#B45309', fontFamily: 'Montserrat, sans-serif' }}>
-            Adicione seus dados para ver oportunidades para você
-          </p>
+
+        {/* Chevron right */}
+        <div className="flex-shrink-0 text-[#F59E0B]">
+          <ChevronRight size={24} />
         </div>
       </Link>
     );
@@ -91,19 +161,44 @@ export default function DynamicCTA({
     return (
       <Link
         href="/oportunidades"
-        className={cardBaseClass}
-        style={{ background: 'white', borderColor: 'rgba(56,177,228,0.2)', color: '#024F86' }}
+        className={`w-full ${cardBorderRadius} p-5 md:p-6 flex items-center justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border-2 border-dashed border-[#38B1E4]/50 bg-white text-left cursor-pointer`}
+        style={{
+          boxShadow: '0 8px 24px rgba(56, 177, 228, 0.05)'
+        }}
       >
-        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-[#024F86]/10">
-          <Plus size={24} color="#024F86" />
+        <div className="flex items-center gap-4 flex-1">
+          {/* Cloudinha Avatar with custom heart eye overlays for premium visual fidelity */}
+          <div className="relative flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-full bg-sky-50 border border-sky-100 flex items-center justify-center overflow-hidden">
+            <img src="/assets/cloudinha-candidaturas.png" alt="Cloudinha" className="w-12 h-12 md:w-14 md:h-14 object-contain filter saturate-[0.85]" />
+            <span className="absolute top-[18px] left-[15px] text-[8px] md:text-[10px] animate-pulse">❤️</span>
+            <span className="absolute top-[18px] right-[15px] text-[8px] md:text-[10px] animate-pulse">❤️</span>
+          </div>
+
+          <div className="flex flex-col gap-1 md:gap-1.5 flex-1">
+            {/* Responsive text matching Figma */}
+            <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#024F86]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <span className="block md:hidden">Sua primeira vaga te espera</span>
+              <span className="hidden md:block">Sua primeira candidatura te espera</span>
+            </h3>
+            
+            <p className="text-xs md:text-sm text-[#64748B]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <span className="block md:hidden">Encontre oportunidades para você</span>
+              <span className="hidden md:block">Encontre vagas que combinam com o seu perfil</span>
+            </p>
+
+            <button 
+              className="mt-1 flex items-center gap-1 px-3 py-1 rounded-full bg-[#F0F9FF] border border-[#BAE6FD] text-[#0369A1] text-xs font-bold w-fit transition-colors hover:bg-[#E0F2FE]"
+              style={{ fontFamily: 'Montserrat, sans-serif' }}
+            >
+              <Sparkles size={11} className="fill-current" />
+              Começar agora
+            </button>
+          </div>
         </div>
-        <div className="text-left">
-          <h3 className="font-bold text-base leading-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Você ainda não fez nenhuma candidatura
-          </h3>
-          <p className="text-xs text-[#636E7C]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Comece agora e conquiste sua vaga
-          </p>
+
+        {/* Chevron right */}
+        <div className="flex-shrink-0 text-[#38B1E4]">
+          <ChevronRight size={24} />
         </div>
       </Link>
     );
@@ -114,38 +209,69 @@ export default function DynamicCTA({
     return (
       <Link
         href={href}
-        className={cardBaseClass}
-        style={{ background: '#F0F9FF', borderColor: '#BAE6FD', color: '#0369A1' }}
+        className={`w-full ${cardBorderRadius} p-5 md:p-6 flex items-center justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border border-[#BAE6FD] text-left cursor-pointer`}
+        style={{ 
+          background: '#F4F9FF',
+          boxShadow: '0 8px 24px rgba(3, 105, 161, 0.04)'
+        }}
       >
-        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-[#BAE6FD]">
-          <ClipboardList size={24} color="#0369A1" />
+        <div className="flex items-center gap-4 flex-1">
+          {/* Cloudinha Avatar */}
+          <div className="relative flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-full bg-sky-50 border border-sky-100 flex items-center justify-center overflow-hidden">
+            <img src="/assets/cloudinha-candidaturas.png" alt="Cloudinha" className="w-12 h-12 md:w-14 md:h-14 object-contain" />
+          </div>
+
+          <div className="flex flex-col gap-1.5 flex-1">
+            <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#024F86]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Candidatura em andamento
+            </h3>
+            
+            <p className="text-xs md:text-sm text-[#0369A1]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <span className="block md:hidden">Continue de onde parou</span>
+              <span className="hidden md:block">Continue de onde você parou</span>
+            </p>
+
+            {/* Continuous Progress Bar */}
+            <div className="w-full max-w-xs flex flex-col gap-1 mt-1">
+              <div className="w-full h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
+                <div className="h-full bg-[#0284C7] rounded-full" style={{ width: '65%' }} />
+              </div>
+              <span className="text-[10px] md:text-xs text-[#0369A1] font-medium" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                <span className="block md:hidden">65% concluído</span>
+                <span className="hidden md:block">65% concluído · Falta pouco!</span>
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="text-left">
-          <h3 className="font-bold text-base leading-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Candidatura em andamento
-          </h3>
-          <p className="text-xs opacity-80" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Continue de onde você parou
-          </p>
+
+        {/* Chevron right */}
+        <div className="flex-shrink-0 text-[#0369A1]">
+          <ChevronRight size={24} />
         </div>
       </Link>
     );
   }
 
-  // completed-application (Final state: 2 buttons)
+  // completed-application (Adapted to the premium design language with 2 buttons)
   return (
     <div className="flex flex-col sm:flex-row gap-4 w-full">
       <Link
         href="/oportunidades"
-        className="flex-1 rounded-2xl px-5 py-6 flex flex-col gap-3 transition-all hover:shadow-md active:scale-[0.98] border border-transparent"
-        style={{ background: 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)', color: 'white' }}
+        className="flex-1 rounded-[20px] px-5 py-5 md:px-6 md:py-6 flex flex-col gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.98] border border-transparent"
+        style={{ 
+          background: 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)', 
+          color: 'white',
+          boxShadow: '0 8px 30px rgba(2, 79, 134, 0.12)'
+        }}
       >
-        <Search size={28} color="white" />
-        <div>
-          <h3 className="font-bold text-lg leading-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+        <div className="flex items-center justify-center w-12 h-12 rounded-[14px] bg-white/20 backdrop-blur-md">
+          <Search size={26} className="text-white" />
+        </div>
+        <div className="flex flex-col gap-1 text-left">
+          <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Buscar Novas Vagas
           </h3>
-          <p className="text-sm opacity-80" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <p className="text-xs md:text-sm opacity-90" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Explore oportunidades
           </p>
         </div>
@@ -153,22 +279,27 @@ export default function DynamicCTA({
 
       <Link
         href="/candidaturas"
-        className="flex-1 rounded-2xl px-5 py-6 flex flex-col gap-3 transition-all hover:shadow-md active:scale-[0.98] bg-white border border-[#E2E8F0]"
+        className="flex-1 rounded-[20px] px-5 py-5 md:px-6 md:py-6 flex flex-col gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.98] bg-white border border-[#E2E8F0]"
+        style={{
+          boxShadow: '0 8px 30px rgba(100, 116, 139, 0.05)'
+        }}
       >
-        <div className="relative w-fit">
-          <ClipboardList size={28} color="#F59E0B" />
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center justify-center w-12 h-12 rounded-[14px] bg-[#F59E0B]/10">
+            <ClipboardList size={26} className="text-[#F59E0B]" />
+          </div>
           {countInProgress > 0 && (
-            <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#EF4444] text-white text-[10px] font-bold flex items-center justify-center border-2 border-white">
+            <div className="w-6 h-6 rounded-full bg-[#EF4444] text-white text-[11px] font-bold flex items-center justify-center shadow-sm">
               {countInProgress}
             </div>
           )}
         </div>
-        <div>
-          <h3 className="font-bold text-lg leading-tight text-[#1E293B]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+        <div className="flex flex-col gap-1 text-left">
+          <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#1E293B]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Minhas Inscrições
           </h3>
-          <p className="text-sm text-[#64748B]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            {countInProgress} em andamento
+          <p className="text-xs md:text-sm text-[#64748B]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            {countInProgress} {countInProgress === 1 ? 'candidatura' : 'candidaturas'} em andamento
           </p>
         </div>
       </Link>
