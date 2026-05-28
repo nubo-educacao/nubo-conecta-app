@@ -10,7 +10,8 @@
  * Quando o backend responde:
  *   - A resposta da Cloudinha (real, gerada pelo LLM) é armazenada como pendingMessage
  *   - O FAB exibe um badge com o contador de mensagens não lidas
- *   - Se o backend envia intent_metadata com open_drawer=true, o drawer abre após delay_ms
+ *   - Se o backend envia intent_metadata com open_drawer=true, sinaliza hasPriorityMessage
+ *     para o FAB exibir animação de pulso — NÃO abre o drawer automaticamente
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -27,12 +28,12 @@ interface UseSystemIntentsOptions {
   sessionId: string;
   accessToken: string;
   isDrawerOpen: boolean;
-  onOpen: () => void;
 }
 
 interface UseSystemIntentsReturn {
   pendingMessages: ChatMessage[];
   unreadCount: number;
+  hasPriorityMessage: boolean;
   consumeMessages: () => ChatMessage[];
 }
 
@@ -42,25 +43,21 @@ export function useSystemIntents({
   sessionId,
   accessToken,
   isDrawerOpen,
-  onOpen,
 }: UseSystemIntentsOptions): UseSystemIntentsReturn {
   const pathname = usePathname();
   const [pendingMessages, setPendingMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [hasPriorityMessage, setHasPriorityMessage] = useState(false);
 
   // Rastreia qual rota+userId já foi disparado para evitar duplicatas
   // Formato: "userId::pathname"
   const dispatchedRef = useRef<string>('');
-  const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Zerar badge quando drawer é aberto
+  // Zerar badge e prioridade quando drawer é aberto
   useEffect(() => {
     if (isDrawerOpen) {
       setUnreadCount(0);
-      if (openTimerRef.current) {
-        clearTimeout(openTimerRef.current);
-        openTimerRef.current = null;
-      }
+      setHasPriorityMessage(false);
     }
   }, [isDrawerOpen]);
 
@@ -139,11 +136,7 @@ export function useSystemIntents({
           if (event.type === 'intent_metadata') {
             console.log('[SystemIntent] intent_metadata recebido:', event);
             if (event.open_drawer && !isDrawerOpen) {
-              const delay = event.delay_ms ?? 5000;
-              openTimerRef.current = setTimeout(() => {
-                onOpen();
-                openTimerRef.current = null;
-              }, delay);
+              setHasPriorityMessage(true);
             }
           }
         }
@@ -156,10 +149,6 @@ export function useSystemIntents({
 
     return () => {
       cancelled = true;
-      if (openTimerRef.current) {
-        clearTimeout(openTimerRef.current);
-        openTimerRef.current = null;
-      }
     };
   // Intencionalmente inclui userId e accessToken para retentar quando auth carrega
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -210,8 +199,7 @@ export function useSystemIntents({
             }
           }
           if (event.type === 'intent_metadata' && event.open_drawer && !isDrawerOpen) {
-            const delay = event.delay_ms ?? 0;
-            openTimerRef.current = setTimeout(() => { onOpen(); openTimerRef.current = null; }, delay);
+            setHasPriorityMessage(true);
           }
         }
       } catch (err) {
@@ -226,6 +214,70 @@ export function useSystemIntents({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, accessToken]);
 
+  // Tutorial para usuários anônimos: dispara 1x por sessão via sessionStorage
+  useEffect(() => {
+    const TUTORIAL_KEY = 'nubo_tutorial_shown';
+    if (typeof window === 'undefined') return;
+    if (sessionStorage.getItem(TUTORIAL_KEY)) return;
+
+    sessionStorage.setItem(TUTORIAL_KEY, 'true');
+
+    // UUID nulo é aceito pelo backend como sentinela para usuários anônimos
+    const ANON_UUID = '00000000-0000-0000-0000-000000000000';
+    const effectiveUserId = userId || ANON_UUID;
+    const effectiveProfileId = profileId || ANON_UUID;
+
+    let cancelled = false;
+
+    async function dispatchTutorial() {
+      try {
+        const stream = streamChat(
+          {
+            chatInput: 'tutorial',
+            userId: effectiveUserId,
+            active_profile_id: effectiveProfileId,
+            sessionId,
+            intent_type: 'system_intent',
+            ui_context: { current_page: pathname },
+          },
+          accessToken,
+        );
+
+        let hasContent = false;
+        for await (const event of stream) {
+          if (cancelled) break;
+          if (event.type === 'text' && event.content) {
+            setPendingMessages((prev) => {
+              if (hasContent && prev.length > 0) {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  content: updated[updated.length - 1].content + event.content,
+                };
+                return updated;
+              }
+              return [...prev, { id: genId(), sender: 'model' as const, content: event.content!, timestamp: new Date() }];
+            });
+            if (!hasContent) {
+              hasContent = true;
+              if (!isDrawerOpen) setUnreadCount((n) => n + 1);
+            }
+          }
+          if (event.type === 'intent_metadata' && event.open_drawer && !isDrawerOpen) {
+            setHasPriorityMessage(true);
+          }
+        }
+      } catch (e) {
+        console.warn('[SystemIntent] Falha ao disparar tutorial:', e);
+      }
+    }
+
+    dispatchTutorial();
+    return () => { cancelled = true; };
+  // Executa apenas 1x na montagem — sessionStorage garante deduplicação entre renders
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Consumir mensagens (para injetar no ChatDrawer quando abre)
   const consumeMessages = useCallback((): ChatMessage[] => {
     const msgs = [...pendingMessages];
@@ -235,5 +287,5 @@ export function useSystemIntents({
     return msgs;
   }, [pendingMessages]);
 
-  return { pendingMessages, unreadCount, consumeMessages };
+  return { pendingMessages, unreadCount, hasPriorityMessage, consumeMessages };
 }
