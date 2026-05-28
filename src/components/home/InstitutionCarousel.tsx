@@ -30,8 +30,13 @@ export default function InstitutionCarousel({
 
   if (institutions.length === 0) return null;
 
+  // Deduplicate institutions by id to prevent React duplicate key errors (fail-safe)
+  const uniqueInstitutions = Array.from(
+    new Map(institutions.map((inst) => [inst.id, inst])).values()
+  );
+
   // Desktop: máximo 3 items quando em grid mode (Regra Grid-3 da Sprint 3.5)
-  const desktopItems = desktopGridMode ? institutions.slice(0, 3) : institutions;
+  const desktopItems = desktopGridMode ? uniqueInstitutions.slice(0, 3) : uniqueInstitutions;
 
   return (
     <section className="flex flex-col gap-3">
@@ -81,7 +86,7 @@ export default function InstitutionCarousel({
         }`}
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {institutions.map((inst) => (
+        {uniqueInstitutions.map((inst) => (
           <div
             key={inst.id}
             className="flex-shrink-0 snap-start"

@@ -1,15 +1,14 @@
 'use client';
 
-// DynamicCTA — Sprint 15.0 Figma Aligned & Premium Refactor
-// Five-state CTA that adapts to user authentication, profile and application status.
-// 1. visitor: Crie sua conta (Figma node 273-3973 / 273-4018)
-// 2. no-profile: Complete seu perfil (Figma node 273-3958 / 273-4004)
-// 3. no-applications: Primeira candidatura (Figma node 273-3949 / 273-3996)
-// 4. application-in-progress: Candidatura em andamento (Figma node 273-3937 / 273-3985)
-// 5. completed-application: Buscar Novas Vagas + Minhas Inscrições (Adapted visual style)
+// DynamicCTA — Sprint 15.0 Figma High-Fidelity Refactor
+// Matches the exact design specifications for WEB (600px) and MOBILE (330px) breakpoints:
+// 1. visitor: Navy blue gradient with CTA button & Cloudinha avatar
+// 2. no-profile: Cream/amber border with "AÇÃO NECESSÁRIA" badge, title, progress bar (5 dashes) & Cloudinha avatar
+// 3. no-applications: White background with dashed blue border, "⚡ Começar agora" button, title, description & Cloudinha avatar with heart overlay
+// 4. application-in-progress: Light blue background, solid blue progress bar, "65% concluído" & Cloudinha avatar
 
 import Link from 'next/link';
-import { LogIn, UserCog, Search, ClipboardList, Loader2, Plus } from 'lucide-react';
+import { ChevronRight, Loader2, Sparkles, Search, ClipboardList } from 'lucide-react';
 
 export type CTAState = 
   | 'loading' 
@@ -34,39 +33,76 @@ export default function DynamicCTA({
 }: DynamicCTAProps) {
   if (state === 'loading') {
     return (
-      <div className="flex justify-center items-center py-8 min-h-[88px] md:min-h-[96px] w-full">
+      <div className="flex justify-center items-center py-8 min-h-[96px] w-full">
         <Loader2 size={28} className="animate-spin text-[#38B1E4]" />
       </div>
     );
   }
 
-  // Base card styles with premium aesthetics (Geometria de Marca, smooth active scale, premium shadow)
-  const cardBaseClass = "w-full min-h-[88px] md:min-h-[96px] rounded-[20px] px-5 py-4 md:px-6 md:py-5 flex items-center gap-4 md:gap-5 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border text-left cursor-pointer focus:outline-none";
+  // Common styles for premium card experience
+  const cardBorderRadius = "rounded-2xl md:rounded-[20px]";
 
   if (state === 'visitor') {
     return (
-      <button
+      <div
         onClick={onOpenAuth}
-        className={cardBaseClass}
+        className={`w-full ${cardBorderRadius} p-5 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border border-transparent text-left cursor-pointer`}
         style={{ 
-          background: 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)', 
-          borderColor: 'rgba(255, 255, 255, 0.15)', 
+          background: 'linear-gradient(135deg, #024F86 0%, #01375E 100%)', 
           color: 'white',
-          boxShadow: '0 8px 30px rgba(2, 79, 134, 0.15)'
+          boxShadow: '0 8px 32px rgba(2, 79, 134, 0.15)'
         }}
       >
-        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 md:w-[52px] md:h-[52px] rounded-[14px] bg-white/20 backdrop-blur-md shadow-inner transition-transform duration-300 group-hover:scale-105">
-          <LogIn size={24} className="text-white" />
+        {/* Left Side: Avatar + Text */}
+        <div className="flex items-center gap-4 flex-1">
+          {/* Cloudinha Avatar (Hidden on Mobile top right, shown on desktop left) */}
+          <div className="relative hidden md:flex flex-shrink-0 w-[72px] h-[72px] rounded-full bg-white/10 items-center justify-center overflow-hidden border border-white/10 shadow-inner">
+            <img src="/assets/cloudinha-candidaturas.png" alt="Cloudinha" className="w-[60px] h-[60px] object-contain" />
+          </div>
+
+          <div className="flex flex-col gap-0.5 flex-1 pr-12 md:pr-0">
+            <span className="text-[11px] md:text-xs font-semibold text-[#38B1E4] tracking-wider uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Rápido e fácil!
+            </span>
+            {/* Desktop Title */}
+            <h3 className="hidden md:block font-bold text-lg md:text-xl leading-tight tracking-tight text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Crie sua conta e descubra vagas para você
+            </h3>
+            {/* Mobile Title */}
+            <h3 className="block md:hidden font-bold text-base leading-tight tracking-tight text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Descubra vagas para você
+            </h3>
+            
+            {/* Desktop Description */}
+            <p className="hidden md:block text-xs md:text-sm text-white/80 leading-normal" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Mais de 12 mil oportunidades te esperando
+            </p>
+            {/* Mobile Description */}
+            <p className="block md:hidden text-xs text-white/80 leading-normal" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              +12 mil oportunidades disponíveis
+            </p>
+          </div>
+
+          {/* Cloudinha Avatar (Shown on Mobile top right) */}
+          <div className="relative flex md:hidden absolute top-4 right-4 flex-shrink-0 w-12 h-12 rounded-full bg-white/10 items-center justify-center overflow-hidden border border-white/10">
+            <img src="/assets/cloudinha-candidaturas.png" alt="Cloudinha" className="w-10 h-10 object-contain" />
+          </div>
         </div>
-        <div className="flex flex-col gap-0.5 justify-center">
-          <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Crie sua conta
-          </h3>
-          <p className="text-xs md:text-sm opacity-90 leading-normal" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Entre para descobrir suas oportunidades ideais
-          </p>
+
+        {/* Right Side: CTA Button */}
+        <div className="w-full md:w-auto">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenAuth?.();
+            }}
+            className="w-full md:w-auto px-6 py-3 rounded-xl bg-white text-[#024F86] text-sm font-bold shadow-sm transition-all hover:bg-slate-50 active:scale-95"
+            style={{ fontFamily: 'Montserrat, sans-serif' }}
+          >
+            Criar conta →
+          </button>
         </div>
-      </button>
+      </div>
     );
   }
 
@@ -74,24 +110,48 @@ export default function DynamicCTA({
     return (
       <Link
         href="/oportunidades?tab=para-voce"
-        className={cardBaseClass}
+        className={`w-full ${cardBorderRadius} p-5 md:p-6 flex items-center justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border border-[#FFE4A3] text-left cursor-pointer`}
         style={{ 
-          background: '#FFFDF5', 
-          borderColor: '#FEF3C7', 
-          color: '#B45309',
-          boxShadow: '0 8px 30px rgba(217, 119, 6, 0.05)'
+          background: '#FFFDF6',
+          boxShadow: '0 8px 24px rgba(217, 119, 6, 0.04)'
         }}
       >
-        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 md:w-[52px] md:h-[52px] rounded-[14px] bg-[#FEF3C7] shadow-sm">
-          <UserCog size={24} className="text-[#B45309]" />
+        <div className="flex items-center gap-4 flex-1">
+          {/* Cloudinha Avatar */}
+          <div className="relative flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center overflow-hidden">
+            <img src="/assets/cloudinha-candidaturas.png" alt="Cloudinha" className="w-12 h-12 md:w-14 md:h-14 object-contain" />
+          </div>
+
+          <div className="flex flex-col gap-1.5 flex-1">
+            {/* Badge */}
+            <span className="px-2 py-0.5 rounded-md bg-[#F59E0B] text-white text-[9px] font-bold tracking-wider w-fit uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Ação necessária
+            </span>
+            
+            <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#92400E]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Complete seu perfil
+            </h3>
+            
+            {/* Description (Web only) */}
+            <p className="hidden md:block text-xs md:text-sm text-[#B45309] opacity-90" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Perfis completos recebem 3× mais convites de empresas
+            </p>
+
+            {/* Dash Indicators (Progress) */}
+            <div className="flex items-center gap-1 mt-1">
+              {[1, 2, 3, 4, 5].map((idx) => (
+                <div 
+                  key={idx} 
+                  className={`h-1.5 w-8 rounded-full ${idx <= 3 ? 'bg-[#F59E0B]' : 'bg-[#E2E8F0]'}`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-0.5 justify-center">
-          <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#92400E]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Complete seu perfil
-          </h3>
-          <p className="text-xs md:text-sm text-[#B45309]/90 leading-normal" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Adicione seus dados para ver oportunidades para você
-          </p>
+
+        {/* Chevron right */}
+        <div className="flex-shrink-0 text-[#F59E0B]">
+          <ChevronRight size={24} />
         </div>
       </Link>
     );
@@ -101,24 +161,44 @@ export default function DynamicCTA({
     return (
       <Link
         href="/oportunidades"
-        className={cardBaseClass}
-        style={{ 
-          background: '#FFFFFF', 
-          borderColor: 'rgba(56, 177, 228, 0.25)', 
-          color: '#024F86',
-          boxShadow: '0 8px 30px rgba(56, 177, 228, 0.06)'
+        className={`w-full ${cardBorderRadius} p-5 md:p-6 flex items-center justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border-2 border-dashed border-[#38B1E4]/50 bg-white text-left cursor-pointer`}
+        style={{
+          boxShadow: '0 8px 24px rgba(56, 177, 228, 0.05)'
         }}
       >
-        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 md:w-[52px] md:h-[52px] rounded-[14px] bg-[#024F86]/10 shadow-sm">
-          <Plus size={24} className="text-[#024F86]" />
+        <div className="flex items-center gap-4 flex-1">
+          {/* Cloudinha Avatar with custom heart eye overlays for premium visual fidelity */}
+          <div className="relative flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-full bg-sky-50 border border-sky-100 flex items-center justify-center overflow-hidden">
+            <img src="/assets/cloudinha-candidaturas.png" alt="Cloudinha" className="w-12 h-12 md:w-14 md:h-14 object-contain filter saturate-[0.85]" />
+            <span className="absolute top-[18px] left-[15px] text-[8px] md:text-[10px] animate-pulse">❤️</span>
+            <span className="absolute top-[18px] right-[15px] text-[8px] md:text-[10px] animate-pulse">❤️</span>
+          </div>
+
+          <div className="flex flex-col gap-1 md:gap-1.5 flex-1">
+            {/* Responsive text matching Figma */}
+            <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#024F86]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <span className="block md:hidden">Sua primeira vaga te espera</span>
+              <span className="hidden md:block">Sua primeira candidatura te espera</span>
+            </h3>
+            
+            <p className="text-xs md:text-sm text-[#64748B]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <span className="block md:hidden">Encontre oportunidades para você</span>
+              <span className="hidden md:block">Encontre vagas que combinam com o seu perfil</span>
+            </p>
+
+            <button 
+              className="mt-1 flex items-center gap-1 px-3 py-1 rounded-full bg-[#F0F9FF] border border-[#BAE6FD] text-[#0369A1] text-xs font-bold w-fit transition-colors hover:bg-[#E0F2FE]"
+              style={{ fontFamily: 'Montserrat, sans-serif' }}
+            >
+              <Sparkles size={11} className="fill-current" />
+              Começar agora
+            </button>
+          </div>
         </div>
-        <div className="flex flex-col gap-0.5 justify-center">
-          <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#024F86]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Primeira candidatura
-          </h3>
-          <p className="text-xs md:text-sm text-[#636E7C] leading-normal" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Comece agora e conquiste sua vaga
-          </p>
+
+        {/* Chevron right */}
+        <div className="flex-shrink-0 text-[#38B1E4]">
+          <ChevronRight size={24} />
         </div>
       </Link>
     );
@@ -129,24 +209,44 @@ export default function DynamicCTA({
     return (
       <Link
         href={href}
-        className={cardBaseClass}
+        className={`w-full ${cardBorderRadius} p-5 md:p-6 flex items-center justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border border-[#BAE6FD] text-left cursor-pointer`}
         style={{ 
-          background: '#F0F9FF', 
-          borderColor: '#BAE6FD', 
-          color: '#0369A1',
-          boxShadow: '0 8px 30px rgba(3, 105, 161, 0.05)'
+          background: '#F4F9FF',
+          boxShadow: '0 8px 24px rgba(3, 105, 161, 0.04)'
         }}
       >
-        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 md:w-[52px] md:h-[52px] rounded-[14px] bg-[#BAE6FD] shadow-sm">
-          <ClipboardList size={24} className="text-[#0369A1]" />
+        <div className="flex items-center gap-4 flex-1">
+          {/* Cloudinha Avatar */}
+          <div className="relative flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-full bg-sky-50 border border-sky-100 flex items-center justify-center overflow-hidden">
+            <img src="/assets/cloudinha-candidaturas.png" alt="Cloudinha" className="w-12 h-12 md:w-14 md:h-14 object-contain" />
+          </div>
+
+          <div className="flex flex-col gap-1.5 flex-1">
+            <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#024F86]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Candidatura em andamento
+            </h3>
+            
+            <p className="text-xs md:text-sm text-[#0369A1]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <span className="block md:hidden">Continue de onde parou</span>
+              <span className="hidden md:block">Continue de onde você parou</span>
+            </p>
+
+            {/* Continuous Progress Bar */}
+            <div className="w-full max-w-xs flex flex-col gap-1 mt-1">
+              <div className="w-full h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
+                <div className="h-full bg-[#0284C7] rounded-full" style={{ width: '65%' }} />
+              </div>
+              <span className="text-[10px] md:text-xs text-[#0369A1] font-medium" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                <span className="block md:hidden">65% concluído</span>
+                <span className="hidden md:block">65% concluído · Falta pouco!</span>
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-0.5 justify-center">
-          <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#0369A1]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Candidatura em andamento
-          </h3>
-          <p className="text-xs md:text-sm text-[#0284C7] leading-normal" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Continue de onde você parou
-          </p>
+
+        {/* Chevron right */}
+        <div className="flex-shrink-0 text-[#0369A1]">
+          <ChevronRight size={24} />
         </div>
       </Link>
     );
