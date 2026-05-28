@@ -48,6 +48,8 @@ export interface UserPreferencesData {
   university_preference?: string | null;
   location_preference?: string | null;
   state_preference?: string | null;
+  device_latitude?: number | null;
+  device_longitude?: number | null;
 }
 
 export interface UserEnemScoreData {
