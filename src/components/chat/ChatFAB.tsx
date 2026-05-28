@@ -52,10 +52,23 @@ export default function ChatFAB() {
 
   return (
     <>
+      {/* Background Pulse Animation */}
+      {!isOpen && hasPriorityMessage && (
+        <div
+          className="fixed z-20 rounded-full bg-[#38B1E4] animate-ping opacity-75"
+          style={{
+            bottom: 'calc(env(safe-area-inset-bottom) + 76px)',
+            right: '16px',
+            width: 52,
+            height: 52,
+          }}
+        />
+      )}
+
       {/* FAB button */}
       <button
         onClick={handleToggle}
-        className={`fixed z-30 flex items-center justify-center rounded-full shadow-lg transition-all hover:scale-105 active:scale-95${!isOpen && hasPriorityMessage ? ' animate-pulse' : ''}`}
+        className="fixed z-30 flex items-center justify-center rounded-full shadow-lg transition-all hover:scale-105 active:scale-95"
         style={{
           bottom: 'calc(env(safe-area-inset-bottom) + 76px)',
           right: '16px',
