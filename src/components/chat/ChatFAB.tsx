@@ -54,15 +54,24 @@ export default function ChatFAB() {
     <>
       {/* Background Pulse Animation */}
       {!isOpen && hasPriorityMessage && (
-        <div
-          className="fixed z-20 rounded-full bg-[#38B1E4] animate-ping opacity-75"
+        <div 
+          className="fixed z-20 pointer-events-none flex items-center justify-center"
           style={{
             bottom: 'calc(env(safe-area-inset-bottom) + 76px)',
             right: '16px',
             width: 52,
             height: 52,
           }}
-        />
+        >
+          <div 
+            className="absolute w-full h-full rounded-full bg-[#38B1E4] animate-ping opacity-75" 
+            style={{ animationDuration: '3s' }}
+          />
+          <div 
+            className="absolute w-full h-full rounded-full bg-[#38B1E4] animate-ping opacity-50" 
+            style={{ animationDuration: '3s', animationDelay: '1.5s' }}
+          />
+        </div>
       )}
 
       {/* FAB button */}
