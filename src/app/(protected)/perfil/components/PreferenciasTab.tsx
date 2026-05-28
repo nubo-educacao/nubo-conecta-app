@@ -28,13 +28,35 @@ const UNIVERSITY_TYPES = [
 ];
 
 const QUOTA_OPTIONS = [
-  { id: 'AMPLA_CONCORRENCIA', label: 'Ampla Concorrência', description: 'Vagas sem critérios específicos de cota.' },
-  { id: 'ESCOLA_PUBLICA', label: 'Escola Pública', description: 'Para quem cursou todo o ensino médio em escola pública.' },
-  { id: 'BAIXA_RENDA', label: 'Baixa Renda', description: 'Para estudantes de baixa renda familiar.' },
-  { id: 'PPI', label: 'PPI (Pretos, Pardos e Indígenas)', description: 'Para estudantes autodeclarados pretos, pardos ou indígenas.' },
-  { id: 'PCD', label: 'Pessoa com Deficiência (PCD)', description: 'Para pessoas com deficiência.' },
-  { id: 'TRANS', label: 'Trans / Travesti', description: 'Para pessoas trans ou travestis.' },
-  { id: 'QUILOMBOLAS', label: 'Quilombolas', description: 'Para estudantes pertencentes a comunidades quilombolas.' },
+  // Percurso escolar
+  { id: 'ESCOLA_PUBLICA',              label: 'Escola Pública',                    description: 'Cursou integralmente o ensino médio em escola pública.' },
+  { id: 'EJA_ENCCEJA',                 label: 'EJA / ENCCEJA',                     description: 'Concluiu o ensino médio via EJA, supletivo ou ENCCEJA.' },
+  { id: 'EFA',                         label: 'Escola Família Agrícola (EFA)',      description: 'Egresso de Escola Família Agrícola.' },
+  { id: 'RURAL',                       label: 'Educação do Campo / Rural',          description: 'Cursou em escola comunitária do campo conveniada com o poder público.' },
+  // Raça / Etnia
+  { id: 'PPI',                         label: 'PPI — Preto, Pardo ou Indígena',    description: 'Autodeclarado preto, pardo ou indígena (L1/L2 SISU).' },
+  { id: 'PRETOS E PARDOS',             label: 'Preto ou Pardo',                    description: 'Autodeclarado preto ou pardo.' },
+  { id: 'INDIGENAS',                   label: 'Indígena',                           description: 'Pertencente a povo indígena.' },
+  { id: 'QUILOMBOLAS',                 label: 'Quilombola',                         description: 'Pertencente a comunidade quilombola.' },
+  { id: 'CIGANOS',                     label: 'Cigano',                             description: 'Pertencente a comunidade cigana.' },
+  { id: 'TRADICIONAIS',                label: 'Povos e Comunidades Tradicionais',   description: 'Membro de povos ou comunidades tradicionais.' },
+  { id: 'AGRICULTURA_FAMILIAR',        label: 'Agricultura Familiar',              description: 'Oriundo de família de agricultura familiar.' },
+  // Deficiência
+  { id: 'PCD',                         label: 'Pessoa com Deficiência (PcD)',       description: 'Possui deficiência reconhecida em lei.' },
+  { id: 'PCD_AUDITIVA',                label: 'PcD — Deficiência Auditiva',        description: 'Possui deficiência auditiva (específico para Letras-Libras).' },
+  { id: 'ALTAS_HABILIDADES',           label: 'Altas Habilidades / Superdotação',  description: 'Reconhecido com altas habilidades ou superdotação.' },
+  { id: 'AUTISMO',                     label: 'Autismo (TEA)',                      description: 'Diagnóstico de Transtorno do Espectro Autista.' },
+  // Identidade de gênero
+  { id: 'TRANS',                       label: 'Trans / Travesti / Transgênero',     description: 'Pessoa trans, travesti ou transgênero.' },
+  // Situação especial
+  { id: 'MILITAR',                     label: 'Filho(a) de Militar/Policial morto ou incapacitado', description: 'Filho(a) de policial civil, militar, bombeiro ou inspector penitenciário morto ou incapacitado em serviço.' },
+  { id: 'PROFESSOR',                   label: 'Professor de Escola Pública',        description: 'Docente atuante ou egresso da rede pública de ensino.' },
+  { id: 'NAO_GRADUACAO',               label: 'Sem diploma de graduação',           description: 'Não possui diploma de curso de graduação.' },
+  { id: 'PRIVACAO_LIBERDADE',          label: 'Em situação de privação de liberdade / egresso do sistema prisional', description: 'Em privação de liberdade ou egresso do sistema prisional.' },
+  { id: 'REFUGIADOS',                  label: 'Refugiado / Migrante',               description: 'Pessoa em situação de refúgio ou migração forçada.' },
+  { id: 'MIGRANTES',                   label: 'Migrante',                           description: 'Migrante interno ou internacional.' },
+  { id: 'EGRESSOS',                    label: 'Egresso de escola pública (rede estadual/municipal)', description: 'Egresso de escola pública vinculada à Secretaria de Educação estadual ou municipal.' },
+  { id: 'ESCOLA_PRIVADA_BOLSA_INTEGRAL', label: 'Escola Privada com Bolsa Integral', description: 'Cursou o ensino médio com bolsa integral em escola privada.' },
 ];
 
 function Chip({ label, active, onClick, showX }: { label: string; active: boolean; onClick: () => void; showX?: boolean }) {

@@ -38,6 +38,15 @@ vi.mock('../ExploreClient', () => ({
   default: () => <div data-testid="explore-client" />,
 }));
 
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'user-test-id',
+      user_metadata: { onboarding_completed: true },
+    },
+  }),
+}));
+
 // ─── Import DEPOIS dos mocks ──────────────────────────────────────────────────
 import OpportunitiesClient from '../OpportunitiesClient';
 import type { IUnifiedOpportunity, ExploreFilters } from '@/types/opportunities';

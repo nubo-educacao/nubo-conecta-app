@@ -22,6 +22,7 @@ interface SisuScoreDisplayProps {
 export default function SisuScoreDisplay({ weights, opportunity_type = 'sisu', cycle_year }: SisuScoreDisplayProps) {
   const [score, setScore] = React.useState<number | null>(null);
   const [year, setYear] = React.useState<number | null>(null);
+  const [isTraineeFallback, setIsTraineeFallback] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -32,13 +33,14 @@ export default function SisuScoreDisplay({ weights, opportunity_type = 'sisu', c
 
       const { data: rows, error } = await supabase
         .from('user_enem_scores')
-        .select('year, nota_linguagens, nota_ciencias_humanas, nota_ciencias_natureza, nota_matematica, nota_redacao')
+        .select('year, nota_linguagens, nota_ciencias_humanas, nota_ciencias_natureza, nota_matematica, nota_redacao, is_treineiro')
         .eq('user_id', user.id);
 
       console.log('[SisuScoreDisplay] enem rows:', rows, 'error:', error);
       if (!rows || rows.length === 0) { setLoading(false); return; }
 
-      let best: { score: number; year: number } | null = null;
+      let bestOfficial: { score: number; year: number } | null = null;
+      let bestTrainee: { score: number; year: number } | null = null;
 
       const currentYear = new Date().getFullYear();
       const lastEnem = currentYear - 1; // ENEM is applied the prior year (e.g. in 2026, last ENEM = 2025)
@@ -75,15 +77,37 @@ export default function SisuScoreDisplay({ weights, opportunity_type = 'sisu', c
           ? (ling * wLing + hum * wHum + nat * wNat + mat * wMat + red * wRed) / totalWeight
           : 0;
 
-        console.log('[SisuScoreDisplay] row year:', row.year, 'weighted:', weighted);
+        const rowIsTrainee = row.is_treineiro ?? false;
+        console.log('[SisuScoreDisplay] row year:', row.year, 'weighted:', weighted, 'is_treineiro:', rowIsTrainee);
 
-        if (!best || weighted > best.score) {
-          best = { score: weighted, year: row.year };
+        if (rowIsTrainee) {
+          if (!bestTrainee || weighted > bestTrainee.score) {
+            bestTrainee = { score: weighted, year: row.year };
+          }
+        } else {
+          if (!bestOfficial || weighted > bestOfficial.score) {
+            bestOfficial = { score: weighted, year: row.year };
+          }
         }
       }
 
-      console.log('[SisuScoreDisplay] best:', best);
-      if (best) { setScore(best.score); setYear(best.year); }
+      console.log('[SisuScoreDisplay] bestOfficial:', bestOfficial, 'bestTrainee:', bestTrainee);
+      
+      let selectedBest: { score: number; year: number } | null = null;
+      let isTraineeActive = false;
+
+      if (bestOfficial) {
+        selectedBest = bestOfficial;
+      } else if (bestTrainee) {
+        selectedBest = bestTrainee;
+        isTraineeActive = true;
+      }
+
+      if (selectedBest) {
+        setScore(selectedBest.score);
+        setYear(selectedBest.year);
+        setIsTraineeFallback(isTraineeActive);
+      }
       setLoading(false);
     };
 
@@ -108,14 +132,22 @@ export default function SisuScoreDisplay({ weights, opportunity_type = 'sisu', c
           ? `Média simples (Peso 1) · Melhor ENEM elegível: ${year}`
           : `Calculada com os pesos oficiais · Melhor ENEM elegível: ${year}`}
       </p>
-      <div className="flex items-end gap-3">
-        <span className="text-5xl font-black text-white leading-none">
-          {score.toFixed(1)}
-        </span>
-        <div className="flex items-center gap-1.5 mb-1 text-white/80">
-          <GraduationCap size={16} />
-          <span className="text-[12px] font-bold">/ 1000</span>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-end gap-3">
+          <span className="text-5xl font-black text-white leading-none">
+            {score.toFixed(1)}
+          </span>
+          <div className="flex items-center gap-1.5 mb-1 text-white/80">
+            <GraduationCap size={16} />
+            <span className="text-[12px] font-bold">/ 1000</span>
+          </div>
         </div>
+        
+        {isTraineeFallback && (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-200 border border-amber-500/30 text-[12px] font-semibold w-fit" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <span>⚠️ Nota de Treineiro / Simulado</span>
+          </div>
+        )}
       </div>
     </motion.section>
   );
