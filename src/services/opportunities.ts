@@ -223,24 +223,40 @@ export async function getUnifiedOpportunities(
     query = query.ilike('location', `%${options.location}%`);
   }
 
-  if (options.shift) {
-    if (options.shift === 'EaD') {
-      // Para EaD, buscamos os dois sinônimos comuns no banco MEC (EaD e Curso a distância)
+  if (options.shifts && options.shifts.length > 0) {
+    const hasEad = options.shifts.includes('EaD');
+    const otherShifts = options.shifts.filter(s => s !== 'EaD');
+    if (hasEad && otherShifts.length === 0) {
+      // EaD only — match either badge synonym
       query = query.filter('badges', 'ov', JSON.stringify(['EaD', 'Curso a distância']));
+    } else if (hasEad) {
+      // EaD + other shifts — overlap with all selected + synonyms
+      query = query.filter('badges', 'ov', JSON.stringify([...otherShifts, 'EaD', 'Curso a distância']));
     } else {
-      query = query.filter('badges', 'cs', JSON.stringify([options.shift]));
+      // Only non-EaD shifts
+      query = query.filter('badges', 'ov', JSON.stringify(otherShifts));
     }
   }
 
-  if (options.min_igc) {
-    // institution_igc na view é text, precisamos converter ou filtrar via PostgREST gte
-    query = query.gte('institution_igc', options.min_igc.toString());
+  if (options.program_preference) {
+    if (options.program_preference === 'sisu' || options.program_preference === 'prouni') {
+      query = query.eq('type', options.program_preference);
+    } else if (options.program_preference === 'programa de bolsa') {
+      query = query.eq('opportunity_type', 'programa de bolsa');
+    }
   }
 
-  if (options.price_range === 'free') {
+  if (options.university_preference === 'publica') {
     query = query.eq('is_partner', false);
-  } else if (options.price_range === 'paid') {
+  } else if (options.university_preference === 'privada') {
     query = query.eq('is_partner', true);
+  }
+
+  if (options.course_interests && options.course_interests.length > 0) {
+    const orClause = options.course_interests
+      .map(ci => `title.ilike.%${ci}%`)
+      .join(',');
+    query = query.or(orClause);
   }
 
   // Sempre ordena por recência via PostgREST (compatível com qualquer view)

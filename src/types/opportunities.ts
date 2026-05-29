@@ -15,9 +15,16 @@ export interface ExploreFilters {
   category?: string;
   modality?: 'presential' | 'online';
   location?: string;
-  shift?: 'Matutino' | 'Vespertino' | 'Noturno' | 'Integral' | 'EaD';
-  min_igc?: number;
-  price_range?: 'free' | 'paid';
+  /** Turnos selecionados (múltiplos) */
+  shifts?: string[];
+  /** Cotas/modalidades de concorrência */
+  quota_types?: string[];
+  /** Áreas ou cursos de interesse */
+  course_interests?: string[];
+  /** Preferência de programa: 'sisu' | 'prouni' | 'programa de bolsa' */
+  program_preference?: string;
+  /** Preferência de instituição: 'publica' | 'privada' */
+  university_preference?: string;
 }
 
 export interface IUnifiedOpportunity {

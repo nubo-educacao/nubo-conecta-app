@@ -28,15 +28,13 @@ export default function SisuScoreDisplay({ weights, opportunity_type = 'sisu', c
   React.useEffect(() => {
     const fetchScore = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      console.log('[SisuScoreDisplay] user:', user?.id, 'type:', opportunity_type, 'cycle_year:', cycle_year);
       if (!user) { setLoading(false); return; }
 
-      const { data: rows, error } = await supabase
+      const { data: rows } = await supabase
         .from('user_enem_scores')
         .select('year, nota_linguagens, nota_ciencias_humanas, nota_ciencias_natureza, nota_matematica, nota_redacao, is_treineiro')
         .eq('user_id', user.id);
 
-      console.log('[SisuScoreDisplay] enem rows:', rows, 'error:', error);
       if (!rows || rows.length === 0) { setLoading(false); return; }
 
       let bestOfficial: { score: number; year: number } | null = null;
@@ -52,11 +50,9 @@ export default function SisuScoreDisplay({ weights, opportunity_type = 'sisu', c
         ? [lastEnem, lastEnem - 1] 
         : [lastEnem, lastEnem - 1, lastEnem - 2];
 
-      console.log('[SisuScoreDisplay] currentYear:', currentYear, 'allowedYears:', allowedYears);
 
       for (const row of rows) {
         if (!allowedYears.includes(row.year)) {
-          console.log('[SisuScoreDisplay] skipping row year:', row.year, '(not in allowed years)');
           continue;
         }
 
@@ -78,7 +74,6 @@ export default function SisuScoreDisplay({ weights, opportunity_type = 'sisu', c
           : 0;
 
         const rowIsTrainee = row.is_treineiro ?? false;
-        console.log('[SisuScoreDisplay] row year:', row.year, 'weighted:', weighted, 'is_treineiro:', rowIsTrainee);
 
         if (rowIsTrainee) {
           if (!bestTrainee || weighted > bestTrainee.score) {
@@ -91,8 +86,6 @@ export default function SisuScoreDisplay({ weights, opportunity_type = 'sisu', c
         }
       }
 
-      console.log('[SisuScoreDisplay] bestOfficial:', bestOfficial, 'bestTrainee:', bestTrainee);
-      
       let selectedBest: { score: number; year: number } | null = null;
       let isTraineeActive = false;
 

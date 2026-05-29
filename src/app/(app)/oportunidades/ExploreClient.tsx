@@ -76,8 +76,12 @@ export default function ExploreClient({ opportunities, filters, currentPage, pag
 
   const handleFilterApply = (partial: Partial<ExploreFilters>) => {
     updateParam({
-      location: partial.location,
-      modality: partial.modality,
+      location:            partial.location,
+      modality:            partial.modality,
+      shifts:              partial.shifts?.join(','),
+      quota_types:         partial.quota_types?.join(','),
+      program_preference:  partial.program_preference,
+      university_preference: partial.university_preference,
     });
     setFilterModalOpen(false);
   };
@@ -199,6 +203,10 @@ export default function ExploreClient({ opportunities, filters, currentPage, pag
         onClose={() => setFilterModalOpen(false)}
         location={filters.location}
         modality={filters.modality}
+        shifts={filters.shifts}
+        quota_types={filters.quota_types}
+        program_preference={filters.program_preference}
+        university_preference={filters.university_preference}
         onApply={handleFilterApply}
       />
     </div>
