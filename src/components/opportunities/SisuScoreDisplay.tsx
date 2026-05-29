@@ -39,18 +39,17 @@ export default function SisuScoreDisplay({ weights, opportunity_type = 'sisu', c
       console.log('[SisuScoreDisplay] enem rows:', rows, 'error:', error);
       if (!rows || rows.length === 0) { setLoading(false); return; }
 
-      let bestOfficial: { score: number; year: number } | null = null;
-      let bestTrainee: { score: number; year: number } | null = null;
+      let bestScoreInfo: { score: number; year: number; isTrainee: boolean } | null = null;
 
       const currentYear = new Date().getFullYear();
       const lastEnem = currentYear - 1; // ENEM is applied the prior year (e.g. in 2026, last ENEM = 2025)
       const isProuni = opportunity_type.toLowerCase() === 'prouni';
       
-      // SiSU: last 3 ENEM editions (e.g. 2025, 2024, 2023)
-      // ProUni: last 2 ENEM editions (e.g. 2025, 2024)
+      // SiSU: currentYear + last 3 ENEM editions (e.g. 2026, 2025, 2024, 2023)
+      // ProUni: currentYear + last 2 ENEM editions (e.g. 2026, 2025, 2024)
       const allowedYears = isProuni 
-        ? [lastEnem, lastEnem - 1] 
-        : [lastEnem, lastEnem - 1, lastEnem - 2];
+        ? [currentYear, lastEnem, lastEnem - 1] 
+        : [currentYear, lastEnem, lastEnem - 1, lastEnem - 2];
 
       console.log('[SisuScoreDisplay] currentYear:', currentYear, 'allowedYears:', allowedYears);
 
@@ -80,33 +79,17 @@ export default function SisuScoreDisplay({ weights, opportunity_type = 'sisu', c
         const rowIsTrainee = row.is_treineiro ?? false;
         console.log('[SisuScoreDisplay] row year:', row.year, 'weighted:', weighted, 'is_treineiro:', rowIsTrainee);
 
-        if (rowIsTrainee) {
-          if (!bestTrainee || weighted > bestTrainee.score) {
-            bestTrainee = { score: weighted, year: row.year };
-          }
-        } else {
-          if (!bestOfficial || weighted > bestOfficial.score) {
-            bestOfficial = { score: weighted, year: row.year };
-          }
+        if (!bestScoreInfo || weighted > bestScoreInfo.score) {
+          bestScoreInfo = { score: weighted, year: row.year, isTrainee: rowIsTrainee };
         }
       }
 
-      console.log('[SisuScoreDisplay] bestOfficial:', bestOfficial, 'bestTrainee:', bestTrainee);
+      console.log('[SisuScoreDisplay] bestScoreInfo:', bestScoreInfo);
       
-      let selectedBest: { score: number; year: number } | null = null;
-      let isTraineeActive = false;
-
-      if (bestOfficial) {
-        selectedBest = bestOfficial;
-      } else if (bestTrainee) {
-        selectedBest = bestTrainee;
-        isTraineeActive = true;
-      }
-
-      if (selectedBest) {
-        setScore(selectedBest.score);
-        setYear(selectedBest.year);
-        setIsTraineeFallback(isTraineeActive);
+      if (bestScoreInfo) {
+        setScore(bestScoreInfo.score);
+        setYear(bestScoreInfo.year);
+        setIsTraineeFallback(bestScoreInfo.isTrainee);
       }
       setLoading(false);
     };
