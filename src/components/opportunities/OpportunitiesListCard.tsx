@@ -33,8 +33,16 @@ const getTagStyle = (tag: string) => {
     case 'AMPLA_CONCORRENCIA': return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-100', label: 'Ampla Concorrência' };
     case 'ESCOLA_PUBLICA': return { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-100', label: 'Escola Pública' };
     case 'BAIXA_RENDA': return { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-100', label: 'Baixa Renda' };
+    case 'SEM_CRITERIO_RENDA': return { bg: 'bg-zinc-50', text: 'text-zinc-700', border: 'border-zinc-100', label: 'Sem Critério de Renda' };
+    case 'RENDA_ATE_1_SM': return { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-100', label: 'Renda até 1 SM' };
+    case 'RENDA_ATE_1_5_SM': return { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-100', label: 'Renda até 1,5 SM' };
+    case 'RENDA_ATE_2_SM': return { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-100', label: 'Renda até 2 SM' };
+    case 'RENDA_ATE_4_SM': return { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-100', label: 'Renda até 4 SM' };
     case 'PPI': return { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-100', label: 'PPI' };
     case 'PCD': return { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-100', label: 'PcD' };
+    case 'DEFICIENTE_AUDITIVO': return { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-100', label: 'Deficiente Auditivo' };
+    case 'DEFICIENTE_VISUAL': return { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-100', label: 'Deficiente Visual' };
+    case 'DEFICIENTE_FISICO': return { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-100', label: 'Deficiente Físico' };
     case 'QUILOMBOLAS': return { bg: 'bg-cyan-50', text: 'text-cyan-800', border: 'border-cyan-100', label: 'Quilombolas' };
     case 'INDIGENAS': return { bg: 'bg-teal-50', text: 'text-teal-800', border: 'border-teal-100', label: 'Indígenas' };
     case 'RURAL': return { bg: 'bg-lime-50', text: 'text-lime-800', border: 'border-lime-100', label: 'Rural' };
@@ -61,8 +69,6 @@ const getShiftDetails = (shift: string) => {
 };
 
 export default function OpportunitiesListCard({ opportunities, highlightedOpportunityId }: OpportunitiesListCardProps) {
-  
-  console.log('--- DADOS DA TABELA OPCOES DISPONIVEIS ---', JSON.stringify(opportunities, null, 2));
 
   const renderTags = (tags: any) => {
     if (!tags || tags.length === 0) return null;

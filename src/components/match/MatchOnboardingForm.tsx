@@ -58,11 +58,13 @@ const UNIVERSITY_OPTIONS = [
 const QUOTA_OPTIONS = [
   { id: 'AMPLA_CONCORRENCIA', label: 'Ampla Concorrência', description: 'Vagas sem critérios específicos de cota.' },
   { id: 'ESCOLA_PUBLICA', label: 'Escola Pública', description: 'Para quem cursou todo o ensino médio em escola pública.' },
-  { id: 'BAIXA_RENDA', label: 'Baixa Renda', description: 'Para estudantes de baixa renda familiar.' },
   { id: 'PPI', label: 'PPI (Pretos, Pardos e Indígenas)', description: 'Para estudantes autodeclarados pretos, pardos ou indígenas.' },
   { id: 'PCD', label: 'Pessoa com Deficiência (PCD)', description: 'Para pessoas com deficiência.' },
+  { id: 'INDIGENAS', label: 'Indígenas', description: 'Para estudantes autodeclarados indígenas.' },
   { id: 'TRANS', label: 'Trans / Travesti', description: 'Para pessoas trans ou travestis.' },
   { id: 'QUILOMBOLAS', label: 'Quilombolas', description: 'Para estudantes pertencentes a comunidades quilombolas.' },
+  { id: 'REFUGIADOS', label: 'Refugiados / Asilados', description: 'Para estudantes na condição de refugiados, apátridas ou asilados políticos.' },
+  { id: 'MILITAR', label: 'Militar / Policial', description: 'Para integrantes ou dependentes de militares e forças de segurança.' },
 ];
 
 const STATES_BR = [
