@@ -200,6 +200,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
   // ENEM — scores keyed by year so each tab is independent
   const [enemYear, setEnemYear] = useState('2026');
   const [scoresByYear, setScoresByYear] = useState<Record<string, YearScores>>({});
+  const [treineiroPorAno, setTreineiroPorAno] = useState<Record<string, boolean>>({});
 
   const currentScores: YearScores = scoresByYear[enemYear] ?? { ling: '', hum: '', nat: '', mat: '', red: '' };
   const updateScore = (field: keyof YearScores, val: string) =>
@@ -323,6 +324,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
 
         if (data.enemScores && data.enemScores.length > 0) {
           const scores: Record<string, YearScores> = {};
+          const treineiros: Record<string, boolean> = {};
           let latestYear = '2025';
           data.enemScores.forEach((s: any) => {
             scores[s.year.toString()] = {
@@ -332,11 +334,13 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               mat: s.nota_matematica?.toString() || '',
               red: s.nota_redacao?.toString() || ''
             };
+            treineiros[s.year.toString()] = s.is_treineiro || false;
             if (s.year.toString() > latestYear) {
               latestYear = s.year.toString();
             }
           });
           setScoresByYear(scores);
+          setTreineiroPorAno(treineiros);
           setEnemYear(latestYear);
         }
       } catch (err) {
@@ -534,6 +538,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               nota_ciencias_natureza: parseFloat(s.nat) || null,
               nota_matematica: parseFloat(s.mat) || null,
               nota_redacao: parseFloat(s.red) || null,
+              is_treineiro: treineiroPorAno[year] ?? false,
             })
           )
       );
@@ -764,7 +769,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                 <div>
                   <FieldLabel label="Ano" />
                   <div className="flex gap-2">
-                    {[2025, 2024, 2023].map(y => (
+                    {[2026, 2025, 2024, 2023].map(y => (
                       <button
                         key={y}
                         type="button"
@@ -780,6 +785,25 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                     ))}
                   </div>
                 </div>
+
+                {enemYear === '2026' && (
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none py-1">
+                    <input
+                      type="checkbox"
+                      checked={treineiroPorAno[enemYear] ?? false}
+                      onChange={e => {
+                        setTreineiroPorAno(prev => ({
+                          ...prev,
+                          [enemYear]: e.target.checked
+                        }));
+                      }}
+                      className="w-4 h-4 accent-[#38B1E4] rounded cursor-pointer"
+                    />
+                    <span className="text-[13px] font-semibold text-[#024F86]">
+                      Nota de Treineiro / Simulado
+                    </span>
+                  </label>
+                )}
 
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   {([
