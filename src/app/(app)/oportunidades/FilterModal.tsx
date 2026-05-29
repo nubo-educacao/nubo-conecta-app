@@ -6,6 +6,8 @@ import { X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
+import { createPortal } from 'react-dom';
+
 const MODALITY_OPTIONS = [
   { label: 'Todas as modalidades', value: '' },
   { label: 'Presencial',           value: 'presential' },
@@ -30,15 +32,22 @@ interface FilterModalProps {
 }
 
 export default function FilterModal({ open, onClose, modality, location, onApply }: FilterModalProps) {
-  if (!open) return null;
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  return (
+  if (!open || !mounted) return null;
+
+  return createPortal(
     <ModalContent
       onClose={onClose}
       modality={modality}
       location={location}
       onApply={onApply}
-    />
+    />,
+    document.body
   );
 }
 
