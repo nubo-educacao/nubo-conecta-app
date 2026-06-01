@@ -226,16 +226,15 @@ export async function getUnifiedOpportunities(
   if (options.shifts && options.shifts.length > 0) {
     const hasEad = options.shifts.includes('EaD');
     const otherShifts = options.shifts.filter(s => s !== 'EaD');
-    if (hasEad && otherShifts.length === 0) {
-      // EaD only — match either badge synonym
-      query = query.filter('badges', 'ov', JSON.stringify(['EaD', 'Curso a distância']));
-    } else if (hasEad) {
-      // EaD + other shifts — overlap with all selected + synonyms
-      query = query.filter('badges', 'ov', JSON.stringify([...otherShifts, 'EaD', 'Curso a distância']));
+    // badges is text[] — PostgREST overlap (&&) expects PostgreSQL array literal: {EaD,Noturno}
+    let shiftSet: string[];
+    if (hasEad) {
+      shiftSet = [...otherShifts, 'EaD', 'Curso a distância'];
     } else {
-      // Only non-EaD shifts
-      query = query.filter('badges', 'ov', JSON.stringify(otherShifts));
+      shiftSet = otherShifts;
     }
+    const pgArray = `{${shiftSet.map(s => `"${s}"`).join(',')}}`;
+    query = query.filter('badges', 'ov', pgArray);
   }
 
   if (options.program_preference) {
