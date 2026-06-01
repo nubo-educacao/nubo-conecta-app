@@ -239,6 +239,13 @@ export async function getUnifiedOpportunities(
     query = query.or(orClause);
   }
 
+  if (options.quota_types && options.quota_types.length > 0) {
+    const quotaClause = options.quota_types
+      .map(q => `badges.cs.${JSON.stringify([q])}`)
+      .join(',');
+    query = query.or(quotaClause);
+  }
+
   if (options.program_preference) {
     if (options.program_preference === 'sisu' || options.program_preference === 'prouni') {
       query = query.eq('type', options.program_preference);
