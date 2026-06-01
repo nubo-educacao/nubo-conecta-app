@@ -30,11 +30,11 @@ const UNIVERSITY_OPTIONS = [
 ];
 
 const QUOTA_OPTIONS = [
-  { label: 'Ampla Concorrência',         value: 'AMPLA_CONCORRENCIA' },
-  { label: 'PPI (Preto, Pardo, Indígena)', value: 'PPI' },
-  { label: 'PCD',                        value: 'PCD' },
-  { label: 'Escola Pública',             value: 'ESCOLA_PUBLICA' },
-  { label: 'Baixa Renda',                value: 'BAIXA_RENDA' },
+  { label: 'Ampla Concorrência',           value: 'AMPLA_CONCORRENCIA' },
+  { label: 'Escola Pública',               value: 'ESCOLA_PUBLICA' },
+  { label: 'Baixa Renda',                  value: 'BAIXA_RENDA' },
+  { label: 'PPI (Pretos, Pardos e Indígenas)', value: 'PPI' },
+  { label: 'Pessoa com Deficiência (PCD)', value: 'PCD' },
 ];
 
 interface FilterModalProps {
