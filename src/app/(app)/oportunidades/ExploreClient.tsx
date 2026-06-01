@@ -78,7 +78,6 @@ export default function ExploreClient({ opportunities, filters, currentPage, pag
     updateParam({
       location:              partial.location,
       city:                  partial.city,
-      modality:              partial.modality,
       shifts:                partial.shifts?.join(','),
       quota_types:           partial.quota_types?.join(','),
       program_preference:    partial.program_preference,
@@ -204,7 +203,6 @@ export default function ExploreClient({ opportunities, filters, currentPage, pag
         onClose={() => setFilterModalOpen(false)}
         location={filters.location}
         city={filters.city}
-        modality={filters.modality}
         shifts={filters.shifts}
         quota_types={filters.quota_types}
         program_preference={filters.program_preference}
