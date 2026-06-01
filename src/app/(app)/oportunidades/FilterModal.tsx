@@ -40,10 +40,10 @@ const UNIVERSITY_OPTIONS = [
 
 const QUOTA_OPTIONS = [
   { label: 'Ampla Concorrência', value: 'AMPLA_CONCORRENCIA' },
-  { label: 'PPI',                value: 'PPI' },
+  { label: 'PPI (Preto, Pardo, Indígena)', value: 'PPI' },
   { label: 'PCD',                value: 'PCD' },
   { label: 'Escola Pública',     value: 'ESCOLA_PUBLICA' },
-  { label: 'Renda Familiar',     value: 'RENDA_FAMILIAR' },
+  { label: 'Baixa Renda',        value: 'BAIXA_RENDA' },
 ];
 
 interface FilterModalProps {
@@ -51,6 +51,7 @@ interface FilterModalProps {
   onClose: () => void;
   modality?: string;
   location?: string;
+  city?: string;
   shifts?: string[];
   quota_types?: string[];
   program_preference?: string;
@@ -77,27 +78,30 @@ function ModalContent({
   onClose,
   modality,
   location,
+  city,
   shifts,
   quota_types,
   program_preference,
   university_preference,
   onApply,
 }: Omit<FilterModalProps, 'open'>) {
-  const [localModality, setLocalModality]   = useState<string>(modality ?? '');
-  const [localLocation, setLocalLocation]   = useState<string>(location ?? '');
-  const [localShifts, setLocalShifts]       = useState<string[]>(shifts ?? []);
-  const [localQuotas, setLocalQuotas]       = useState<string[]>(quota_types ?? []);
-  const [localProgram, setLocalProgram]     = useState<string>(program_preference ?? '');
+  const [localModality, setLocalModality]     = useState<string>(modality ?? '');
+  const [localLocation, setLocalLocation]     = useState<string>(location ?? '');
+  const [localCity, setLocalCity]             = useState<string>(city ?? '');
+  const [localShifts, setLocalShifts]         = useState<string[]>(shifts ?? []);
+  const [localQuotas, setLocalQuotas]         = useState<string[]>(quota_types ?? []);
+  const [localProgram, setLocalProgram]       = useState<string>(program_preference ?? '');
   const [localUniversity, setLocalUniversity] = useState<string>(university_preference ?? '');
 
   useEffect(() => {
     setLocalModality(modality ?? '');
     setLocalLocation(location ?? '');
+    setLocalCity(city ?? '');
     setLocalShifts(shifts ?? []);
     setLocalQuotas(quota_types ?? []);
     setLocalProgram(program_preference ?? '');
     setLocalUniversity(university_preference ?? '');
-  }, [modality, location, shifts, quota_types, program_preference, university_preference]);
+  }, [modality, location, city, shifts, quota_types, program_preference, university_preference]);
 
   const toggleShift = (s: string) =>
     setLocalShifts(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
@@ -107,11 +111,12 @@ function ModalContent({
 
   const handleApply = () => {
     onApply({
-      modality:            (localModality as ExploreFilters['modality']) || undefined,
-      location:            localLocation || undefined,
-      shifts:              localShifts.length ? localShifts : undefined,
-      quota_types:         localQuotas.length ? localQuotas : undefined,
-      program_preference:  localProgram || undefined,
+      modality:              (localModality as ExploreFilters['modality']) || undefined,
+      location:              localLocation || undefined,
+      city:                  localCity || undefined,
+      shifts:                localShifts.length ? localShifts : undefined,
+      quota_types:           localQuotas.length ? localQuotas : undefined,
+      program_preference:    localProgram || undefined,
       university_preference: localUniversity || undefined,
     });
   };
@@ -235,6 +240,18 @@ function ModalContent({
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
+        </div>
+
+        {/* Cidade */}
+        <div className="flex flex-col gap-2">
+          <label className="font-sans font-semibold text-[13px] text-nubo-text-head">Cidade</label>
+          <input
+            type="text"
+            value={localCity}
+            onChange={(e) => setLocalCity(e.target.value)}
+            placeholder="Ex: São Paulo, Campinas..."
+            className="w-full rounded-[12px] px-4 h-[48px] text-[15px] font-sans font-medium text-nubo-text-head bg-white outline-none border border-nubo-line focus:border-nubo-primary focus:ring-1 focus:ring-nubo-primary transition-all"
+          />
         </div>
 
         {/* Cotas */}

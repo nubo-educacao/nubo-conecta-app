@@ -32,6 +32,7 @@ interface PageProps {
     course_interests?: string;
     program_preference?: string;
     university_preference?: string;
+    city?: string;
     page?: string;
   }>;
 }
@@ -55,8 +56,9 @@ export default async function OpportunitiesPage({ searchParams }: PageProps) {
     shifts:               params.shifts ? params.shifts.split(',').filter(Boolean) : undefined,
     quota_types:          params.quota_types ? params.quota_types.split(',').filter(Boolean) : undefined,
     course_interests:     params.course_interests ? params.course_interests.split(',').filter(Boolean) : undefined,
-    program_preference:   params.program_preference || undefined,
+    program_preference:    params.program_preference || undefined,
     university_preference: params.university_preference || undefined,
+    city:                  params.city || undefined,
   };
 
   // Server-side fetch com paginação de 15 itens

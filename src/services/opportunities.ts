@@ -223,6 +223,10 @@ export async function getUnifiedOpportunities(
     query = query.ilike('location', `%${options.location}%`);
   }
 
+  if (options.city && options.city !== '') {
+    query = query.ilike('location', `%${options.city}%`);
+  }
+
   if (options.shifts && options.shifts.length > 0) {
     const hasEad = options.shifts.includes('EaD');
     const otherShifts = options.shifts.filter(s => s !== 'EaD');

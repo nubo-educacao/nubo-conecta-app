@@ -11,6 +11,8 @@ export interface ExploreFilters {
   course_interests?: string[];
   program_preference?: string;
   university_preference?: string;
+  /** Cidade específica (texto livre, ilike na coluna location) */
+  city?: string;
 }
 export interface IUnifiedOpportunity {
   id: string; title: string; institution_name: string; is_partner: boolean;
