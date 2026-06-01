@@ -30,11 +30,11 @@ const UNIVERSITY_OPTIONS = [
 ];
 
 const QUOTA_OPTIONS = [
-  { label: 'Ampla Concorrência',           value: 'AMPLA_CONCORRENCIA' },
-  { label: 'Escola Pública',               value: 'ESCOLA_PUBLICA' },
-  { label: 'Baixa Renda',                  value: 'BAIXA_RENDA' },
-  { label: 'PPI (Pretos, Pardos e Indígenas)', value: 'PPI' },
-  { label: 'Pessoa com Deficiência (PCD)', value: 'PCD' },
+  { label: 'Ampla Concorrência',         value: 'AMPLA_CONCORRENCIA' },
+  { label: 'PPI (Preto, Pardo, Indígena)', value: 'PPI' },
+  { label: 'PCD',                        value: 'PCD' },
+  { label: 'Escola Pública',             value: 'ESCOLA_PUBLICA' },
+  { label: 'Baixa Renda',                value: 'BAIXA_RENDA' },
 ];
 
 interface FilterModalProps {
@@ -172,31 +172,16 @@ function ModalContent({
             </div>
           </div>
 
-          {/* Cotas — multiselect nativo */}
+          {/* Cotas — multiselect chips */}
           <div className="flex flex-col gap-2">
-            <label className="font-sans font-semibold text-[13px] text-nubo-text-head">
-              Cotas <span className="font-normal text-nubo-nav-inactive">(segure Ctrl/⌘ para selecionar várias)</span>
-            </label>
-            <select
-              multiple
-              value={localQuotas}
-              onChange={(e) => {
-                const selected = Array.from(e.target.selectedOptions).map(o => o.value);
-                setLocalQuotas(selected);
-              }}
-              className="w-full rounded-[12px] px-3 py-2 text-[14px] font-sans font-medium text-nubo-text-head bg-white outline-none border border-nubo-line focus:border-nubo-primary focus:ring-1 focus:ring-nubo-primary transition-all"
-              style={{ height: `${QUOTA_OPTIONS.length * 40}px` }}
-            >
+            <label className="font-sans font-semibold text-[13px] text-nubo-text-head">Cotas</label>
+            <div className="flex flex-wrap gap-2">
               {QUOTA_OPTIONS.map(opt => (
-                <option
-                  key={opt.value}
-                  value={opt.value}
-                  className="py-2 px-1 rounded cursor-pointer"
-                >
+                <button key={opt.value} onClick={() => toggleQuota(opt.value)} className={chip(localQuotas.includes(opt.value))}>
                   {opt.label}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           {/* Estado */}
