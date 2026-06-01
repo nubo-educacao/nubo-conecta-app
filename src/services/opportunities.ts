@@ -228,17 +228,15 @@ export async function getUnifiedOpportunities(
   }
 
   if (options.shifts && options.shifts.length > 0) {
-    const hasEad = options.shifts.includes('EaD');
-    const otherShifts = options.shifts.filter(s => s !== 'EaD');
-    // badges is text[] — PostgREST overlap (&&) expects PostgreSQL array literal: {EaD,Noturno}
-    let shiftSet: string[];
-    if (hasEad) {
-      shiftSet = [...otherShifts, 'EaD', 'Curso a distância'];
-    } else {
-      shiftSet = otherShifts;
-    }
-    const pgArray = `{${shiftSet.map(s => `"${s}"`).join(',')}}`;
-    query = query.filter('badges', 'ov', pgArray);
+    // badges is jsonb — use @> (cs) per value, combined with OR
+    // EaD has a synonym "Curso a distância" in MEC data
+    const shiftValues = options.shifts.flatMap(s =>
+      s === 'EaD' ? ['EaD', 'Curso a distância'] : [s]
+    );
+    const orClause = shiftValues
+      .map(s => `badges.cs.${JSON.stringify([s])}`)
+      .join(',');
+    query = query.or(orClause);
   }
 
   if (options.program_preference) {
