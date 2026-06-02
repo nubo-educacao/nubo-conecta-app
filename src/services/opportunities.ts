@@ -182,9 +182,27 @@ export async function getUnifiedOpportunities(
     },
   );
 
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData?.user;
+
+  // For explorar mode, try to fetch user coordinates to order by distance
+  let userLat: number | null = null;
+  let userLong: number | null = null;
+  
+  if (mode === 'explorar' && user) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('device_latitude, device_longitude')
+      .eq('id', user.id)
+      .single();
+      
+    if (profile?.device_latitude && profile?.device_longitude) {
+      userLat = profile.device_latitude;
+      userLong = profile.device_longitude;
+    }
+  }
+
   if (mode === 'para-voce') {
-    const { data: { user } } = await supabase.auth.getUser();
-    
     if (user) {
       // Try the personalized RPC — falls back to view if not yet deployed
       const { data, error } = await supabase.rpc('get_opportunities_for_user', {
@@ -203,10 +221,17 @@ export async function getUnifiedOpportunities(
   }
 
   // Fallback para explorar ou usuário não autenticado no modo para-voce
-  let query = supabase
-    .from('v_unified_opportunities')
-    .select('*')
-    .range(page * limit, (page + 1) * limit - 1);
+  let query;
+  if (mode === 'explorar' && userLat !== null && userLong !== null) {
+    // Dynamic query fetching the view AND calculating distance using the user coordinates
+    query = supabase
+      .rpc('get_unified_opportunities_by_distance', { p_lat: userLat, p_long: userLong })
+      .select('*');
+  } else {
+    query = supabase
+      .from('v_unified_opportunities')
+      .select('*');
+  }
 
   // Filtros de Explorar (Sprint 2.5 + Hotfix)
   if (options.q) {
@@ -267,8 +292,20 @@ export async function getUnifiedOpportunities(
     query = query.or(orClause);
   }
 
-  // Sempre ordena por recência via PostgREST (compatível com qualquer view)
-  query = query.order('created_at', { ascending: false });
+  // Ordenação
+  if (mode === 'explorar' && userLat !== null && userLong !== null) {
+    // Prioritizes Partners first, then distance_km (ascending - closest first), then creation date
+    query = query
+      .order('is_partner', { ascending: false })
+      .order('distance_km', { ascending: true })
+      .order('created_at', { ascending: false });
+  } else {
+    // Sempre ordena por recência via PostgREST (compatível com qualquer view)
+    query = query.order('created_at', { ascending: false });
+  }
+
+  // Paginação
+  query = query.range(page * limit, (page + 1) * limit - 1);
 
   const { data, error } = await query;
 
@@ -283,13 +320,12 @@ export async function getUnifiedOpportunities(
 
   // If user is authenticated, we want to fetch the match scores for these opportunities 
   // so the Explore tab can also show the match badge.
-  const { data: authData } = await supabase.auth.getUser();
-  if (authData.user && enriched.length > 0) {
+  if (user && enriched.length > 0) {
     const unifiedIds = enriched.map(opp => opp.id);
     const { data: matchData } = await supabase
       .from('user_opportunity_matches')
       .select('unified_opportunity_id, match_score')
-      .eq('profile_id', authData.user.id)
+      .eq('profile_id', user.id)
       .in('unified_opportunity_id', unifiedIds);
 
     if (matchData) {
