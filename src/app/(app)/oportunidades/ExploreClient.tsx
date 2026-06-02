@@ -24,11 +24,16 @@ const CATEGORY_PILLS = [
 interface ExploreClientProps {
   opportunities: IUnifiedOpportunity[];
   filters: ExploreFilters;
-  currentPage: number;
-  pageSize: number;
+  currentPage?: number;
+  pageSize?: number;
 }
 
-export default function ExploreClient({ opportunities, filters, currentPage, pageSize }: ExploreClientProps) {
+export default function ExploreClient({
+  opportunities,
+  filters,
+  currentPage = 0,
+  pageSize = 15
+}: ExploreClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filterModalOpen, setFilterModalOpen] = useState(false);

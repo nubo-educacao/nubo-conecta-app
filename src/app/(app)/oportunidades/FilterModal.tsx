@@ -89,8 +89,8 @@ function ModalContent({
         .select('name')
         .eq('state', localLocation)
         .order('name')
-        .then(({ data }) => {
-          if (data) setCitiesForState(data.map(d => d.name));
+        .then(({ data }: { data: { name: string }[] | null }) => {
+          if (data) setCitiesForState(data.map((d: { name: string }) => d.name));
         });
     } else {
       setCitiesForState([]);

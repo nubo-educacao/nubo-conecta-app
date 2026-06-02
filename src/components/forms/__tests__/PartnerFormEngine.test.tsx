@@ -41,12 +41,12 @@ const FIELDS: PartnerFormField[] = [
     id: 'f1', partner_id: 'p1', step_id: 's1', field_name: 'full_name',
     question_text: 'Nome completo', field_type: 'text', sort_order: 1,
     is_required: false, is_criterion: false,
-  } as PartnerFormField,
+  } as unknown as PartnerFormField,
   {
     id: 'f2', partner_id: 'p1', step_id: 's2', field_name: 'education',
     question_text: 'Escolaridade', field_type: 'text', sort_order: 1,
     is_required: false, is_criterion: false,
-  } as PartnerFormField,
+  } as unknown as PartnerFormField,
 ];
 
 describe('PartnerFormEngine — 9.4.2: onStepIndexChange callback', () => {
