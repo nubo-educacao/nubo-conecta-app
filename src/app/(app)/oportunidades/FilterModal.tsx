@@ -6,6 +6,7 @@ import { X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { createPortal } from 'react-dom';
+import { supabase } from '@/lib/supabase';
 
 const UF_OPTIONS = [
   { label: 'Todos os estados', value: '' },
@@ -66,7 +67,7 @@ function ModalContent({
   const [localQuotas,      setLocalQuotas]      = useState<string[]>(quota_types ?? []);
   const [localProgram,     setLocalProgram]     = useState(program_preference ?? '');
   const [localUniversity,  setLocalUniversity]  = useState(university_preference ?? '');
-
+  const [citiesForState,   setCitiesForState]   = useState<string[]>([]);
   useEffect(() => {
     setLocalLocation(location ?? '');
     setLocalCity(city ?? '');
@@ -81,6 +82,20 @@ function ModalContent({
     setLocalLocation(val);
     setLocalCity('');
   };
+
+  useEffect(() => {
+    if (localLocation) {
+      supabase.from('cities')
+        .select('name')
+        .eq('state', localLocation)
+        .order('name')
+        .then(({ data }) => {
+          if (data) setCitiesForState(data.map(d => d.name));
+        });
+    } else {
+      setCitiesForState([]);
+    }
+  }, [localLocation]);
 
   const toggleShift = (s: string) =>
     setLocalShifts(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
@@ -202,11 +217,15 @@ function ModalContent({
               <label className="font-sans font-semibold text-[13px] text-nubo-text-head">Cidade</label>
               <input
                 type="text"
+                list="cities-datalist"
                 value={localCity}
                 onChange={(e) => setLocalCity(e.target.value)}
                 placeholder={`Buscar cidade em ${localLocation}...`}
                 className="w-full rounded-[12px] px-4 h-[48px] text-[15px] font-sans font-medium text-nubo-text-head bg-white outline-none border border-nubo-line focus:border-nubo-primary focus:ring-1 focus:ring-nubo-primary transition-all"
               />
+              <datalist id="cities-datalist">
+                {citiesForState.map(c => <option key={c} value={c} />)}
+              </datalist>
             </div>
           )}
         </div>
