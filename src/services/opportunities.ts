@@ -297,7 +297,7 @@ export async function getUnifiedOpportunities(
     // Prioritizes Partners first, then distance_km (ascending - closest first), then creation date
     query = query
       .order('is_partner', { ascending: false })
-      .order('distance_km', { ascending: true })
+      .order('distance_km', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
   } else {
     // Sempre ordena por recência via PostgREST (compatível com qualquer view)
