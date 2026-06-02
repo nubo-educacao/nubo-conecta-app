@@ -190,15 +190,15 @@ export async function getUnifiedOpportunities(
   let userLong: number | null = null;
   
   if (mode === 'explorar' && user) {
-    const { data: profile } = await supabase
-      .from('user_profiles')
+    const { data: prefs } = await supabase
+      .from('user_preferences')
       .select('device_latitude, device_longitude')
-      .eq('id', user.id)
+      .eq('user_id', user.id)
       .single();
       
-    if (profile?.device_latitude && profile?.device_longitude) {
-      userLat = profile.device_latitude;
-      userLong = profile.device_longitude;
+    if (prefs?.device_latitude && prefs?.device_longitude) {
+      userLat = prefs.device_latitude;
+      userLong = prefs.device_longitude;
     }
   }
 
