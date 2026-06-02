@@ -59,6 +59,7 @@ export interface UserEnemScoreData {
   nota_ciencias_natureza?: number | null;
   nota_matematica?: number | null;
   nota_redacao?: number | null;
+  is_treineiro?: boolean | null;
 }
 
 export async function saveUserData(userId: string, data: UserProfileData): Promise<void> {
