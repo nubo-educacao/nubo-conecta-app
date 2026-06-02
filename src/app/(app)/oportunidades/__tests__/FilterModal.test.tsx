@@ -72,43 +72,30 @@ describe('FilterModal', () => {
 
   // ── Botão Aplicar ──────────────────────────────────────────────────────────
 
-  it('"Aplicar filtros" chama onApply com modality e location undefined quando não selecionados', () => {
+  it('"Aplicar filtros" chama onApply com location undefined quando não selecionado', () => {
     render(<FilterModal open={true} onClose={onClose} onApply={onApply} />);
 
     fireEvent.click(screen.getByText('Aplicar filtros'));
 
     expect(onApply).toHaveBeenCalledOnce();
-    expect(onApply).toHaveBeenCalledWith({ modality: undefined, location: undefined });
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ location: undefined }));
   });
 
-  it('"Aplicar filtros" passa modality=presential quando selecionado', () => {
+  it('"Aplicar filtros" passa program_preference=sisu quando selecionado', () => {
     render(<FilterModal open={true} onClose={onClose} onApply={onApply} />);
 
-    const [modalitySelect] = screen.getAllByRole('combobox');
-    fireEvent.change(modalitySelect, { target: { value: 'presential' } });
+    fireEvent.click(screen.getByText('SISU'));
     fireEvent.click(screen.getByText('Aplicar filtros'));
 
     expect(onApply).toHaveBeenCalledWith(
-      expect.objectContaining({ modality: 'presential' }),
-    );
-  });
-
-  it('"Aplicar filtros" passa modality=online quando selecionado', () => {
-    render(<FilterModal open={true} onClose={onClose} onApply={onApply} />);
-
-    const [modalitySelect] = screen.getAllByRole('combobox');
-    fireEvent.change(modalitySelect, { target: { value: 'online' } });
-    fireEvent.click(screen.getByText('Aplicar filtros'));
-
-    expect(onApply).toHaveBeenCalledWith(
-      expect.objectContaining({ modality: 'online' }),
+      expect.objectContaining({ program_preference: 'sisu' }),
     );
   });
 
   it('"Aplicar filtros" passa location=SP quando estado selecionado', () => {
     render(<FilterModal open={true} onClose={onClose} onApply={onApply} />);
 
-    const [, locationSelect] = screen.getAllByRole('combobox');
+    const locationSelect = screen.getByRole('combobox') as HTMLSelectElement;
     fireEvent.change(locationSelect, { target: { value: 'SP' } });
     fireEvent.click(screen.getByText('Aplicar filtros'));
 
@@ -120,7 +107,7 @@ describe('FilterModal', () => {
   it('"Aplicar filtros" passa location=undefined quando "Todos os estados" selecionado', () => {
     render(<FilterModal open={true} onClose={onClose} onApply={onApply} />);
 
-    const [, locationSelect] = screen.getAllByRole('combobox');
+    const locationSelect = screen.getByRole('combobox') as HTMLSelectElement;
     // Garantir que está no valor vazio (padrão)
     fireEvent.change(locationSelect, { target: { value: '' } });
     fireEvent.click(screen.getByText('Aplicar filtros'));
@@ -132,26 +119,24 @@ describe('FilterModal', () => {
 
   // ── Inicialização com props ────────────────────────────────────────────────
 
-  it('inicializa com os valores das props modality e location', () => {
+  it('inicializa com os valores das props location', () => {
     render(
       <FilterModal
         open={true}
         onClose={onClose}
         onApply={onApply}
-        modality="online"
         location="RJ"
       />,
     );
 
-    const [modalitySelect, locationSelect] = screen.getAllByRole('combobox') as HTMLSelectElement[];
-    expect(modalitySelect.value).toBe('online');
+    const locationSelect = screen.getByRole('combobox') as HTMLSelectElement;
     expect(locationSelect.value).toBe('RJ');
   });
 
-  it('renderiza as 3 opções de modalidade', () => {
+  it('renderiza as opções de programa', () => {
     render(<FilterModal open={true} onClose={onClose} onApply={onApply} />);
-    expect(screen.getByText('Todas as modalidades')).toBeDefined();
-    expect(screen.getByText('Presencial')).toBeDefined();
-    expect(screen.getByText('Online / EaD')).toBeDefined();
+    expect(screen.getByText('SISU')).toBeDefined();
+    expect(screen.getByText('ProUni')).toBeDefined();
+    expect(screen.getByText('Bolsa (parceiro)')).toBeDefined();
   });
 });

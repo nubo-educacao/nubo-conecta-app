@@ -93,7 +93,7 @@ describe('InstitutionsPage', () => {
 
   it('exibe título "Instituições"', async () => {
     mockOrder.mockResolvedValueOnce({ data: [], error: null });
-    render(await InstitutionsPage());
+    render(await InstitutionsPage({ searchParams: Promise.resolve({}) }));
     expect(screen.getByText('Instituições')).toBeDefined();
   });
 
@@ -107,7 +107,7 @@ describe('InstitutionsPage', () => {
       error: null,
     });
 
-    render(await InstitutionsPage());
+    render(await InstitutionsPage({ searchParams: Promise.resolve({}) }));
 
     expect(capturedInstitutions).toHaveLength(3);
     expect(capturedInstitutions.filter((i) => i.type === 'partner')).toHaveLength(1);
@@ -123,7 +123,7 @@ describe('InstitutionsPage', () => {
       error: null,
     });
 
-    render(await InstitutionsPage());
+    render(await InstitutionsPage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByText('Parceira Alpha')).toBeDefined();
     expect(screen.getByText('MEC Beta')).toBeDefined();
@@ -132,7 +132,7 @@ describe('InstitutionsPage', () => {
   it('consulta a view "v_unified_institutions"', async () => {
     mockOrder.mockResolvedValueOnce({ data: [], error: null });
 
-    await InstitutionsPage();
+    await InstitutionsPage({ searchParams: Promise.resolve({}) });
 
     expect(mockFrom).toHaveBeenCalledWith('v_unified_institutions');
   });
@@ -143,13 +143,13 @@ describe('InstitutionsPage', () => {
       error: { message: 'DB error', code: '500' },
     });
 
-    await expect(InstitutionsPage()).rejects.toThrow('getUnifiedInstitutions failed');
+    await expect(InstitutionsPage({ searchParams: Promise.resolve({}) })).rejects.toThrow('getUnifiedInstitutions failed');
   });
 
   it('passa lista vazia para InstitutionsClient quando não há instituições', async () => {
     mockOrder.mockResolvedValueOnce({ data: [], error: null });
 
-    render(await InstitutionsPage());
+    render(await InstitutionsPage({ searchParams: Promise.resolve({}) }));
 
     expect(capturedInstitutions).toHaveLength(0);
   });

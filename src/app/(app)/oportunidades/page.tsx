@@ -27,9 +27,12 @@ interface PageProps {
     category?: string;
     modality?: string;
     location?: string;
-    shift?: string;
-    min_igc?: string;
-    price_range?: string;
+    shifts?: string;
+    quota_types?: string;
+    course_interests?: string;
+    program_preference?: string;
+    university_preference?: string;
+    city?: string;
     page?: string;
   }>;
 }
@@ -49,10 +52,13 @@ export default async function OpportunitiesPage({ searchParams }: PageProps) {
     modality: params.modality === 'presential' || params.modality === 'online'
       ? params.modality
       : undefined,
-    location:    params.location,
-    shift:       params.shift as ExploreFilters['shift'],
-    min_igc:     params.min_igc ? parseInt(params.min_igc) : undefined,
-    price_range: params.price_range as ExploreFilters['price_range'],
+    location:             params.location,
+    shifts:               params.shifts ? params.shifts.split(',').filter(Boolean) : undefined,
+    quota_types:          params.quota_types ? params.quota_types.split(',').filter(Boolean) : undefined,
+    course_interests:     params.course_interests ? params.course_interests.split(',').filter(Boolean) : undefined,
+    program_preference:    params.program_preference || undefined,
+    university_preference: params.university_preference || undefined,
+    city:                  params.city || undefined,
   };
 
   // Server-side fetch com paginação de 15 itens

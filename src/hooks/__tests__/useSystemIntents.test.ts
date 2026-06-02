@@ -29,7 +29,6 @@ describe('useSystemIntents', () => {
     sessionId: 'session-xyz',
     accessToken: 'token-123',
     isDrawerOpen: false,
-    onOpen: vi.fn(),
   };
 
   it('dispara page_context em qualquer rota (backend decide se responde)', async () => {
@@ -42,15 +41,15 @@ describe('useSystemIntents', () => {
       yield { type: 'intent_metadata', open_drawer: true, delay_ms: 5000 };
     });
 
-    const onOpen = vi.fn();
     const { result } = renderHook(() =>
-      useSystemIntents({ ...defaultProps, onOpen })
+      useSystemIntents(defaultProps)
     );
 
     await waitFor(() => {
       expect(result.current.unreadCount).toBe(1);
       expect(result.current.pendingMessages).toHaveLength(1);
       expect(result.current.pendingMessages[0].content).toContain('Olá!');
+      expect(result.current.hasPriorityMessage).toBe(true);
     });
 
     // streamChat deve ter sido chamado com page_context
@@ -75,28 +74,22 @@ describe('useSystemIntents', () => {
     expect(streamChat).not.toHaveBeenCalled();
   });
 
-  it('respeita delay_ms antes de abrir drawer', async () => {
+  it('sinaliza hasPriorityMessage se open_drawer=true', async () => {
+    vi.useRealTimers();
     (usePathname as Mock).mockReturnValue('/oportunidades/opp-789');
 
     (streamChat as Mock).mockImplementation(async function* () {
       yield { type: 'text', content: 'Resposta real da Cloudinha' };
-      yield { type: 'intent_metadata', open_drawer: true, delay_ms: 3000 };
+      yield { type: 'intent_metadata', open_drawer: true };
     });
 
-    const onOpen = vi.fn();
     const { result } = renderHook(() =>
-      useSystemIntents({ ...defaultProps, onOpen })
+      useSystemIntents(defaultProps)
     );
 
-    // Flush microtasks para que o async generator complete
-    await vi.advanceTimersByTimeAsync(100);
-
-    // Ainda não abriu — delay de 3s não passou
-    expect(onOpen).not.toHaveBeenCalled();
-
-    // Avançar 3s
-    await vi.advanceTimersByTimeAsync(3000);
-    expect(onOpen).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(result.current.hasPriorityMessage).toBe(true);
+    });
   });
 
   it('limpa unreadCount quando drawer é aberto', async () => {
@@ -109,7 +102,7 @@ describe('useSystemIntents', () => {
 
     const { result, rerender } = renderHook(
       ({ isDrawerOpen }) =>
-        useSystemIntents({ ...defaultProps, isDrawerOpen, onOpen: vi.fn() }),
+        useSystemIntents({ ...defaultProps, isDrawerOpen }),
       { initialProps: { isDrawerOpen: false } }
     );
 
@@ -130,14 +123,13 @@ describe('useSystemIntents', () => {
       // Nenhum evento de texto — backend retornou system_ack como JSON direto
     });
 
-    const onOpen = vi.fn();
     const { result } = renderHook(() =>
-      useSystemIntents({ ...defaultProps, onOpen })
+      useSystemIntents(defaultProps)
     );
 
     await new Promise((r) => setTimeout(r, 100));
     expect(result.current.unreadCount).toBe(0);
     expect(result.current.pendingMessages).toHaveLength(0);
-    expect(onOpen).not.toHaveBeenCalled();
+    expect(result.current.hasPriorityMessage).toBe(false);
   });
 });

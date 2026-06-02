@@ -182,9 +182,27 @@ export async function getUnifiedOpportunities(
     },
   );
 
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData?.user;
+
+  // For explorar mode, try to fetch user coordinates to order by distance
+  let userLat: number | null = null;
+  let userLong: number | null = null;
+  
+  if (mode === 'explorar' && user) {
+    const { data: prefs } = await supabase
+      .from('user_preferences')
+      .select('device_latitude, device_longitude')
+      .eq('user_id', user.id)
+      .single();
+      
+    if (prefs?.device_latitude && prefs?.device_longitude) {
+      userLat = prefs.device_latitude;
+      userLong = prefs.device_longitude;
+    }
+  }
+
   if (mode === 'para-voce') {
-    const { data: { user } } = await supabase.auth.getUser();
-    
     if (user) {
       // Try the personalized RPC — falls back to view if not yet deployed
       const { data, error } = await supabase.rpc('get_opportunities_for_user', {
@@ -203,10 +221,17 @@ export async function getUnifiedOpportunities(
   }
 
   // Fallback para explorar ou usuário não autenticado no modo para-voce
-  let query = supabase
-    .from('v_unified_opportunities')
-    .select('*')
-    .range(page * limit, (page + 1) * limit - 1);
+  let query;
+  if (mode === 'explorar' && userLat !== null && userLong !== null) {
+    // Dynamic query fetching the view AND calculating distance using the user coordinates
+    query = supabase
+      .rpc('get_unified_opportunities_by_distance', { p_lat: userLat, p_long: userLong })
+      .select('*');
+  } else {
+    query = supabase
+      .from('v_unified_opportunities')
+      .select('*');
+  }
 
   // Filtros de Explorar (Sprint 2.5 + Hotfix)
   if (options.q) {
@@ -223,28 +248,64 @@ export async function getUnifiedOpportunities(
     query = query.ilike('location', `%${options.location}%`);
   }
 
-  if (options.shift) {
-    if (options.shift === 'EaD') {
-      // Para EaD, buscamos os dois sinônimos comuns no banco MEC (EaD e Curso a distância)
-      query = query.filter('badges', 'ov', JSON.stringify(['EaD', 'Curso a distância']));
-    } else {
-      query = query.filter('badges', 'cs', JSON.stringify([options.shift]));
+  if (options.city && options.city !== '') {
+    query = query.ilike('location', `%${options.city}%`);
+  }
+
+  if (options.shifts && options.shifts.length > 0) {
+    // badges is jsonb — use @> (cs) per value, combined with OR
+    // EaD has a synonym "Curso a distância" in MEC data
+    const shiftValues = options.shifts.flatMap(s =>
+      s === 'EaD' ? ['EaD', 'Curso a distância'] : [s]
+    );
+    const orClause = shiftValues
+      .map(s => `badges.cs.${JSON.stringify([s])}`)
+      .join(',');
+    query = query.or(orClause);
+  }
+
+  if (options.quota_types && options.quota_types.length > 0) {
+    const quotaClause = options.quota_types
+      .map(q => `badges.cs.${JSON.stringify([q])}`)
+      .join(',');
+    query = query.or(quotaClause);
+  }
+
+  if (options.program_preference) {
+    if (options.program_preference === 'sisu' || options.program_preference === 'prouni') {
+      query = query.eq('type', options.program_preference);
+    } else if (options.program_preference === 'programa de bolsa') {
+      query = query.eq('opportunity_type', 'programa de bolsa');
     }
   }
 
-  if (options.min_igc) {
-    // institution_igc na view é text, precisamos converter ou filtrar via PostgREST gte
-    query = query.gte('institution_igc', options.min_igc.toString());
-  }
-
-  if (options.price_range === 'free') {
+  if (options.university_preference === 'publica') {
     query = query.eq('is_partner', false);
-  } else if (options.price_range === 'paid') {
+  } else if (options.university_preference === 'privada') {
     query = query.eq('is_partner', true);
   }
 
-  // Sempre ordena por recência via PostgREST (compatível com qualquer view)
-  query = query.order('created_at', { ascending: false });
+  if (options.course_interests && options.course_interests.length > 0) {
+    const orClause = options.course_interests
+      .map(ci => `title.ilike.%${ci}%`)
+      .join(',');
+    query = query.or(orClause);
+  }
+
+  // Ordenação
+  if (mode === 'explorar' && userLat !== null && userLong !== null) {
+    // Prioritizes Partners first, then distance_km (ascending - closest first), then creation date
+    query = query
+      .order('is_partner', { ascending: false })
+      .order('distance_km', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false });
+  } else {
+    // Sempre ordena por recência via PostgREST (compatível com qualquer view)
+    query = query.order('created_at', { ascending: false });
+  }
+
+  // Paginação
+  query = query.range(page * limit, (page + 1) * limit - 1);
 
   const { data, error } = await query;
 
@@ -259,13 +320,12 @@ export async function getUnifiedOpportunities(
 
   // If user is authenticated, we want to fetch the match scores for these opportunities 
   // so the Explore tab can also show the match badge.
-  const { data: authData } = await supabase.auth.getUser();
-  if (authData.user && enriched.length > 0) {
+  if (user && enriched.length > 0) {
     const unifiedIds = enriched.map(opp => opp.id);
     const { data: matchData } = await supabase
       .from('user_opportunity_matches')
       .select('unified_opportunity_id, match_score')
-      .eq('profile_id', authData.user.id)
+      .eq('profile_id', user.id)
       .in('unified_opportunity_id', unifiedIds);
 
     if (matchData) {

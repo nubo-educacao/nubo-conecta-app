@@ -24,11 +24,16 @@ const CATEGORY_PILLS = [
 interface ExploreClientProps {
   opportunities: IUnifiedOpportunity[];
   filters: ExploreFilters;
-  currentPage: number;
-  pageSize: number;
+  currentPage?: number;
+  pageSize?: number;
 }
 
-export default function ExploreClient({ opportunities, filters, currentPage, pageSize }: ExploreClientProps) {
+export default function ExploreClient({
+  opportunities,
+  filters,
+  currentPage = 0,
+  pageSize = 15
+}: ExploreClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filterModalOpen, setFilterModalOpen] = useState(false);
@@ -76,8 +81,12 @@ export default function ExploreClient({ opportunities, filters, currentPage, pag
 
   const handleFilterApply = (partial: Partial<ExploreFilters>) => {
     updateParam({
-      location: partial.location,
-      modality: partial.modality,
+      location:              partial.location,
+      city:                  partial.city,
+      shifts:                partial.shifts?.join(','),
+      quota_types:           partial.quota_types?.join(','),
+      program_preference:    partial.program_preference,
+      university_preference: partial.university_preference,
     });
     setFilterModalOpen(false);
   };
@@ -198,7 +207,11 @@ export default function ExploreClient({ opportunities, filters, currentPage, pag
         open={filterModalOpen}
         onClose={() => setFilterModalOpen(false)}
         location={filters.location}
-        modality={filters.modality}
+        city={filters.city}
+        shifts={filters.shifts}
+        quota_types={filters.quota_types}
+        program_preference={filters.program_preference}
+        university_preference={filters.university_preference}
         onApply={handleFilterApply}
       />
     </div>

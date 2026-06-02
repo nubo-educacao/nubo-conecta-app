@@ -23,11 +23,17 @@ interface OpportunitiesClientProps {
   opportunities: IUnifiedOpportunity[];
   activeTab: 'para-voce' | 'explore';
   filters: ExploreFilters;
-  currentPage: number;
-  pageSize: number;
+  currentPage?: number;
+  pageSize?: number;
 }
 
-export default function OpportunitiesClient({ opportunities, activeTab, filters, currentPage, pageSize }: OpportunitiesClientProps) {
+export default function OpportunitiesClient({
+  opportunities,
+  activeTab,
+  filters,
+  currentPage = 0,
+  pageSize = 15
+}: OpportunitiesClientProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [isRefining, setIsRefining] = useState(false);
