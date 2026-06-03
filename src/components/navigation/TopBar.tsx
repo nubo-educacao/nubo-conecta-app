@@ -70,7 +70,7 @@ export default function TopBar({ title }: TopBarProps) {
   return (
     <>
       <header
-        className="sticky top-0 z-40 w-full border-b border-black/10"
+        className="sticky top-0 z-[100] w-full border-b border-black/10"
         style={{
           background: "rgba(255,255,255,0.3)",
           backdropFilter: "blur(12px)",
