@@ -16,17 +16,23 @@ const QUICK_FILTERS = [
 
 export default function HeroSearch() {
   const [query, setQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const router = useRouter();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const q = query.trim();
-    if (!q) return;
-    router.push(`/oportunidades?tab=explore&q=${encodeURIComponent(q)}`);
+    if (!q && !selectedCategory) return;
+    
+    let url = `/oportunidades?tab=explore`;
+    if (q) url += `&q=${encodeURIComponent(q)}`;
+    if (selectedCategory) url += `&category=${encodeURIComponent(selectedCategory)}`;
+    
+    router.push(url);
   }
 
   function handlePillClick(category: string) {
-    router.push(`/oportunidades?tab=explore&category=${encodeURIComponent(category)}`);
+    setSelectedCategory((prev) => (prev === category ? null : category));
   }
 
   return (
@@ -93,21 +99,25 @@ export default function HeroSearch() {
 
         {/* Pills de filtro rápido */}
         <div className="flex flex-wrap gap-2">
-          {QUICK_FILTERS.map(({ label, category }) => (
-            <button
-              key={label}
-              onClick={() => handlePillClick(category)}
-              className="px-4 py-1.5 rounded-full text-sm font-medium transition-all hover:bg-white/25 active:scale-[0.97]"
-              style={{
-                background: 'rgba(255,255,255,0.16)',
-                color: 'white',
-                border: '1px solid rgba(255,255,255,0.28)',
-                fontFamily: 'Montserrat, sans-serif',
-              }}
-            >
-              {label}
-            </button>
-          ))}
+          {QUICK_FILTERS.map(({ label, category }) => {
+            const isSelected = selectedCategory === category;
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={() => handlePillClick(category)}
+                className="px-4 py-1.5 rounded-full text-sm font-medium transition-all hover:bg-white/25 active:scale-[0.97]"
+                style={{
+                  background: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.16)',
+                  color: isSelected ? '#024F86' : 'white',
+                  border: isSelected ? '1px solid #FFFFFF' : '1px solid rgba(255,255,255,0.28)',
+                  fontFamily: 'Montserrat, sans-serif',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

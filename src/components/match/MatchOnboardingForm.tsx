@@ -205,8 +205,31 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
   const [treineiroPorAno, setTreineiroPorAno] = useState<Record<string, boolean>>({});
 
   const currentScores: YearScores = scoresByYear[enemYear] ?? { ling: '', hum: '', nat: '', mat: '', red: '' };
-  const updateScore = (field: keyof YearScores, val: string) =>
+  const [enemScoreError, setEnemScoreError] = useState<string | null>(null);
+  const updateScore = (field: keyof YearScores, val: string) => {
+    // Allow empty string for clearing
+    if (val === '') {
+      setEnemScoreError(null);
+      setScoresByYear(prev => ({ ...prev, [enemYear]: { ...currentScores, [field]: '' } }));
+      return;
+    }
+    const num = parseFloat(val);
+    if (!isNaN(num) && num > 1000) {
+      setEnemScoreError(`A nota de cada área do ENEM varia entre 0 e 1000 pontos.`);
+      sendSystemIntent('validation_error', {
+        field: `Nota do ENEM (${field})`,
+        error_message: `O valor ${val} excede o máximo de 1000 pontos. As notas do ENEM variam de 0 a 1000 por área de conhecimento.`,
+        form_type: 'match_onboarding'
+      });
+      return;
+    }
+    if (!isNaN(num) && num < 0) {
+      setEnemScoreError(`A nota não pode ser negativa.`);
+      return;
+    }
+    setEnemScoreError(null);
     setScoresByYear(prev => ({ ...prev, [enemYear]: { ...currentScores, [field]: val } }));
+  };
 
   // Income Calculator
   const [useCalculator, setUseCalculator] = useState(true);
@@ -462,6 +485,18 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
       if (!hasAnyScore) {
         errs.enemScore = true;
         errorDetails.push({ field: 'Notas do ENEM', error_message: 'Por favor, insira pelo menos uma nota do ENEM para que possamos calcular seu match.' });
+      }
+
+      // Validate ENEM score range (0-1000)
+      for (const [year, scores] of Object.entries(scoresByYear)) {
+        const fields = { ling: 'Linguagens', hum: 'Humanas', nat: 'Natureza', mat: 'Matemática', red: 'Redação' } as const;
+        for (const [key, label] of Object.entries(fields)) {
+          const val = parseFloat(scores[key as keyof YearScores]);
+          if (!isNaN(val) && (val < 0 || val > 1000)) {
+            errs.enemScore = true;
+            errorDetails.push({ field: `Nota ${label} (${year})`, error_message: `A nota de ${label} deve estar entre 0 e 1000 pontos. Valor informado: ${val}.` });
+          }
+        }
       }
       
       // Income is mandatory
@@ -819,14 +854,29 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                       <label className="text-[10px] font-bold text-[#636E7C] mb-1 block uppercase">{f.label}</label>
                       <input
                         type="number"
-                        className="w-full bg-white/60 border border-white/80 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-[#38B1E4] transition-all"
-                        placeholder="0.0"
+                        min="0"
+                        max="1000"
+                        className={`w-full bg-white/60 border rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-[#38B1E4] transition-all ${
+                          currentScores[f.field] && (parseFloat(currentScores[f.field]) > 1000 || parseFloat(currentScores[f.field]) < 0)
+                            ? 'border-red-400 bg-red-50/50'
+                            : 'border-white/80'
+                        }`}
+                        placeholder="0-1000"
                         value={currentScores[f.field]}
                         onChange={e => updateScore(f.field, e.target.value)}
                       />
+                      {currentScores[f.field] && parseFloat(currentScores[f.field]) > 1000 && (
+                        <span className="text-[9px] text-red-500 mt-0.5 block">Máx: 1000</span>
+                      )}
                     </div>
                   ))}
                 </div>
+                {enemScoreError && (
+                  <div className="mt-3 flex items-center gap-2 text-red-500 text-[12px] bg-red-50/80 rounded-lg px-3 py-2 border border-red-200">
+                    <AlertCircle size={14} className="shrink-0" />
+                    <span>{enemScoreError}</span>
+                  </div>
+                )}
               </div>
             </div>
 
