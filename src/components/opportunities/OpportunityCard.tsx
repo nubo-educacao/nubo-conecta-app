@@ -261,7 +261,9 @@ export default function OpportunityCard({
             ) : (
               <div className="flex items-center gap-2 text-[13px] font-medium text-[#3A424E]/70">
                 <GraduationCap size={14} strokeWidth={1.5} className="shrink-0" style={{ color: currentTheme.btnText }} />
-                <span className="truncate">{opportunity.education_level || 'Graduação'}</span>
+                <span className="truncate">
+                  {opportunity.is_partner ? (opportunity.category_label || 'Graduação') : (opportunity.education_level || 'Graduação')}
+                </span>
               </div>
             )}
           </div>

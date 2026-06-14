@@ -36,7 +36,7 @@ interface UnifiedOpportunityRow {
 }
 
 // Category label lookup — keeps the service layer free of display-layer concerns
-const CATEGORY_LABELS: Record<OpportunityCategory, string> = {
+const CATEGORY_LABELS: Record<string, string> = {
   public_universities:    'Universidades Públicas',
   grants_scholarships:    'Bolsas e Gratuidades',
   educational_programs:   'Programas Educacionais',

@@ -49,7 +49,7 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
       type: row.type as IUnifiedOpportunity["type"],
       opportunity_type: (row.opportunity_type || row.type) as string,
       category: row.category as IUnifiedOpportunity["category"],
-      category_label: "",
+      category_label: (row.category === 'educational_programs' ? 'Programas Educacionais' : row.category === 'public_universities' ? 'Universidades Públicas' : row.category === 'grants_scholarships' ? 'Bolsas e Gratuidades' : row.category as string || ''),
       location: (row.location as string) || "Nacional",
       education_level: "Graduação",
       badges: (row.badges as string[]) || [],

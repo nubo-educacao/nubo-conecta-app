@@ -88,7 +88,7 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
     type: row.type,
     opportunity_type: row.opportunity_type ?? row.type,
     category: row.category,
-    category_label: row.category,
+    category_label: row.category === 'educational_programs' ? 'Programas Educacionais' : row.category === 'public_universities' ? 'Universidades Públicas' : row.category === 'grants_scholarships' ? 'Bolsas e Gratuidades' : row.category,
     location: row.location,
     education_level: 'Programa',
     badges: Array.isArray(row.badges) ? row.badges.filter(Boolean) : [],

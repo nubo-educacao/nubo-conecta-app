@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 import SisuProuniCard from './SisuProuniCard';
+import PartnerDescriptionCard from './PartnerDescriptionCard';
 import OpportunitiesListCard, { Opportunity } from './OpportunitiesListCard';
 import SisuScoreDisplay from './SisuScoreDisplay';
 import OpportunityCard from './OpportunityCard';
@@ -171,7 +172,7 @@ export default function DetailsLayout({
         type: o.type,
         is_partner: o.is_partner,
         category: o.category,
-        category_label: o.category,
+        category_label: o.category === 'educational_programs' ? 'Programas Educacionais' : o.category === 'public_universities' ? 'Universidades Públicas' : o.category === 'grants_scholarships' ? 'Bolsas e Gratuidades' : o.category,
         badges: Array.isArray(o.badges) ? o.badges.filter(Boolean) : [],
         brand_color: o.brand_color,
         institution_cover_url: o.institution_cover_url,
@@ -362,7 +363,7 @@ export default function DetailsLayout({
             {categoryLabel}
           </span>
           <span className="bg-white/20 backdrop-blur-md text-white text-[12px] font-bold px-4 py-1.5 rounded-full border border-white/30 shadow-lg whitespace-nowrap">
-            {opportunity.education_level || 'Graduação'}
+            {opportunity.is_partner ? (opportunity.category_label || 'Graduação') : (opportunity.education_level || 'Graduação')}
           </span>
         </div>
       </section>
@@ -432,57 +433,61 @@ export default function DetailsLayout({
         </div>
 
         {/* Turno — icons from relatedOpportunities */}
-        <div className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-gray-50">
-          <div className="size-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 text-orange-500">
-            <Clock size={18} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">Turno</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              {(() => {
-                const shifts = [...new Set(relatedOpportunities.map(r => r.shift).filter(Boolean))];
-                if (shifts.length === 0) {
-                  const badgeShift = opportunity.badges.find(b => ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EaD', 'EAD', 'Curso a distância'].includes(b));
-                  if (badgeShift) shifts.push(badgeShift);
-                }
-                if (shifts.length === 0) return <span className="text-[13px] font-bold text-[#3A424E]">Consultar</span>;
-                return shifts.map(shift => {
-                  const map: Record<string, { Icon: any; color: string; title: string }> = {
-                    'Matutino': { Icon: Sun, color: 'text-orange-500', title: 'Matutino' },
-                    'Integral': { Icon: SunMoon, color: 'text-blue-500', title: 'Integral' },
-                    'Vespertino': { Icon: Sunset, color: 'text-amber-500', title: 'Vespertino' },
-                    'Noturno': { Icon: Moon, color: 'text-indigo-500', title: 'Noturno' },
-                    'EaD': { Icon: Laptop, color: 'text-slate-500', title: 'EaD' },
-                    'EAD': { Icon: Laptop, color: 'text-slate-500', title: 'EAD' },
-                    'Curso a distância': { Icon: Laptop, color: 'text-slate-500', title: 'EaD' },
-                  };
-                  const s = map[shift] || { Icon: Sun, color: 'text-slate-400', title: shift };
-                  return <s.Icon key={shift} size={20} className={s.color} title={s.title} />;
-                });
-              })()}
+        {!isPartner && (
+          <div className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-gray-50">
+            <div className="size-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 text-orange-500">
+              <Clock size={18} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">Turno</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {(() => {
+                  const shifts = [...new Set(relatedOpportunities.map(r => r.shift).filter(Boolean))];
+                  if (shifts.length === 0) {
+                    const badgeShift = opportunity.badges.find(b => ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EaD', 'EAD', 'Curso a distância'].includes(b));
+                    if (badgeShift) shifts.push(badgeShift);
+                  }
+                  if (shifts.length === 0) return <span className="text-[13px] font-bold text-[#3A424E]">Consultar</span>;
+                  return shifts.map(shift => {
+                    const map: Record<string, { Icon: any; color: string; title: string }> = {
+                      'Matutino': { Icon: Sun, color: 'text-orange-500', title: 'Matutino' },
+                      'Integral': { Icon: SunMoon, color: 'text-blue-500', title: 'Integral' },
+                      'Vespertino': { Icon: Sunset, color: 'text-amber-500', title: 'Vespertino' },
+                      'Noturno': { Icon: Moon, color: 'text-indigo-500', title: 'Noturno' },
+                      'EaD': { Icon: Laptop, color: 'text-slate-500', title: 'EaD' },
+                      'EAD': { Icon: Laptop, color: 'text-slate-500', title: 'EAD' },
+                      'Curso a distância': { Icon: Laptop, color: 'text-slate-500', title: 'EaD' },
+                    };
+                    const s = map[shift] || { Icon: Sun, color: 'text-slate-400', title: shift };
+                    return <s.Icon key={shift} size={20} className={s.color} title={s.title} />;
+                  });
+                })()}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Vagas */}
-        <div className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-gray-50">
-          <div className="size-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 text-pink-500">
-            <Users size={18} />
+        {!isPartner && (
+          <div className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-gray-50">
+            <div className="size-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 text-pink-500">
+              <Users size={18} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">Vagas</p>
+              <p className="text-[13px] font-bold text-[#3A424E] truncate">
+                {(() => {
+                  const totalVagas = relatedOpportunities.reduce((sum, opp) => {
+                    const broad = Number(opp.vacancies?.broad_competition_offered) || 0;
+                    const quotas = Number(opp.vacancies?.quotas_offered) || 0;
+                    return sum + broad + quotas;
+                  }, 0);
+                  return totalVagas > 0 ? `${totalVagas} vagas` : (opportunity.nu_vagas_autorizadas || '--') + ' vagas';
+                })()}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">Vagas</p>
-            <p className="text-[13px] font-bold text-[#3A424E] truncate">
-              {(() => {
-                const totalVagas = relatedOpportunities.reduce((sum, opp) => {
-                  const broad = Number(opp.vacancies?.broad_competition_offered) || 0;
-                  const quotas = Number(opp.vacancies?.quotas_offered) || 0;
-                  return sum + broad + quotas;
-                }, 0);
-                return totalVagas > 0 ? `${totalVagas} vagas` : (opportunity.nu_vagas_autorizadas || '--') + ' vagas';
-              })()}
-            </p>
-          </div>
-        </div>
+        )}
 
         {/* Inscrições */}
         <div className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-gray-50">
@@ -634,6 +639,13 @@ export default function DetailsLayout({
           </>
         ) : (
           <div className="space-y-6">
+            {opportunity.description && (
+              <PartnerDescriptionCard
+                description={opportunity.description}
+                brandColor={brandColor}
+              />
+            )}
+
             <CriteriaSection
               partnerOpportunityId={opportunity.id.replace('partner_', '')}
               legacyCriteria={opportunity.eligibility_criteria}
