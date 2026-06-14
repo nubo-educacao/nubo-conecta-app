@@ -84,7 +84,7 @@ function ModalContent({
   };
 
   useEffect(() => {
-    if (localLocation) {
+    if (localLocation && supabase) {
       supabase.from('cities')
         .select('name')
         .eq('state', localLocation)

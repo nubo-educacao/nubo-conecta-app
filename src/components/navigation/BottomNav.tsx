@@ -15,6 +15,13 @@ const NAV_ITEMS = [
 export default function BottomNav() {
   const pathname = usePathname();
 
+  const isOpportunityDetails = pathname.startsWith("/oportunidades/") && pathname !== "/oportunidades";
+  const isInstitutionDetails = pathname.startsWith("/instituicoes/") && pathname !== "/instituicoes";
+
+  if (isOpportunityDetails || isInstitutionDetails) {
+    return null;
+  }
+
   return (
     // Figma: bg rgba(255,255,255,0.8), shadow 0px -2px 20px rgba(0,0,0,0.06)
     <nav

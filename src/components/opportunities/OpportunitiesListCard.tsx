@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Sun, Sunset, Moon, SunMoon, Laptop, Info, Award } from "lucide-react";
+import { Sun, Sunset, Moon, SunMoon, Laptop, Info, Award, Sparkles } from "lucide-react";
 
 export interface Opportunity {
   id: string;
@@ -13,6 +13,7 @@ export interface Opportunity {
   scholarship_tags?: string[][];
   cutoff_score: number | null;
   cutoff_score_year?: number | null;
+  cutoff_score_semester?: string | null;
   opportunity_type: string;
   year?: number;
   semester?: string;
@@ -23,9 +24,43 @@ export interface Opportunity {
   } | null;
 }
 
+// Map of tag value → human-readable label used in bestConcurrencyType
+const TAG_LABEL_MAP: Record<string, string> = {
+  'AMPLA_CONCORRENCIA': 'Ampla Concorrência',
+  'ESCOLA_PUBLICA': 'Escola Pública',
+  'BAIXA_RENDA': 'Baixa Renda',
+  'SEM_CRITERIO_RENDA': 'Sem Critério de Renda',
+  'RENDA_ATE_1_SM': 'Renda até 1 SM',
+  'RENDA_ATE_1_5_SM': 'Renda até 1,5 SM',
+  'RENDA_ATE_2_SM': 'Renda até 2 SM',
+  'RENDA_ATE_4_SM': 'Renda até 4 SM',
+  'PPI': 'PPI',
+  'PCD': 'PcD',
+  'QUILOMBOLAS': 'Quilombolas',
+  'INDIGENAS': 'Indígenas',
+  'RURAL': 'Rural',
+  'TRANS': 'Trans',
+  'REFUGIADOS': 'Refugiados',
+  'MILITAR': 'Militar/Policial',
+  'BOLSA_INTEGRAL': 'Bolsa Integral',
+  'BOLSA_PARCIAL': 'Bolsa Parcial',
+};
+
+/** Returns true if any tag-group inside this opportunity's tags contains the tag
+ *  whose label matches bestConcurrencyType (case-insensitive). */
+function oppMatchesBestConcurrency(opp: Opportunity, best: string): boolean {
+  const allTags = opp.concurrency_tags ?? opp.scholarship_tags ?? [];
+  const groups: string[][] = Array.isArray(allTags[0]) ? (allTags as unknown as string[][]) : [allTags as unknown as string[]];
+  const bestLower = best.toLowerCase();
+  return groups.some(group =>
+    group.some(tag => (TAG_LABEL_MAP[tag] ?? tag).toLowerCase() === bestLower)
+  );
+}
+
 interface OpportunitiesListCardProps {
   opportunities: Opportunity[];
   highlightedOpportunityId?: string;
+  bestConcurrencyType?: string;
 }
 
 const getTagStyle = (tag: string) => {
@@ -68,7 +103,10 @@ const getShiftDetails = (shift: string) => {
   }
 };
 
-export default function OpportunitiesListCard({ opportunities, highlightedOpportunityId }: OpportunitiesListCardProps) {
+export default function OpportunitiesListCard({ opportunities, highlightedOpportunityId, bestConcurrencyType }: OpportunitiesListCardProps) {
+
+  const isSisu = opportunities[0]?.opportunity_type?.toLowerCase() === 'sisu';
+  const accentColor = isSisu ? '#3092BB' : '#7030C2';
 
   const renderTags = (tags: any) => {
     if (!tags || tags.length === 0) return null;
@@ -111,11 +149,18 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
       <div className="p-6 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
         <h3 className="text-[#3A424E] font-bold text-lg">Opções Disponíveis</h3>
         <div className="flex items-center gap-2">
-          <span className="size-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-[10px] font-bold text-[#636E7C] uppercase tracking-wider">
+          <span className="size-1.5 rounded-full bg-emerald-500" />
+          <span
+            className="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase border"
+            style={{
+              color: accentColor,
+              backgroundColor: `${accentColor}10`,
+              borderColor: `${accentColor}20`
+            }}
+          >
             {opportunities.length > 0 && opportunities[0].year
-              ? `Ciclo ${opportunities[0].year}${opportunities[0].semester && opportunities[0].opportunity_type?.toLowerCase() === 'prouni' ? `.${opportunities[0].semester}` : ''}`
-              : 'Ciclo Vigente'}
+              ? `${isSisu ? 'SISU' : 'PROUNI'} ${opportunities[0].year}${opportunities[0].semester ? `.${opportunities[0].semester}` : ''}`
+              : 'CICLO VIGENTE'}
           </span>
         </div>
       </div>
@@ -133,16 +178,22 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
           <tbody className="divide-y divide-gray-50">
             {opportunities.map((opp) => {
               const { icon: Icon, label, color } = getShiftDetails(opp.shift);
-              const isHighlighted = opp.id === highlightedOpportunityId;
-              
+              const isBest = !!(bestConcurrencyType && oppMatchesBestConcurrency(opp, bestConcurrencyType));
+
               return (
-                <tr 
-                  key={opp.id} 
-                  className={`transition-colors group ${isHighlighted ? 'bg-blue-50/50' : 'hover:bg-gray-50/50'}`}
+                <tr
+                  key={opp.id}
+                  className={`transition-colors group ${
+                    isBest
+                      ? 'bg-[#38B1E4]/5 hover:bg-[#38B1E4]/10'
+                      : 'hover:bg-gray-50/50'
+                  }`}
                 >
-                  <td className="px-6 py-4">
+                  <td className={`px-6 py-4 transition-all ${isBest ? 'border-l-4 border-[#38B1E4] pl-5' : ''}`}>
                     <div className="relative group/shift flex items-center justify-center">
-                      <div className={`size-8 rounded-xl bg-white shadow-sm border border-gray-100 flex items-center justify-center ${color}`}>
+                      <div className={`size-8 rounded-xl bg-white shadow-sm border ${
+                        isBest ? 'border-[#38B1E4]/30' : 'border-gray-100'
+                      } flex items-center justify-center ${color}`}>
                         <Icon size={16} />
                       </div>
                       <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 px-2 py-1 bg-[#3A424E] text-white text-[10px] rounded-lg opacity-0 group-hover/shift:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-xl">
@@ -154,10 +205,16 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap items-center gap-2">
                       {renderTags(opp.concurrency_tags || opp.scholarship_tags)}
-                      
+
                       {!opp.concurrency_tags && !opp.scholarship_tags && (
                         <span className="text-xs text-[#636E7C]">
                           {opp.concurrency_type || opp.scholarship_type || 'Ampla Concorrência'}
+                        </span>
+                      )}
+
+                      {isBest && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#38B1E4]/10 text-[#38B1E4] text-[9px] font-black uppercase tracking-wider border border-[#38B1E4]/20">
+                          ★ Melhor Opção
                         </span>
                       )}
 
@@ -180,13 +237,15 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                   <td className="px-6 py-4 text-right">
                     <div className="flex flex-col items-end">
                       <div className="flex items-center gap-1.5">
-                        <Award size={14} className="text-[#FF9900]" />
-                        <span className="text-sm font-black text-[#3A424E]">
+                        <Award size={14} className={isBest ? 'text-[#38B1E4]' : 'text-[#FF9900]'} />
+                        <span className={`text-sm font-black ${isBest ? 'text-[#38B1E4]' : 'text-[#3A424E]'}`}>
                           {opp.cutoff_score ? opp.cutoff_score.toFixed(1) : '---'}
                         </span>
                       </div>
                       <span className="text-[9px] text-[#636E7C] font-medium">
-                        Nota de corte {opp.cutoff_score_year ? `(${opp.cutoff_score_year})` : 'final'}
+                        Nota de corte {opp.cutoff_score_year
+                          ? `(${opp.cutoff_score_year}${opp.cutoff_score_semester ? `.${opp.cutoff_score_semester}` : ''})`
+                          : 'final'}
                       </span>
                     </div>
                   </td>

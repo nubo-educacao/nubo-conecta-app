@@ -96,8 +96,14 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
     status: row.status ?? undefined,
     starts_at: row.starts_at ?? undefined,
     ends_at: row.ends_at ?? undefined,
-    min_cutoff_score: row.min_cutoff_score,
-    max_cutoff_score: row.max_cutoff_score,
+    min_cutoff_score_current: row.min_cutoff_score_current,
+    min_cutoff_score_prev: row.min_cutoff_score_prev,
+    max_cutoff_score_current: row.max_cutoff_score_current,
+    max_cutoff_score_prev: row.max_cutoff_score_prev,
+    qt_inscricao_current: row.qt_inscricao_current,
+    qt_inscricao_prev: row.qt_inscricao_prev,
+    vagas_ociosas_current: row.vagas_ociosas_current,
+    vagas_ociosas_prev: row.vagas_ociosas_prev,
     external_redirect: row.external_redirect_url
       ? { enabled: row.external_redirect_enabled, url: row.external_redirect_url }
       : undefined,
@@ -121,7 +127,7 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
         .or(`end_date.gte.${nowIso},and(end_date.is.null,start_date.gte.${nowIso})`)
         .order('start_date', { ascending: true })
         .limit(10);
-      
+
       if (data) {
         mecImportantDates = data as any[];
       }
@@ -141,8 +147,8 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
         <div className="relative w-full h-[200px] overflow-hidden md:rounded-t-3xl" style={{ background: headerGradient }}>
           <div className="absolute inset-0">
             <CoverImage
-              src={(isPartner && institution.cover_url) ? institution.cover_url : "/assets/institution-cover.png"}
-              fallbackSrc="/assets/institution-cover.png"
+              src={institution.cover_url}
+              isPartner={isPartner}
               alt={`Capa de ${institution.name}`}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
@@ -249,6 +255,39 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
             >
               {institution.description}
             </p>
+          )}
+
+          {/* Indicadores de Qualidade MEC */}
+          {institution.type === 'mec' && (institution.igc || institution.ci || institution.ci_ead || institution.legal_nature || institution.maintainer_name) && (
+            <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex flex-col gap-4 mt-2">
+              <h3 className="font-bold text-[14px] text-gray-800" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                Indicadores de Qualidade MEC
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {institution.igc && (
+                  <div className="bg-white p-3 rounded-xl border border-gray-100 flex flex-col gap-1 shadow-sm">
+                    <span className="text-[10px] uppercase font-bold text-gray-400">IGC</span>
+                    <span className="text-[16px] font-extrabold text-[#3092bb]">{institution.igc}</span>
+                    <span className="text-[9px] text-gray-500">Índice Geral de Cursos</span>
+                  </div>
+                )}
+                {institution.ci && (
+                  <div className="bg-white p-3 rounded-xl border border-gray-100 flex flex-col gap-1 shadow-sm">
+                    <span className="text-[10px] uppercase font-bold text-gray-400">CI Presencial</span>
+                    <span className="text-[16px] font-extrabold text-[#7030c2]">{institution.ci}</span>
+                    <span className="text-[9px] text-gray-500">Conceito Institucional</span>
+                  </div>
+                )}
+                {institution.ci_ead && (
+                  <div className="bg-white p-3 rounded-xl border border-gray-100 flex flex-col gap-1 shadow-sm">
+                    <span className="text-[10px] uppercase font-bold text-gray-400">CI EAD</span>
+                    <span className="text-[16px] font-extrabold text-[#d97706]">{institution.ci_ead}</span>
+                    <span className="text-[9px] text-gray-500">Conceito Institucional EAD</span>
+                  </div>
+                )}
+              </div>
+
+            </div>
           )}
 
           {/* Website Link */}

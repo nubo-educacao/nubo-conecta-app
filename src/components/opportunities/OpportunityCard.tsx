@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, MapPin, Star, GraduationCap, Lock, Clock } from 'lucide-react';
+import { Heart, MapPin, Star, GraduationCap, Lock, Clock, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
@@ -104,6 +104,10 @@ export default function OpportunityCard({
   const isClosed = opportunity.status === 'closed';
   const isIncoming = opportunity.status === 'incoming';
 
+  const minCutoff = opportunity.min_cutoff_score_current ?? opportunity.min_cutoff_score_prev;
+  const maxCutoff = opportunity.max_cutoff_score_current ?? opportunity.max_cutoff_score_prev;
+  const vagasOciosas = opportunity.vagas_ociosas_current ?? opportunity.vagas_ociosas_prev;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -170,10 +174,20 @@ export default function OpportunityCard({
         "absolute inset-x-4 z-40 flex items-center justify-between",
         isPartner ? "top-[36px]" : "top-[32px]"
       )}>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-wrap">
           <div className="bg-[#FF9900] px-3 py-0.5 rounded-full shadow-[0px_4px_8px_rgba(0,0,0,0.15)] flex items-center h-[20px]">
             <span className="text-[#3A424E] text-[10px] font-semibold uppercase">{opportunity.opportunity_type || 'PROGRAMAS'}</span>
           </div>
+
+          {vagasOciosas === true && (
+            <div className="bg-purple-100/90 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center gap-1 border border-purple-200 shadow-sm h-[20px]">
+              <TrendingUp size={10} className="text-purple-700" strokeWidth={2.5} />
+              <span className="text-purple-700 text-[9px] font-bold uppercase tracking-wider">
+                Vagas Ociosas
+              </span>
+            </div>
+          )}
+
           {isClosed && (
             <div className="bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-white/10 shadow-lg">
               <Lock size={9} className="text-white/80" strokeWidth={2.5} />
@@ -241,7 +255,7 @@ export default function OpportunityCard({
               <div className="flex items-center gap-2 text-[13px] font-medium text-[#3A424E]/70">
                 <GraduationCap size={14} strokeWidth={1.5} className="shrink-0" style={{ color: currentTheme.btnText }} />
                 <span className="truncate">
-                  Corte: {opportunity.min_cutoff_score?.toFixed(1) || '---'} a {opportunity.max_cutoff_score?.toFixed(1) || '---'}
+                  Corte: {minCutoff?.toFixed(1) || '---'} a {maxCutoff?.toFixed(1) || '---'}
                 </span>
               </div>
             ) : (

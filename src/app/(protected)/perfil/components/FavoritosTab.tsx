@@ -32,7 +32,7 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
 
     const { data: rows } = await supabase
       .from("v_unified_opportunities")
-      .select("unified_id, title, provider_name, type, opportunity_type, category, is_partner, location, badges, created_at, status, starts_at, ends_at, external_redirect_url, external_redirect_enabled, min_cutoff_score, max_cutoff_score, institution_cover_url")
+      .select("unified_id, title, provider_name, type, opportunity_type, category, is_partner, location, badges, created_at, status, starts_at, ends_at, external_redirect_url, external_redirect_enabled, min_cutoff_score_current, min_cutoff_score_prev, max_cutoff_score_current, max_cutoff_score_prev, vagas_ociosas_current, vagas_ociosas_prev, institution_cover_url")
       .in("unified_id", unifiedIds);
 
     if (!rows) {
@@ -57,8 +57,12 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
       status: row.status as string | undefined,
       starts_at: row.starts_at as string | undefined,
       ends_at: row.ends_at as string | undefined,
-      min_cutoff_score: row.min_cutoff_score as number | undefined,
-      max_cutoff_score: row.max_cutoff_score as number | undefined,
+      min_cutoff_score_current: row.min_cutoff_score_current as number | undefined,
+      min_cutoff_score_prev: row.min_cutoff_score_prev as number | undefined,
+      max_cutoff_score_current: row.max_cutoff_score_current as number | undefined,
+      max_cutoff_score_prev: row.max_cutoff_score_prev as number | undefined,
+      vagas_ociosas_current: row.vagas_ociosas_current as boolean | undefined,
+      vagas_ociosas_prev: row.vagas_ociosas_prev as boolean | undefined,
       institution_cover_url: row.institution_cover_url as string | undefined,
       external_redirect: row.external_redirect_enabled
         ? { enabled: true, url: row.external_redirect_url as string | undefined }

@@ -14,11 +14,12 @@ import FilterModal from './FilterModal';
 import type { IUnifiedOpportunity, ExploreFilters } from '@/types/opportunities';
 import { useState } from 'react';
 
-const CATEGORY_PILLS = [
-  { label: 'Todas',         value: '' },
-  { label: 'Bolsa Integral', value: 'programa de bolsa' },
-  { label: 'Prouni',        value: 'prouni' },
-  { label: 'Sisu',          value: 'sisu' },
+const ALL_CATEGORY_PILLS = [
+  { label: 'Todas',                  value: '' },
+  { label: 'Programas de Bolsa',      value: 'programa de bolsa' },
+  { label: 'Programas Educacionais', value: 'programa educacional' },
+  { label: 'Prouni',                 value: 'prouni' },
+  { label: 'Sisu',                   value: 'sisu' },
 ];
 
 interface ExploreClientProps {
@@ -26,13 +27,15 @@ interface ExploreClientProps {
   filters: ExploreFilters;
   currentPage?: number;
   pageSize?: number;
+  availableCategories?: string[];
 }
 
 export default function ExploreClient({
   opportunities,
   filters,
   currentPage = 0,
-  pageSize = 15
+  pageSize = 15,
+  availableCategories
 }: ExploreClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -128,7 +131,12 @@ export default function ExploreClient({
 
       {/* Category Pills — Figma node 62:1349 */}
       <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-        {CATEGORY_PILLS.map((pill) => {
+        {(availableCategories === undefined 
+          ? ALL_CATEGORY_PILLS 
+          : ALL_CATEGORY_PILLS.filter(pill => 
+              pill.value === '' || availableCategories.includes(pill.value)
+            )
+        ).map((pill) => {
           const isActive = activeCategory === pill.value;
           return (
             <button

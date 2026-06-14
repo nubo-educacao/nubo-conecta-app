@@ -590,6 +590,24 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         return best;
       }, 0);
 
+      // Get cached location if present
+      let cachedLat: number | null = null;
+      let cachedLng: number | null = null;
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem('nubo_user_location');
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+              cachedLat = parsed.lat;
+              cachedLng = parsed.lng;
+            }
+          } catch (e) {
+            // ignore malformed cache
+          }
+        }
+      }
+
       // 4. Save Preferences
       await saveUserPreferences(userId, {
         enem_score: bestEnemScore,
@@ -601,6 +619,8 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         university_preference: universityPref,
         location_preference: locationPref || null,
         state_preference: statePref || null,
+        device_latitude: cachedLat,
+        device_longitude: cachedLng,
       });
 
       // 5. Generate Match and Complete (Async Flow)

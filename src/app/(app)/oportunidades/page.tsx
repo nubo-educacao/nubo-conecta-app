@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 import AppShell from '@/components/layout/AppShell';
-import { getUnifiedOpportunities } from '@/services/opportunities';
+import { getUnifiedOpportunities, getAvailableCategories } from '@/services/opportunities';
 import OpportunitiesClient from './OpportunitiesClient';
 import type { ExploreFilters } from '@/types/opportunities';
 
@@ -62,12 +62,15 @@ export default async function OpportunitiesPage({ searchParams }: PageProps) {
   };
 
   // Server-side fetch com paginação de 15 itens
-  const opportunities = await getUnifiedOpportunities({ 
-    mode: activeTab === 'explore' ? 'explorar' : 'para-voce', 
-    page: currentPage, 
-    limit: PAGE_SIZE,
-    ...filters
-  });
+  const [opportunities, availableCategories] = await Promise.all([
+    getUnifiedOpportunities({ 
+      mode: activeTab === 'explore' ? 'explorar' : 'para-voce', 
+      page: currentPage, 
+      limit: PAGE_SIZE,
+      ...filters
+    }),
+    getAvailableCategories(),
+  ]);
 
   return (
     <AppShell>
@@ -77,6 +80,7 @@ export default async function OpportunitiesPage({ searchParams }: PageProps) {
         filters={filters}
         currentPage={currentPage}
         pageSize={PAGE_SIZE}
+        availableCategories={availableCategories}
       />
     </AppShell>
   );

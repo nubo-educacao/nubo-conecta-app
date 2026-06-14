@@ -26,8 +26,12 @@ interface UnifiedOpportunityRow {
   starts_at: string | null;
   ends_at: string | null;
   match_score?: number;
-  min_cutoff_score?: number;
-  max_cutoff_score?: number;
+  min_cutoff_score_current?: number;
+  min_cutoff_score_prev?: number;
+  max_cutoff_score_current?: number;
+  max_cutoff_score_prev?: number;
+  nu_media_minima_enem_current?: number;
+  nu_media_minima_enem_prev?: number;
   institution_cover_url?: string;
 }
 
@@ -65,16 +69,21 @@ function mapRowToOpportunity(row: UnifiedOpportunityRow): IUnifiedOpportunity {
         }
       : undefined,
     match_score:      row.match_score,
-    min_cutoff_score: row.min_cutoff_score,
-    max_cutoff_score: row.max_cutoff_score,
+    min_cutoff_score_current: row.min_cutoff_score_current,
+    min_cutoff_score_prev: row.min_cutoff_score_prev,
+    max_cutoff_score_current: row.max_cutoff_score_current,
+    max_cutoff_score_prev: row.max_cutoff_score_prev,
+    nu_media_minima_enem_current: row.nu_media_minima_enem_current,
+    nu_media_minima_enem_prev: row.nu_media_minima_enem_prev,
     institution_cover_url: row.institution_cover_url,
   };
 }
 
 interface GetUnifiedOpportunitiesOptions extends Partial<import('@/types/opportunities').ExploreFilters> {
-  mode:   'para-voce' | 'explorar';
-  page?:  number;
-  limit?: number;
+  mode:        'para-voce' | 'explorar';
+  page?:       number;
+  limit?:      number;
+  profileId?:  string; // activeProfileId do client — override do user.id para multi-perfil
 }
 
 /**
@@ -99,7 +108,7 @@ async function enrichMecOpportunities(
   const courseIds = mecOpps.map(opp => opp.id.replace('mec_', ''));
   const { data: courseCycles, error: cyclesError } = await supabase
     .from('opportunities')
-    .select('course_id, year, semester, opportunity_type')
+    .select('course_id, year, semester, opportunity_type, courses(degree_type)')
     .in('course_id', courseIds);
 
   if (cyclesError) {
@@ -107,14 +116,15 @@ async function enrichMecOpportunities(
     return opportunities;
   }
 
-  const latestCycleMap = new Map<string, { year: number; semester: string; type: string }>();
+  const latestCycleMap = new Map<string, { year: number; semester: string; type: string; degree_type?: string }>();
   if (courseCycles) {
     for (const row of courseCycles) {
       const existing = latestCycleMap.get(row.course_id);
       const currentYear = row.year;
       const currentSem = row.semester || '1';
+      const dt = row.courses?.degree_type;
       if (!existing || currentYear > existing.year || (currentYear === existing.year && currentSem > existing.semester)) {
-        latestCycleMap.set(row.course_id, { year: currentYear, semester: currentSem, type: row.opportunity_type });
+        latestCycleMap.set(row.course_id, { year: currentYear, semester: currentSem, type: row.opportunity_type, degree_type: dt });
       }
     }
   }
@@ -122,7 +132,7 @@ async function enrichMecOpportunities(
   // 2. Fetch all programs
   const { data: programs, error: programsError } = await supabase
     .from('programs')
-    .select('type, cycle_year, cycle_semester, status, redirect_url');
+    .select('type, cycle_year, cycle_semester, status, redirect_url, starts_at, ends_at');
 
   if (programsError) {
     console.error('[enrichMecOpportunities] Failed to fetch programs:', programsError.message);
@@ -145,6 +155,8 @@ async function enrichMecOpportunities(
           const prog = programMap.get(key);
           if (prog) {
             opp.status = prog.status;
+            opp.starts_at = prog.starts_at ?? undefined;
+            opp.ends_at = prog.ends_at ?? undefined;
             if (prog.redirect_url) {
               opp.external_redirect = {
                 enabled: true,
@@ -152,12 +164,52 @@ async function enrichMecOpportunities(
               };
             }
           }
+          if (cycle.degree_type) {
+            const dt = cycle.degree_type.toLowerCase();
+            if (dt.includes('bacharelado')) opp.education_level = 'Bacharelado';
+            else if (dt.includes('licenciatura')) opp.education_level = 'Licenciatura';
+            else if (dt.includes('tecnol')) opp.education_level = 'Tecnológico';
+            else opp.education_level = cycle.degree_type;
+          }
         }
       }
     });
   }
 
   return opportunities;
+}
+
+export async function getAvailableCategories(): Promise<string[]> {
+  const cookieStore = await cookies();
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: () => {},
+      },
+      global: {
+        fetch: (url: RequestInfo | URL, init?: RequestInit) => fetch(url, { ...init, cache: 'no-store' }),
+      },
+    },
+  );
+
+  const [bolsaRes, educRes, prouniRes, sisuRes] = await Promise.all([
+    supabase.from('v_unified_opportunities').select('unified_id').eq('opportunity_type', 'programa de bolsa').limit(1),
+    supabase.from('v_unified_opportunities').select('unified_id').eq('opportunity_type', 'programa educacional').limit(1),
+    supabase.from('v_unified_opportunities').select('unified_id').eq('type', 'prouni').limit(1),
+    supabase.from('v_unified_opportunities').select('unified_id').eq('type', 'sisu').limit(1),
+  ]);
+
+  const available: string[] = [];
+  if (bolsaRes.data && bolsaRes.data.length > 0) available.push('programa de bolsa');
+  if (educRes.data && educRes.data.length > 0) available.push('programa educacional');
+  if (prouniRes.data && prouniRes.data.length > 0) available.push('prouni');
+  if (sisuRes.data && sisuRes.data.length > 0) available.push('sisu');
+
+  return available;
 }
 
 export async function getUnifiedOpportunities(
@@ -204,9 +256,11 @@ export async function getUnifiedOpportunities(
 
   if (mode === 'para-voce') {
     if (user) {
-      // Try the personalized RPC — falls back to view if not yet deployed
+      // Prioridade: profileId explícito → cookie nubo:active_profile_id → auth user.id
+      const cookieProfileId = cookieStore.get('nubo:active_profile_id')?.value;
+      const resolvedProfileId = options.profileId ?? cookieProfileId ?? user.id;
       const { data, error } = await supabase.rpc('get_opportunities_for_user', {
-        p_profile_id: user.id,
+        p_profile_id: resolvedProfileId,
         p_page: page,
         p_limit: limit,
       });
@@ -237,8 +291,8 @@ export async function getUnifiedOpportunities(
   if (options.q) {
     query = query.ilike('title', `%${options.q}%`);
   }
-  if (options.category === 'programa de bolsa') {
-    query = query.eq('opportunity_type', 'programa de bolsa'); // Simplificação para o catálogo
+  if (options.category === 'programa de bolsa' || options.category === 'programa educacional') {
+    query = query.eq('opportunity_type', options.category);
   } else if (options.category) {
     query = query.eq('type', options.category);
   }

@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/contexts/ProfileContext";
 import { evaluateJsonLogic } from "@/utils/jsonLogic";
+import { trackAndRedirect } from "@/services/redirectService";
 
 interface ApplicationState {
   id: string;
@@ -227,16 +228,46 @@ export default function PartnerFormsPage() {
 
     const finalStatus = isRedirect ? 'redirected' : 'SUBMITTED';
 
-    const { data: result, error } = await supabase.rpc("submit_application_v1", {
-      p_application_id: application.id,
-      p_answers: data,
-      p_final_status: finalStatus,
-    });
-
-    if (error || !result?.success) return { success: false };
-
+    // Pre-open the window to bypass popup blocker
+    let redirectWindow: Window | null = null;
     if (isRedirect && application.external_redirect?.url) {
-      window.open(application.external_redirect.url, '_blank');
+      redirectWindow = window.open('about:blank', '_blank');
+    }
+
+    try {
+      const { data: result, error } = await supabase.rpc("submit_application_v1", {
+        p_application_id: application.id,
+        p_answers: data,
+        p_final_status: finalStatus,
+      });
+
+      if (error || !result?.success) {
+        if (redirectWindow) redirectWindow.close();
+        return { success: false };
+      }
+
+      if (isRedirect && application.external_redirect?.url) {
+        try {
+          const userId = selectedProfileId || user!.id;
+          const { url } = await trackAndRedirect(
+            userId,
+            application.partner_id,
+            application.external_redirect.url,
+            'partner_application'
+          );
+          if (redirectWindow) {
+            redirectWindow.location.href = url;
+          }
+        } catch (trackErr) {
+          console.error("Failed to track redirect:", trackErr);
+          if (redirectWindow) {
+            redirectWindow.location.href = application.external_redirect.url;
+          }
+        }
+      }
+    } catch (err) {
+      if (redirectWindow) redirectWindow.close();
+      return { success: false };
     }
 
     setPhase("submitted");

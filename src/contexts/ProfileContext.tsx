@@ -35,6 +35,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const setActiveProfileId = useCallback((id: string) => {
     setActiveProfileIdState(id);
     localStorage.setItem(LS_KEY, id);
+    // Espelha em cookie para Server Components lerem via cookies()
+    document.cookie = `nubo:active_profile_id=${id};path=/;max-age=31536000;SameSite=Lax`;
   }, []);
 
   const refreshProfiles = useCallback(async () => {
@@ -70,8 +72,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
     // Se não tinha nada no localStorage (ou no estado inicial), usa o user.id
     if (!activeProfileId) {
-      const stored = localStorage.getItem(LS_KEY);
-      setActiveProfileIdState(stored ?? user.id);
+      const stored = localStorage.getItem(LS_KEY) ?? user.id;
+      setActiveProfileIdState(stored);
+      document.cookie = `nubo:active_profile_id=${stored};path=/;max-age=31536000;SameSite=Lax`;
     }
 
     refreshProfiles();

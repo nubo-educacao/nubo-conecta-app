@@ -20,8 +20,14 @@ export interface IUnifiedOpportunity {
   category_label: string; location: string; education_level: string; badges: string[];
   match_score?: number; created_at: string; status?: string; starts_at?: string; ends_at?: string;
   external_redirect?: { enabled: boolean; url?: string; };
-  min_cutoff_score?: number; max_cutoff_score?: number; institution_cover_url?: string;
-  nu_vagas_autorizadas?: string; qt_vagas_ofertadas?: string; qt_inscricao_2025?: string; vagas_ociosas_2025?: number;
+  min_cutoff_score_current?: number; min_cutoff_score_prev?: number;
+  max_cutoff_score_current?: number; max_cutoff_score_prev?: number;
+  institution_cover_url?: string;
+  nu_vagas_autorizadas?: string;
+  qt_vagas_ofertadas_current?: string; qt_vagas_ofertadas_prev?: string;
+  qt_inscricao_current?: string; qt_inscricao_prev?: string;
+  nu_media_minima_enem_current?: number; nu_media_minima_enem_prev?: number;
+  vagas_ociosas_current?: boolean; vagas_ociosas_prev?: boolean;
   institution_id?: string; institution_igc?: string; institution_organization?: string; institution_category?: string; institution_site?: string;
   eligibility_criteria?: any; benefits?: any; brand_color?: string; description?: string;
   weights?: { redacao?: number; matematica?: number; linguagens?: number; humanas?: number; natureza?: number; };

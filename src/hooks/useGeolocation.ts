@@ -25,13 +25,6 @@ export function useGeolocation(userId?: string | null) {
         device_latitude: lat,
         device_longitude: lng,
       });
-      // Trigger a match recalculation RPC
-      await supabase.rpc('calculate_match', { p_profile_id: uId });
-      
-      // Dispatch custom event to notify components to refresh their opportunity lists
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('nubo-matches-updated'));
-      }
     } catch (err) {
       console.error('[useGeolocation] Failed to save coordinates to database:', err);
     }

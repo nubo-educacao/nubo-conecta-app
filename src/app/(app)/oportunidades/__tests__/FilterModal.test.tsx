@@ -59,11 +59,11 @@ describe('FilterModal', () => {
   });
 
   it('clique no backdrop chama onClose SEM chamar onApply', () => {
-    const { container } = render(
+    render(
       <FilterModal open={true} onClose={onClose} onApply={onApply} />,
     );
-    // O backdrop é o primeiro elemento com aria-hidden="true"
-    const backdrop = container.querySelector('[aria-hidden="true"]') as HTMLElement;
+    // O backdrop é o primeiro elemento com aria-hidden="true" no document.body (portal)
+    const backdrop = document.body.querySelector('[aria-hidden="true"]') as HTMLElement;
     fireEvent.click(backdrop);
 
     expect(onClose).toHaveBeenCalledOnce();
@@ -95,7 +95,7 @@ describe('FilterModal', () => {
   it('"Aplicar filtros" passa location=SP quando estado selecionado', () => {
     render(<FilterModal open={true} onClose={onClose} onApply={onApply} />);
 
-    const locationSelect = screen.getByRole('combobox') as HTMLSelectElement;
+    const locationSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
     fireEvent.change(locationSelect, { target: { value: 'SP' } });
     fireEvent.click(screen.getByText('Aplicar filtros'));
 
@@ -107,7 +107,7 @@ describe('FilterModal', () => {
   it('"Aplicar filtros" passa location=undefined quando "Todos os estados" selecionado', () => {
     render(<FilterModal open={true} onClose={onClose} onApply={onApply} />);
 
-    const locationSelect = screen.getByRole('combobox') as HTMLSelectElement;
+    const locationSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
     // Garantir que está no valor vazio (padrão)
     fireEvent.change(locationSelect, { target: { value: '' } });
     fireEvent.click(screen.getByText('Aplicar filtros'));
@@ -129,7 +129,7 @@ describe('FilterModal', () => {
       />,
     );
 
-    const locationSelect = screen.getByRole('combobox') as HTMLSelectElement;
+    const locationSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
     expect(locationSelect.value).toBe('RJ');
   });
 

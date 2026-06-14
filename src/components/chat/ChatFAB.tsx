@@ -54,21 +54,21 @@ export default function ChatFAB() {
     <>
       {/* Background Pulse Animation */}
       {!isOpen && hasPriorityMessage && (
-        <div 
+        <div
           className="fixed z-20 pointer-events-none flex items-center justify-center"
           style={{
-            bottom: 'calc(env(safe-area-inset-bottom) + 76px)',
+            bottom: 'calc(env(safe-area-inset-bottom) + 112px)',
             right: '16px',
             width: 52,
             height: 52,
           }}
         >
-          <div 
-            className="absolute w-full h-full rounded-full bg-[#38B1E4] animate-ping opacity-75" 
+          <div
+            className="absolute w-full h-full rounded-full bg-[#38B1E4] animate-ping opacity-75"
             style={{ animationDuration: '3s' }}
           />
-          <div 
-            className="absolute w-full h-full rounded-full bg-[#38B1E4] animate-ping opacity-50" 
+          <div
+            className="absolute w-full h-full rounded-full bg-[#38B1E4] animate-ping opacity-50"
             style={{ animationDuration: '3s', animationDelay: '1.5s' }}
           />
         </div>
@@ -79,7 +79,7 @@ export default function ChatFAB() {
         onClick={handleToggle}
         className="fixed z-30 flex items-center justify-center rounded-full shadow-lg transition-all hover:scale-105 active:scale-95"
         style={{
-          bottom: 'calc(env(safe-area-inset-bottom) + 76px)',
+          bottom: 'calc(env(safe-area-inset-bottom) + 112px)',
           right: '16px',
           width: 52,
           height: 52,

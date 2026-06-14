@@ -7,15 +7,15 @@ import { motion } from 'framer-motion';
 import { useProgram } from '@/hooks/useProgram';
 
 interface SisuProuniCardProps {
-  qt_inscricao_2025?: string | number | null;
+  qt_inscricao_prev?: string | number | null;
   min_cutoff_score?: number | null;
   max_cutoff_score?: number | null;
-  vagas_ociosas_2025?: number | null;
-  nu_vagas_autorizadas?: string | number | null;
+  vagas_ociosas_prev?: boolean | null;
   opportunity_type: string;
   qt_aprovados?: number | null;
   cycle_year?: number;
   cycle_semester?: string;
+  nu_media_minima_enem?: number | null;
 }
 
 function renderMarkdown(text: string, accentColor: string): React.ReactNode {
@@ -62,29 +62,31 @@ function renderMarkdown(text: string, accentColor: string): React.ReactNode {
 }
 
 export default function SisuProuniCard({
-  qt_inscricao_2025,
+  qt_inscricao_prev,
   min_cutoff_score,
   max_cutoff_score,
-  vagas_ociosas_2025,
-  nu_vagas_autorizadas,
+  vagas_ociosas_prev,
   opportunity_type,
   qt_aprovados,
   cycle_year,
-  cycle_semester
+  cycle_semester,
+  nu_media_minima_enem
 }: SisuProuniCardProps) {
   const isSisu = opportunity_type.toLowerCase() === 'sisu';
   const accentColor = isSisu ? '#3092BB' : '#7030C2';
 
   const { title, description } = useProgram(opportunity_type, cycle_year, cycle_semester);
 
-  const badgeText = cycle_year 
+  const [isExpanded, setIsExpanded] = React.useState(false);
+
+  const badgeText = cycle_year
     ? `${opportunity_type} ${cycle_year}${cycle_semester && !isSisu ? `.${cycle_semester}` : ''}`.toUpperCase()
     : `${opportunity_type} 2025`.toUpperCase();
 
   return (
     <div className="space-y-6">
       {/* ── Descrição do Programa ── */}
-      <motion.section 
+      <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100"
@@ -92,13 +94,22 @@ export default function SisuProuniCard({
         <h3 className="text-[#3A424E] font-bold text-lg mb-3">
           {title}
         </h3>
-        <p className="text-sm text-[#636E7C] leading-relaxed">
+        <p className={`text-sm text-[#636E7C] leading-relaxed ${isExpanded ? '' : 'line-clamp-4 md:line-clamp-none'}`}>
           {renderMarkdown(description, accentColor)}
         </p>
+        {description && (
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="md:hidden mt-3 text-sm font-semibold flex items-center gap-1 focus:outline-none"
+            style={{ color: accentColor }}
+          >
+            {isExpanded ? 'Ver menos' : 'Ver mais'}
+          </button>
+        )}
       </motion.section>
 
       {/* ── Métricas do Curso ── */}
-      <motion.section 
+      <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
@@ -106,7 +117,7 @@ export default function SisuProuniCard({
       >
         <div className="flex items-center justify-between">
           <h3 className="text-[#3A424E] font-bold text-lg">Métricas do Curso</h3>
-          <div 
+          <div
             className="px-3 py-1 rounded-full text-[10px] font-black tracking-wider text-white"
             style={{ backgroundColor: accentColor }}
           >
@@ -114,68 +125,66 @@ export default function SisuProuniCard({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          {/* Inscritos / Aprovados */}
-          {(isSisu ? qt_aprovados : qt_inscricao_2025) != null && (
-            <div className="bg-[#F9FAFB] p-4 rounded-2xl flex flex-col gap-2">
-              <div className="size-8 rounded-full bg-blue-50 flex items-center justify-center text-[#3092BB]">
-                <Users size={16} />
+        {(() => {
+          const hasInscritosOrAprovados = qt_inscricao_prev != null || (isSisu && qt_aprovados != null);
+          return (
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 mt-2`}>
+              {/* Inscritos / Aprovados */}
+              {hasInscritosOrAprovados && (
+                <div className="bg-[#F9FAFB] p-4 rounded-2xl flex flex-col gap-2 h-full">
+                  <div className="size-8 rounded-full bg-blue-50 flex items-center justify-center text-[#3092BB]">
+                    <Users size={16} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#636E7C] font-bold uppercase">
+                      {qt_inscricao_prev != null ? 'Inscritos' : 'Aprovados'}
+                    </p>
+                    <p className="text-xl font-black text-[#3A424E]">
+                      {qt_inscricao_prev != null ? qt_inscricao_prev : qt_aprovados}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Nota de Corte */}
+              <div className={`bg-[#F9FAFB] p-4 rounded-2xl flex ${hasInscritosOrAprovados ? 'flex-col gap-2' : 'items-center gap-4'} h-full`}>
+                <div className={`${hasInscritosOrAprovados ? 'size-8 rounded-full' : 'size-10 rounded-xl shrink-0'} bg-orange-50 flex items-center justify-center text-[#FF9900]`}>
+                  <Award size={hasInscritosOrAprovados ? 16 : 20} />
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#636E7C] font-bold uppercase">Nota de Corte</p>
+                  <p className={`${hasInscritosOrAprovados ? 'text-xl' : 'text-sm'} font-black text-[#3A424E]`}>
+                    {(() => {
+                      if (min_cutoff_score && max_cutoff_score) {
+                        return min_cutoff_score === max_cutoff_score
+                          ? min_cutoff_score.toFixed(1)
+                          : `${min_cutoff_score.toFixed(1)} a ${max_cutoff_score.toFixed(1)}`;
+                      }
+                      if (max_cutoff_score) return max_cutoff_score.toFixed(1);
+                      if (min_cutoff_score) return min_cutoff_score.toFixed(1);
+                      return '---';
+                    })()}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-[10px] text-[#636E7C] font-bold uppercase">
-                  {isSisu ? 'Aprovados' : 'Inscritos'}
-                </p>
-                <p className="text-xl font-black text-[#3A424E]">
-                  {isSisu ? qt_aprovados : qt_inscricao_2025}
-                </p>
-              </div>
-            </div>
-          )}
 
-          {/* Nota de Corte */}
-          <div className="bg-[#F9FAFB] p-4 rounded-2xl flex flex-col gap-2">
-            <div className="size-8 rounded-full bg-orange-50 flex items-center justify-center text-[#FF9900]">
-              <Award size={16} />
+              {/* ── Média Mínima ENEM Pre-requisite Alert ── */}
+              {nu_media_minima_enem && Number(nu_media_minima_enem) > 0 ? (
+                <div className={`bg-red-50 border border-red-100 rounded-2xl p-4 flex items-center gap-4 h-full ${hasInscritosOrAprovados ? 'md:col-span-2' : ''}`}>
+                  <div className="size-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                    <Award size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-red-400 font-bold uppercase">Pré-requisito do Curso</p>
+                    <p className="text-sm font-bold text-[#3A424E]">
+                      Média Mínima ENEM exigida: <span className="text-red-600 font-black">{Number(nu_media_minima_enem).toFixed(1)}</span> pontos
+                    </p>
+                  </div>
+                </div>
+              ) : null}
             </div>
-            <div>
-              <p className="text-[10px] text-[#636E7C] font-bold uppercase">Nota de Corte</p>
-              <p className="text-xl font-black text-[#3A424E]">
-                {(() => {
-                  if (min_cutoff_score && max_cutoff_score) {
-                    return min_cutoff_score === max_cutoff_score
-                      ? min_cutoff_score.toFixed(1)
-                      : `${min_cutoff_score.toFixed(1)} a ${max_cutoff_score.toFixed(1)}`;
-                  }
-                  if (max_cutoff_score) return max_cutoff_score.toFixed(1);
-                  if (min_cutoff_score) return min_cutoff_score.toFixed(1);
-                  return '---';
-                })()}
-              </p>
-            </div>
-          </div>
-
-          {/* Vagas Ofertadas */}
-          <div className="bg-[#F9FAFB] p-4 rounded-2xl flex flex-col gap-2">
-            <div className="size-8 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-              <GraduationCap size={16} />
-            </div>
-            <div>
-              <p className="text-[10px] text-[#636E7C] font-bold uppercase">Vagas</p>
-              <p className="text-xl font-black text-[#3A424E]">{nu_vagas_autorizadas || '---'}</p>
-            </div>
-          </div>
-
-          {/* Vagas Ociosas / Tendência */}
-          <div className="bg-[#F9FAFB] p-4 rounded-2xl flex flex-col gap-2">
-            <div className="size-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
-              <TrendingUp size={16} />
-            </div>
-            <div>
-              <p className="text-[10px] text-[#636E7C] font-bold uppercase">Vagas Ociosas</p>
-              <p className="text-xl font-black text-[#3A424E]">{vagas_ociosas_2025 ?? '0'}</p>
-            </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Progress / Context */}
         <div className="pt-2">

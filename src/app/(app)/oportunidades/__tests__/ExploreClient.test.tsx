@@ -137,10 +137,11 @@ describe('ExploreClient', () => {
 
   // ── Category Pills ─────────────────────────────────────────────────────────
 
-  it('renderiza as 4 Category Pills', () => {
+  it('renderiza as 5 Category Pills', () => {
     render(<ExploreClient opportunities={[]} filters={emptyFilters} />);
     expect(screen.getByText('Todas')).toBeDefined();
-    expect(screen.getByText('Bolsa Integral')).toBeDefined();
+    expect(screen.getByText('Programas de Bolsa')).toBeDefined();
+    expect(screen.getByText('Programas Educacionais')).toBeDefined();
     expect(screen.getByText('Prouni')).toBeDefined();
     expect(screen.getByText('Sisu')).toBeDefined();
   });

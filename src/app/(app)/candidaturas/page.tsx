@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, ChevronRight } from "lucide-react";
+import { Plus, ChevronRight, LogIn, Compass } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import ApplicationStepper from "@/components/ApplicationStepper";
 import { supabase } from "@/lib/supabase";
@@ -122,34 +122,142 @@ export default function CandidaturasPage() {
           </div>
         ) : !user ? (
           /* Not logged in empty state */
-          <div className="flex items-center justify-center pt-4">
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 w-full max-w-sm flex flex-col items-center gap-2 text-center">
-              <img src="/assets/cloudinha-candidaturas.png" alt="" className="w-[120px] h-[120px]" />
-              <p className="text-sm font-semibold text-[#3a424e] mt-1">Nenhuma candidatura por aqui</p>
-              <p className="text-xs text-[#707a7e]">Faça login e explore suas oportunidades</p>
-              <button
+          <motion.div 
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+            className="flex items-center justify-center pt-4"
+          >
+            <div className="relative w-full max-w-sm bg-white/80 backdrop-blur-md border border-gray-100/80 rounded-3xl shadow-[0_12px_30px_rgba(0,0,0,0.03)] p-8 flex flex-col items-center text-center overflow-hidden">
+              {/* Soft decorative background glow */}
+              <div className="absolute -top-16 -left-16 w-36 h-36 bg-[#3092bb]/5 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-16 -right-16 w-36 h-36 bg-[#3092bb]/5 rounded-full blur-2xl pointer-events-none" />
+
+              {/* Cloudinha Container with floating animation */}
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-[#3092bb]/10 rounded-full scale-110 blur-md animate-pulse" />
+                
+                <motion.div
+                  animate={{ y: [0, -6, 0] }}
+                  transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
+                  className="relative z-10 w-28 h-28 flex items-center justify-center bg-gradient-to-b from-white to-[#f0f8fc] rounded-full border border-[#d2ebf5]/50 shadow-[0_8px_16px_rgba(0,0,0,0.04)]"
+                >
+                  <img 
+                    src="/assets/cloudinha-candidaturas.png" 
+                    alt="Cloudinha" 
+                    className="w-[88px] h-[88px] object-contain filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.04)]" 
+                  />
+                </motion.div>
+              </div>
+
+              {/* Text info */}
+              <h3 className="text-base font-bold text-[#3a424e] mb-1.5 relative z-10">
+                Nenhuma candidatura por aqui
+              </h3>
+              <p className="text-xs text-[#707a7e] leading-relaxed mb-6 max-w-[240px] relative z-10">
+                Faça login e explore suas oportunidades
+              </p>
+
+              {/* Decorative Guide steps to make it look premium */}
+              <div className="w-full border-t border-gray-100/80 pt-5 mb-5 flex flex-col gap-2.5 text-left relative z-10">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-[#e6f4f9] text-[#3092bb] flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                    1
+                  </div>
+                  <p className="text-[11px] text-[#556066] leading-snug">
+                    <span className="font-semibold text-[#3a424e]">Faça login</span> para acessar seu perfil e histórico de inscrições.
+                  </p>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-[#f8f9fa] text-gray-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                    2
+                  </div>
+                  <p className="text-[11px] text-[#707a7e] leading-snug">
+                    <span className="font-semibold text-gray-500">Escolha um edital</span> ou curso parceiro no catálogo de vagas.
+                  </p>
+                </div>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setShowAuthModal(true)}
-                className="mt-2 px-6 py-2 rounded-full bg-[#3092bb] text-white text-xs font-semibold shadow"
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-6 rounded-full bg-gradient-to-r from-[#3092bb] to-[#247c9f] hover:from-[#359fcb] hover:to-[#2a8bb3] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all duration-200 relative z-10"
               >
+                <LogIn size={13} />
                 Fazer login
-              </button>
+              </motion.button>
             </div>
-          </div>
+          </motion.div>
         ) : applications.length === 0 ? (
           /* Logged in but no applications */
-          <div className="flex items-center justify-center pt-4">
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 w-full max-w-sm flex flex-col items-center gap-2 text-center">
-              <img src="/assets/cloudinha-candidaturas.png" alt="" className="w-[120px] h-[120px]" />
-              <p className="text-sm font-semibold text-[#3a424e] mt-1">Nenhuma candidatura por aqui</p>
-              <p className="text-xs text-[#707a7e]">Explore oportunidades e inicie sua primeira candidatura</p>
-              <button
+          <motion.div 
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+            className="flex items-center justify-center pt-4"
+          >
+            <div className="relative w-full max-w-sm bg-white/80 backdrop-blur-md border border-gray-100/80 rounded-3xl shadow-[0_12px_30px_rgba(0,0,0,0.03)] p-8 flex flex-col items-center text-center overflow-hidden">
+              {/* Soft decorative background glow */}
+              <div className="absolute -top-16 -left-16 w-36 h-36 bg-[#3092bb]/5 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-16 -right-16 w-36 h-36 bg-[#3092bb]/5 rounded-full blur-2xl pointer-events-none" />
+
+              {/* Cloudinha Container with floating animation */}
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-[#3092bb]/10 rounded-full scale-110 blur-md animate-pulse" />
+                
+                <motion.div
+                  animate={{ y: [0, -6, 0] }}
+                  transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
+                  className="relative z-10 w-28 h-28 flex items-center justify-center bg-gradient-to-b from-white to-[#f0f8fc] rounded-full border border-[#d2ebf5]/50 shadow-[0_8px_16px_rgba(0,0,0,0.04)]"
+                >
+                  <img 
+                    src="/assets/cloudinha-candidaturas.png" 
+                    alt="Cloudinha" 
+                    className="w-[88px] h-[88px] object-contain filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.04)]" 
+                  />
+                </motion.div>
+              </div>
+
+              {/* Text info */}
+              <h3 className="text-base font-bold text-[#3a424e] mb-1.5 relative z-10">
+                Nenhuma candidatura por aqui
+              </h3>
+              <p className="text-xs text-[#707a7e] leading-relaxed mb-6 max-w-[240px] relative z-10">
+                Explore oportunidades e inicie sua primeira candidatura
+              </p>
+
+              {/* Decorative Guide steps to make it look premium */}
+              <div className="w-full border-t border-gray-100/80 pt-5 mb-5 flex flex-col gap-2.5 text-left relative z-10">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-[#e6f4f9] text-[#3092bb] flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                    1
+                  </div>
+                  <p className="text-[11px] text-[#556066] leading-snug">
+                    <span className="font-semibold text-[#3a424e]">Escolha uma vaga</span> no catálogo de oportunidades ativas.
+                  </p>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-[#e6f4f9] text-[#3092bb] flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                    2
+                  </div>
+                  <p className="text-[11px] text-[#556066] leading-snug">
+                    <span className="font-semibold text-[#3a424e]">Preencha o formulário</span> guiado pela Cloudinha de forma simples.
+                  </p>
+                </div>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => router.push("/oportunidades")}
-                className="mt-2 px-6 py-2 rounded-full bg-[#3092bb] text-white text-xs font-semibold shadow"
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-6 rounded-full bg-gradient-to-r from-[#3092bb] to-[#247c9f] hover:from-[#359fcb] hover:to-[#2a8bb3] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all duration-200 relative z-10"
               >
+                <Compass size={13} className="animate-spin" style={{ animationDuration: '8s' }} />
                 Explorar oportunidades
-              </button>
+              </motion.button>
             </div>
-          </div>
+          </motion.div>
         ) : (
           /* Application list */
           <div className="space-y-3">

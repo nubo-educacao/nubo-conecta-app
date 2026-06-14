@@ -18,4 +18,9 @@ export interface UnifiedInstitution {
   acronym?: string | null;
   academic_organization?: string | null;
   administrative_category?: string | null;
+  igc?: string | null;
+  ci?: string | null;
+  ci_ead?: string | null;
+  legal_nature?: string | null;
+  maintainer_name?: string | null;
 }

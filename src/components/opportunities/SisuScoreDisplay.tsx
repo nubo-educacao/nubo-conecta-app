@@ -52,7 +52,10 @@ export default function SisuScoreDisplay({ weights, opportunity_type = 'sisu', c
 
 
       for (const row of rows) {
-        if (!allowedYears.includes(row.year)) {
+        const rowIsTrainee = row.is_treineiro ?? false;
+
+        // Oficial: respeita allowedYears. Treineiro: sempre elegível como fallback.
+        if (!rowIsTrainee && !allowedYears.includes(row.year)) {
           continue;
         }
 
@@ -72,8 +75,6 @@ export default function SisuScoreDisplay({ weights, opportunity_type = 'sisu', c
         const weighted = totalWeight > 0
           ? (ling * wLing + hum * wHum + nat * wNat + mat * wMat + red * wRed) / totalWeight
           : 0;
-
-        const rowIsTrainee = row.is_treineiro ?? false;
 
         if (rowIsTrainee) {
           if (!bestTrainee || weighted > bestTrainee.score) {

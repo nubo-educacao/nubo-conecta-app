@@ -29,7 +29,9 @@ export default function HomeClient({ sections }: HomeClientProps) {
   const { user, loading, setShowAuthModal } = useAuth();
   const router = useRouter();
 
-  // Geolocation integration with auto DB sync for matches
+  const onboardingCompleted = user?.user_metadata?.onboarding_completed as boolean | undefined;
+
+  // Geolocation integration with auto DB sync
   const { requestLocation, permissionState } = useGeolocation(user?.id);
 
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
@@ -91,8 +93,6 @@ export default function HomeClient({ sections }: HomeClientProps) {
         setAppsLoading(false);
       });
   }, [user]);
-
-  const onboardingCompleted = user?.user_metadata?.onboarding_completed as boolean | undefined;
 
   // CTA state logic
   let ctaState: CTAState = 'loading';

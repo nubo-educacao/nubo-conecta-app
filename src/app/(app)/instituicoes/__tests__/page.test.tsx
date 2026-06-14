@@ -41,10 +41,10 @@ vi.mock('../InstitutionsClient', () => ({
   },
 }));
 
-// ─── Supabase mock ────────────────────────────────────────────────────────────
-
-const mockOrder = vi.fn();
-const mockSelect = vi.fn().mockReturnValue({ order: mockOrder });
+const mockRange = vi.fn();
+const mockOrder2 = vi.fn().mockReturnValue({ range: mockRange });
+const mockOrder1 = vi.fn().mockReturnValue({ order: mockOrder2 });
+const mockSelect = vi.fn().mockReturnValue({ order: mockOrder1 });
 const mockFrom   = vi.fn().mockReturnValue({ select: mockSelect });
 
 vi.mock('@supabase/ssr', () => ({
@@ -92,13 +92,13 @@ describe('InstitutionsPage', () => {
   afterEach(() => cleanup());
 
   it('exibe título "Instituições"', async () => {
-    mockOrder.mockResolvedValueOnce({ data: [], error: null });
+    mockRange.mockResolvedValueOnce({ data: [], error: null });
     render(await InstitutionsPage({ searchParams: Promise.resolve({}) }));
     expect(screen.getByText('Instituições')).toBeDefined();
   });
 
   it('passa lista mista (parceiras + MEC) para InstitutionsClient', async () => {
-    mockOrder.mockResolvedValueOnce({
+    mockRange.mockResolvedValueOnce({
       data: [
         makePartner(),
         makeMec(),
@@ -115,7 +115,7 @@ describe('InstitutionsPage', () => {
   });
 
   it('renderiza InstitutionsClient com os nomes das instituições', async () => {
-    mockOrder.mockResolvedValueOnce({
+    mockRange.mockResolvedValueOnce({
       data: [
         makePartner({ id: 'p1', name: 'Parceira Alpha' }),
         makeMec({ id: 'm1', name: 'MEC Beta' }),
@@ -130,7 +130,7 @@ describe('InstitutionsPage', () => {
   });
 
   it('consulta a view "v_unified_institutions"', async () => {
-    mockOrder.mockResolvedValueOnce({ data: [], error: null });
+    mockRange.mockResolvedValueOnce({ data: [], error: null });
 
     await InstitutionsPage({ searchParams: Promise.resolve({}) });
 
@@ -138,7 +138,7 @@ describe('InstitutionsPage', () => {
   });
 
   it('lança erro quando Supabase retorna error', async () => {
-    mockOrder.mockResolvedValueOnce({
+    mockRange.mockResolvedValueOnce({
       data: null,
       error: { message: 'DB error', code: '500' },
     });
@@ -147,7 +147,7 @@ describe('InstitutionsPage', () => {
   });
 
   it('passa lista vazia para InstitutionsClient quando não há instituições', async () => {
-    mockOrder.mockResolvedValueOnce({ data: [], error: null });
+    mockRange.mockResolvedValueOnce({ data: [], error: null });
 
     render(await InstitutionsPage({ searchParams: Promise.resolve({}) }));
 

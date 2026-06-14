@@ -42,7 +42,7 @@ async function createSupabaseServerClient() {
  * getOpportunity - Fetches enriched metadata from the unified view
  * Hydrates match_score from user_opportunity_matches if a session exists.
  */
-async function getOpportunity(unifiedId: string): Promise<IUnifiedOpportunity | null> {
+async function getOpportunity(unifiedId: string): Promise<[IUnifiedOpportunity, string | undefined] | null> {
   const supabase = await createSupabaseServerClient();
   
   // Get current user to hydrate match_score
@@ -59,16 +59,18 @@ async function getOpportunity(unifiedId: string): Promise<IUnifiedOpportunity | 
 
   // Hydrate Match Score if user is logged in
   let matchScore = null;
+  let bestConcurrencyType: string | undefined = undefined;
   if (user) {
     const { data: matchData } = await supabase
       .from('user_opportunity_matches')
-      .select('match_score')
+      .select('match_score, match_details')
       .eq('unified_opportunity_id', unifiedId)
       .eq('profile_id', user.id)
       .maybeSingle();
-    
+
     if (matchData) {
       matchScore = matchData.match_score;
+      bestConcurrencyType = (matchData.match_details as any)?.best_concurrency_type ?? undefined;
     }
   }
 
@@ -104,7 +106,7 @@ async function getOpportunity(unifiedId: string): Promise<IUnifiedOpportunity | 
 
     let programQuery = supabase
       .from('programs')
-      .select('status, redirect_url')
+      .select('status, redirect_url, starts_at, ends_at')
       .eq('type', programType);
 
     if (latestOpportunity && latestOpportunity.year) {
@@ -126,6 +128,8 @@ async function getOpportunity(unifiedId: string): Promise<IUnifiedOpportunity | 
 
     if (programData) {
       oppData.status = programData.status;
+      oppData.starts_at = programData.starts_at;
+      oppData.ends_at = programData.ends_at;
       oppData.external_redirect_url = programData.redirect_url;
       oppData.external_redirect_enabled = !!programData.redirect_url;
       console.log(`[getOpportunity] Enriched ${unifiedId}: status=${programData.status}, redirect=${programData.redirect_url}`);
@@ -134,7 +138,26 @@ async function getOpportunity(unifiedId: string): Promise<IUnifiedOpportunity | 
     }
   }
 
-  return {
+  // Fetch degree_type for MEC courses
+  let mappedDegree = 'Graduação';
+  if (unifiedId.startsWith('mec_')) {
+    const courseId = unifiedId.replace('mec_', '');
+    const { data: courseData } = await supabase
+      .from('courses')
+      .select('degree_type')
+      .eq('id', courseId)
+      .maybeSingle();
+      
+    if (courseData?.degree_type) {
+      const dt = courseData.degree_type.toLowerCase();
+      if (dt.includes('bacharelado')) mappedDegree = 'Bacharelado';
+      else if (dt.includes('licenciatura')) mappedDegree = 'Licenciatura';
+      else if (dt.includes('tecnol')) mappedDegree = 'Tecnológico';
+      else mappedDegree = courseData.degree_type;
+    }
+  }
+
+  return [{
     id:               oppData.unified_id,
     title:            oppData.title,
     institution_name: oppData.provider_name,
@@ -144,20 +167,31 @@ async function getOpportunity(unifiedId: string): Promise<IUnifiedOpportunity | 
     category:         oppData.category,
     category_label:   oppData.category,
     location:         oppData.location,
-    education_level:  'Graduação',
+    education_level:  mappedDegree,
     badges:           Array.isArray(oppData.badges) ? oppData.badges.filter(Boolean) : [],
     created_at:       oppData.created_at,
     match_score:      matchScore, // Use hydrated score
     status:           oppData.status ?? undefined,
+    starts_at:        oppData.starts_at ?? undefined,
+    ends_at:          oppData.ends_at ?? undefined,
     external_redirect: oppData.external_redirect_url
       ? { enabled: oppData.external_redirect_enabled || !!oppData.external_redirect_url, url: oppData.external_redirect_url }
       : undefined,
     // Deep Details Metadata
     institution_id:       oppData.institution_id,
     nu_vagas_autorizadas: oppData.nu_vagas_autorizadas,
-    qt_vagas_ofertadas:   oppData.qt_vagas_ofertadas,
-    qt_inscricao_2025:    oppData.qt_inscricao_2025,
-    vagas_ociosas_2025:   oppData.vagas_ociosas_2025,
+    qt_vagas_ofertadas_current: oppData.qt_vagas_ofertadas_current,
+    qt_vagas_ofertadas_prev: oppData.qt_vagas_ofertadas_prev,
+    qt_inscricao_current: oppData.qt_inscricao_current,
+    qt_inscricao_prev:    oppData.qt_inscricao_prev,
+    vagas_ociosas_current: oppData.vagas_ociosas_current,
+    vagas_ociosas_prev:   oppData.vagas_ociosas_prev,
+    min_cutoff_score_current: oppData.min_cutoff_score_current,
+    min_cutoff_score_prev: oppData.min_cutoff_score_prev,
+    max_cutoff_score_current: oppData.max_cutoff_score_current,
+    max_cutoff_score_prev: oppData.max_cutoff_score_prev,
+    nu_media_minima_enem_current: oppData.nu_media_minima_enem_current,
+    nu_media_minima_enem_prev: oppData.nu_media_minima_enem_prev,
     institution_igc:      oppData.institution_igc,
     institution_organization: oppData.institution_organization,
     institution_category:     oppData.institution_category,
@@ -168,7 +202,7 @@ async function getOpportunity(unifiedId: string): Promise<IUnifiedOpportunity | 
     institution_cover_url:    oppData.institution_cover_url,
     weights:                  oppData.weights,
     description:              description,
-  };
+  }, bestConcurrencyType];
 }
 
 /**
@@ -233,6 +267,7 @@ async function getRelatedOpportunities(unifiedId: string): Promise<Opportunity[]
 
     let cutoff_score = r.cutoff_score;
     let cutoff_score_year = null;
+    let cutoff_score_semester = null;
 
     if (cutoff_score == null) {
       const pastMatch = allRelated.find(past => {
@@ -248,6 +283,7 @@ async function getRelatedOpportunities(unifiedId: string): Promise<Opportunity[]
       if (pastMatch) {
          cutoff_score = pastMatch.cutoff_score;
          cutoff_score_year = pastMatch.year;
+         cutoff_score_semester = pastMatch.semester;
       }
     }
 
@@ -260,6 +296,7 @@ async function getRelatedOpportunities(unifiedId: string): Promise<Opportunity[]
       scholarship_tags: r.scholarship_tags,
       cutoff_score,
       cutoff_score_year,
+      cutoff_score_semester,
       opportunity_type: r.opportunity_type,
       year: r.year,
       semester: r.semester,
@@ -341,15 +378,17 @@ async function getApprovalStats(unifiedId: string): Promise<ApprovalRow[] | null
 export default async function OpportunityDetailPage({ params }: PageProps) {
   const { id } = await params;
   const unifiedId = decodeURIComponent(id);
-  const [opportunity, relatedOpportunities, approvalStats] = await Promise.all([
+  const [opportunityResult, relatedOpportunities, approvalStats] = await Promise.all([
     getOpportunity(unifiedId),
     getRelatedOpportunities(unifiedId),
     getApprovalStats(unifiedId),
   ]);
 
-  if (!opportunity) {
+  if (!opportunityResult) {
     notFound();
   }
+
+  const [opportunity, bestConcurrencyType] = opportunityResult;
 
   return (
     <AppShell>
@@ -358,6 +397,7 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
         opportunity={opportunity}
         relatedOpportunities={relatedOpportunities}
         approvalStats={approvalStats}
+        bestConcurrencyType={bestConcurrencyType}
       />
     </AppShell>
   );

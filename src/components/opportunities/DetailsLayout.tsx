@@ -18,6 +18,7 @@ import SisuScoreDisplay from './SisuScoreDisplay';
 import OpportunityCard from './OpportunityCard';
 import CriteriaSection from './CriteriaSection';
 import ImportantDatesSection from './ImportantDatesSection';
+import OpportunityCarousel from '@/components/home/OpportunityCarousel';
 import { supabase } from '@/lib/supabase';
 import { useProfile } from '@/contexts/ProfileContext';
 import { createApplication } from '@/app/(app)/oportunidades/[id]/actions';
@@ -37,6 +38,7 @@ interface DetailsLayoutProps {
   isFavorited?: boolean;
   onFavorite?: () => void;
   approvalStats?: ApprovalRow[] | null;
+  bestConcurrencyType?: string;
 }
 
 export default function DetailsLayout({
@@ -45,6 +47,7 @@ export default function DetailsLayout({
   isFavorited,
   onFavorite,
   approvalStats,
+  bestConcurrencyType,
 }: DetailsLayoutProps) {
   const router = useRouter();
   const { activeProfileId } = useProfile();
@@ -55,9 +58,19 @@ export default function DetailsLayout({
   const [applying, setApplying] = React.useState(false);
   const [applyError, setApplyError] = React.useState<string | null>(null);
   const [similarOpps, setSimilarOpps] = React.useState<IUnifiedOpportunity[]>([]);
+  const [coverStatus, setCoverStatus] = React.useState<'initial' | 'fallback' | 'failed'>('initial');
 
   const isPartner = opportunity.is_partner;
   const brandColor = opportunity.brand_color || (isPartner ? '#7030C2' : '#3092BB');
+
+  const mobileFallback = isPartner ? "/assets/institution-partner-cover.png" : "/assets/institution-cover.png";
+  const desktopFallback = isPartner ? "/assets/institution-partner-desktop-cover.png" : "/assets/institution-desktop-cover.png";
+
+  const hasCustomCover = !!opportunity.institution_cover_url && opportunity.institution_cover_url !== 'null';
+  const useFallback = !hasCustomCover || coverStatus === 'fallback';
+
+  const currentDesktopSrc = useFallback ? desktopFallback : (opportunity.institution_cover_url || '');
+  const currentMobileSrc = useFallback ? mobileFallback : (opportunity.institution_cover_url || '');
 
   const partnerStatus = opportunity.status as string | undefined;
 
@@ -141,7 +154,7 @@ export default function DetailsLayout({
 
       const { data: opps } = await supabase
         .from('v_unified_opportunities')
-        .select('unified_id, title, provider_name, location, opportunity_type, type, is_partner, category, badges, brand_color, institution_cover_url, created_at')
+        .select('unified_id, title, provider_name, location, opportunity_type, type, is_partner, category, badges, brand_color, institution_cover_url, created_at, min_cutoff_score_current, min_cutoff_score_prev, max_cutoff_score_current, max_cutoff_score_prev')
         .in('unified_id', ids);
 
       if (!opps || opps.length === 0) return;
@@ -165,6 +178,10 @@ export default function DetailsLayout({
         created_at: o.created_at,
         match_score: scoreMap[o.unified_id] || null,
         education_level: 'Graduação',
+        min_cutoff_score_current: o.min_cutoff_score_current,
+        min_cutoff_score_prev: o.min_cutoff_score_prev,
+        max_cutoff_score_current: o.max_cutoff_score_current,
+        max_cutoff_score_prev: o.max_cutoff_score_prev,
       } as IUnifiedOpportunity));
 
       setSimilarOpps(mapped);
@@ -186,11 +203,12 @@ export default function DetailsLayout({
   };
 
   const handleApply = async () => {
-    if (opportunity.external_redirect?.enabled && opportunity.external_redirect?.url) {
-      window.open(opportunity.external_redirect.url, '_blank');
+    if (!opportunity.is_partner) {
+      if (opportunity.external_redirect?.enabled && opportunity.external_redirect?.url) {
+        window.open(opportunity.external_redirect.url, '_blank');
+      }
       return;
     }
-    if (!opportunity.is_partner) return;
 
     const partnerOppId = opportunity.id.replace('partner_', '');
     const profileId = activeProfileId || '';
@@ -263,8 +281,24 @@ export default function DetailsLayout({
     );
   };
 
+  // Resolve effective registration status once — used by both inline banner & floating CTA
+  let effectiveStatus: string | undefined;
+  if (opportunity.status && opportunity.status !== 'approved') {
+    effectiveStatus = opportunity.status;
+  } else if (isPartner) {
+    effectiveStatus = partnerStatus as string | undefined;
+  } else {
+    effectiveStatus = isRegistrationOpen === null
+      ? undefined
+      : (isRegistrationOpen ? 'opened' : 'closed');
+  }
+
+  const isOpen = effectiveStatus === 'opened' || effectiveStatus === 'approved';
+
   return (
-    <div className="min-h-full pb-32" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+    <>
+    {/* ══ Main scrollable page ══ */}
+    <div className="min-h-full" style={{ fontFamily: 'Montserrat, sans-serif' }}>
       {/* ── Hero / Cover ── */}
       <section className="relative h-[220px] w-full rounded-b-[40px] md:rounded-t-3xl overflow-hidden">
         {/* Main Cover Image Container */}
@@ -277,14 +311,23 @@ export default function DetailsLayout({
           }}
         >
           {/* Image Overlay */}
-          <img
-            src={opportunity.institution_cover_url || "/assets/institution-cover.png"}
-            className="w-full h-full object-cover mix-blend-soft-light opacity-60"
-            alt=""
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
+          {coverStatus !== 'failed' && (
+            <picture className="w-full h-full">
+              <source media="(min-width: 768px)" srcSet={currentDesktopSrc} />
+              <img
+                src={currentMobileSrc}
+                className="w-full h-full object-cover mix-blend-soft-light opacity-60"
+                alt=""
+                onError={() => {
+                  if (coverStatus === 'initial' && hasCustomCover) {
+                    setCoverStatus('fallback');
+                  } else {
+                    setCoverStatus('failed');
+                  }
+                }}
+              />
+            </picture>
+          )}
           {/* Overlay Gradient for contrast */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
         </div>
@@ -375,23 +418,6 @@ export default function DetailsLayout({
         )}
       </section>
 
-      {/* ── Registration Period Alert ── */}
-      {(opportunity.starts_at || opportunity.ends_at) && (
-        <section className="px-6 mt-6">
-          <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 flex items-center gap-4">
-            <div className="size-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 shrink-0">
-              <Calendar size={20} />
-            </div>
-            <div>
-              <p className="text-[10px] text-orange-400 font-bold uppercase">Período de Inscrição</p>
-              <p className="text-sm font-bold text-[#3A424E]">
-                {opportunity.starts_at ? new Date(opportunity.starts_at).toLocaleDateString('pt-BR') : 'A definir'} até {opportunity.ends_at ? new Date(opportunity.ends_at).toLocaleDateString('pt-BR') : 'A definir'}
-              </p>
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* ── Metadata Grid ── */}
       <section className="grid grid-cols-2 gap-4 px-6 mt-8">
         {/* Localização */}
@@ -474,19 +500,6 @@ export default function DetailsLayout({
         </div>
       </section>
 
-      {/* ── Important Dates ── */}
-      <div className="px-6 mt-8">
-        <ImportantDatesSection
-          isPartner={isPartner}
-          opportunityType={opportunity.opportunity_type}
-          startsAt={opportunity.starts_at}
-          endsAt={opportunity.ends_at}
-          mecDates={mecImportantDates}
-          institutionId={opportunity.institution_id}
-          opportunityId={opportunity.id?.replace('partner_', '').replace('mec_', '')}
-        />
-      </div>
-
       {/* ── Statistics / Program Specifics ── */}
       <div className="px-6 mt-8 space-y-8">
         {!isPartner ? (
@@ -495,29 +508,22 @@ export default function DetailsLayout({
               opportunity_type={opportunity.opportunity_type || 'SISU'}
               cycle_year={relatedOpportunities[0]?.year}
               cycle_semester={relatedOpportunities[0]?.semester}
-              qt_inscricao_2025={opportunity.qt_inscricao_2025}
+              qt_inscricao_prev={opportunity.qt_inscricao_current ?? opportunity.qt_inscricao_prev}
               min_cutoff_score={(() => {
                 const validScores = relatedOpportunities.map(o => o.cutoff_score).filter((s): s is number => s != null);
-                return validScores.length > 0 ? Math.min(...validScores) : null;
+                return validScores.length > 0 ? Math.min(...validScores) : (opportunity.min_cutoff_score_current ?? opportunity.min_cutoff_score_prev ?? null);
               })()}
               max_cutoff_score={(() => {
                 const validScores = relatedOpportunities.map(o => o.cutoff_score).filter((s): s is number => s != null);
-                return validScores.length > 0 ? Math.max(...validScores) : null;
+                return validScores.length > 0 ? Math.max(...validScores) : (opportunity.max_cutoff_score_current ?? opportunity.max_cutoff_score_prev ?? null);
               })()}
-              vagas_ociosas_2025={opportunity.vagas_ociosas_2025}
-              nu_vagas_autorizadas={(() => {
-                const total = relatedOpportunities.reduce((sum, opp) => {
-                  const broad = Number(opp.vacancies?.broad_competition_offered) || 0;
-                  const quotas = Number(opp.vacancies?.quotas_offered) || 0;
-                  return sum + broad + quotas;
-                }, 0);
-                return total > 0 ? total : opportunity.nu_vagas_autorizadas;
-              })()}
+              vagas_ociosas_prev={opportunity.vagas_ociosas_current ?? opportunity.vagas_ociosas_prev}
               qt_aprovados={approvalStats?.reduce((sum, row) => sum + (Number(row.qt_aprovados) || 0), 0) || null}
+              nu_media_minima_enem={opportunity.nu_media_minima_enem_current ?? opportunity.nu_media_minima_enem_prev ?? null}
             />
 
             {(opportunity.weights || opportunity.opportunity_type === 'prouni') && (
-              <SisuScoreDisplay 
+              <SisuScoreDisplay
                 weights={opportunity.weights || { redacao: 1, matematica: 1, linguagens: 1, humanas: 1, natureza: 1 }}
                 opportunity_type={opportunity.opportunity_type}
                 cycle_year={relatedOpportunities[0]?.year}
@@ -567,12 +573,13 @@ export default function DetailsLayout({
                 shift: 'Noturno',
                 concurrency_tags: (opportunity as any).concurrency_tags,
                 scholarship_tags: (opportunity as any).scholarship_tags,
-                cutoff_score: opportunity.max_cutoff_score ?? null,
+                cutoff_score: opportunity.max_cutoff_score_current ?? opportunity.max_cutoff_score_prev ?? null,
                 opportunity_type: opportunity.opportunity_type,
                 year: 2025,
                 semester: '1'
               }]}
               highlightedOpportunityId={opportunity.id}
+              bestConcurrencyType={!opportunity.is_partner ? bestConcurrencyType : undefined}
             />
 
 
@@ -656,25 +663,21 @@ export default function DetailsLayout({
         )}
       </div>
 
-      {/* ── Outras Oportunidades para Você ── */}
-      {similarOpps.length > 0 && (
-        <section className="mt-12">
-          <h2 className="text-[#3A424E] font-black text-lg mb-4 px-6">Outras Oportunidades para Você</h2>
-          <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory -mx-0 px-6 scrollbar-hide">
-            {similarOpps.map((opp) => (
-              <div key={opp.id} className="min-w-[85vw] max-w-[340px] snap-center shrink-0">
-                <OpportunityCard
-                  opportunity={opp}
-                  onClickOverride={(id) => router.push(`/oportunidades/${id}`)}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* ── Important Dates ── */}
+      <div className="px-6 mt-8">
+        <ImportantDatesSection
+          isPartner={isPartner}
+          opportunityType={opportunity.opportunity_type}
+          startsAt={opportunity.starts_at}
+          endsAt={opportunity.ends_at}
+          mecDates={mecImportantDates}
+          institutionId={opportunity.institution_id}
+          opportunityId={opportunity.id?.replace('partner_', '').replace('mec_', '')}
+        />
+      </div>
 
       {/* ── Institution Card ── */}
-      <section className="px-6 mt-12 mb-24">
+      <section className="px-6 mt-12">
         <h2 className="text-[#3A424E] font-black text-lg mb-4">Sobre a Instituição</h2>
         <div className="bg-white border border-gray-100 rounded-[32px] p-6 flex flex-col gap-6 shadow-sm">
           <div className="flex items-center gap-4">
@@ -714,35 +717,36 @@ export default function DetailsLayout({
         </div>
       </section>
 
-      {/* ── Sticky Bottom CTA ── */}
-      {(() => {
-        // Source of truth: opportunity.status from server enrichment (programs table)
-        // Fallback order:
-        //   1. Server-enriched status (opened/closed/incoming) — from programs table
-        //   2. Partner status from partner_opportunities
-        //   3. important_dates registration check (legacy, only for unenriched MEC)
-        let effectiveStatus: string | undefined;
+      {/* ── Outras Oportunidades para Você ── */}
+      {similarOpps.length > 0 && (
+        <div className="mt-12 px-2">
+          <OpportunityCarousel
+            title="Outras Oportunidades para Você"
+            opportunities={similarOpps}
+            seeAllHref="/oportunidades"
+          />
+        </div>
+      )}
 
+      {/* ── Inline status banner (closed / incoming) — NOT floating ── */}
+      {(() => {
+        let effectiveStatus: string | undefined;
         if (opportunity.status && opportunity.status !== 'approved') {
-          // Server successfully enriched from programs table
           effectiveStatus = opportunity.status;
         } else if (isPartner) {
           effectiveStatus = partnerStatus;
         } else {
-          // Enrichment failed (status still 'approved') — fallback to important_dates
           effectiveStatus = isRegistrationOpen === null
-            ? undefined  // Still loading, don't render yet
+            ? undefined
             : (isRegistrationOpen ? 'opened' : 'closed');
         }
 
-        if (!effectiveStatus || effectiveStatus === 'inactive') return null;
-
-        const shell = "fixed bottom-0 inset-x-0 p-6 bg-white/80 backdrop-blur-2xl border-t border-gray-100/50 z-50 flex flex-col pb-10";
+        const btnBase = "w-full h-14 rounded-full font-black text-base flex items-center justify-center gap-2";
 
         if (effectiveStatus === 'closed') {
           return (
-            <div className={`${shell} gap-4`}>
-              <button disabled className="w-full h-14 rounded-full font-black text-lg text-[#868E96] shadow-none flex items-center justify-center gap-2 bg-[#F1F3F5] border border-[#DEE2E6] cursor-not-allowed">
+            <div className="px-4 md:px-8 pb-8 pt-4">
+              <button disabled className={`${btnBase} bg-white border border-gray-200 text-[#868E96] shadow-sm cursor-not-allowed`}>
                 Inscrições encerradas
               </button>
             </div>
@@ -751,32 +755,48 @@ export default function DetailsLayout({
 
         if (effectiveStatus === 'incoming') {
           return (
-            <div className={`${shell} gap-4`}>
-              <button disabled className="w-full h-14 rounded-full font-black text-lg text-amber-600 shadow-none flex items-center justify-center gap-2 bg-amber-50/50 border border-amber-200/50 cursor-not-allowed">
+            <div className="px-4 md:px-8 pb-8 pt-4">
+              <button disabled className={`${btnBase} bg-amber-50 border border-amber-200 text-amber-600 shadow-sm cursor-not-allowed`}>
                 Inscrições em breve
               </button>
             </div>
           );
         }
 
-        const shadow = isPartner ? 'shadow-[#7030C2]/30' : 'shadow-[#3092BB]/30';
-        const label = isPartner ? 'Candidatar Agora' : 'Quero me Candidatar';
-        return (
-          <div className={`${shell} gap-2`}>
-            {applyError && <p className="text-center text-xs text-red-500 font-medium">{applyError}</p>}
-            <button
-              onClick={handleApply}
-              disabled={applying}
-              className={`w-full h-14 rounded-full font-black text-lg text-white shadow-2xl ${shadow} transition-transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70`}
-              style={{ background: brandColor }}
-            >
-              {applying ? <Loader2 size={22} className="animate-spin" /> : (
-                <>{label}{opportunity.external_redirect?.enabled && <ExternalLink size={18} />}</>
-              )}
-            </button>
-          </div>
-        );
+        // 'opened' → floating pill rendered below as sibling, add padding to avoid overlap
+        if (isOpen) {
+          return <div className="pb-28" />;
+        }
+
+        return null;
       })()}
     </div>
+
+    {/* ══ Floating CTA — only when registrations are OPEN ══
+        Rendered as a sibling to the main div (outside any transformed ancestor)
+        so position:fixed works reliably on all browsers and devices. */}
+    {isOpen && (() => {
+      const floatShell = "fixed bottom-6 left-4 right-4 md:left-8 md:right-8 z-[200] flex flex-col items-stretch gap-2";
+      const btnBase = "w-full h-14 rounded-full font-black text-base flex items-center justify-center gap-2 transition-all duration-200";
+      const shadow = isPartner ? 'shadow-[#7030C2]/40' : 'shadow-[#3092BB]/40';
+      const label = isPartner ? 'Candidatar Agora' : 'Quero me Candidatar';
+
+      return (
+        <div className={floatShell}>
+          {applyError && <p className="text-center text-xs text-red-500 font-medium bg-white px-3 py-1 rounded-full shadow-md">{applyError}</p>}
+          <button
+            onClick={handleApply}
+            disabled={applying}
+            className={`${btnBase} text-white shadow-2xl ${shadow} active:scale-95 disabled:opacity-70`}
+            style={{ background: brandColor }}
+          >
+            {applying ? <Loader2 size={22} className="animate-spin" /> : (
+              <>{label}{opportunity.external_redirect?.enabled && <ExternalLink size={18} />}</>
+            )}
+          </button>
+        </div>
+      );
+    })()}
+    </>
   );
 }

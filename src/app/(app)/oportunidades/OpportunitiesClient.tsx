@@ -25,6 +25,7 @@ interface OpportunitiesClientProps {
   filters: ExploreFilters;
   currentPage?: number;
   pageSize?: number;
+  availableCategories?: string[];
 }
 
 export default function OpportunitiesClient({
@@ -32,7 +33,8 @@ export default function OpportunitiesClient({
   activeTab,
   filters,
   currentPage = 0,
-  pageSize = 15
+  pageSize = 15,
+  availableCategories
 }: OpportunitiesClientProps) {
   const router = useRouter();
   const { user } = useAuth();
@@ -244,7 +246,13 @@ export default function OpportunitiesClient({
             </p>
           }
         >
-          <ExploreClient opportunities={opportunities} filters={filters} currentPage={currentPage} pageSize={pageSize} />
+          <ExploreClient 
+            opportunities={opportunities} 
+            filters={filters} 
+            currentPage={currentPage} 
+            pageSize={pageSize} 
+            availableCategories={availableCategories} 
+          />
         </Suspense>
       )}
     </div>
