@@ -392,7 +392,6 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
 
   return (
     <AppShell>
-      <RequireAuth />
       <DetailsLayout
         opportunity={opportunity}
         relatedOpportunities={relatedOpportunities}

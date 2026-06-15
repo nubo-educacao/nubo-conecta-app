@@ -17,6 +17,7 @@ export interface PartnerFormField {
     mapping_source: string | null;
     is_criterion: boolean;
     criterion_rule: Record<string, unknown> | null;
+    criterion_type?: 'eligibility' | 'priority' | null;
     conditional_rule: Record<string, unknown> | null;
     sort_order: number;
     optional: boolean;

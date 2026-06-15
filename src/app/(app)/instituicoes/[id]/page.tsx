@@ -141,7 +141,6 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
 
   return (
     <AppShell>
-      <RequireAuth />
       <div className="flex flex-col min-h-screen pb-20 bg-white md:bg-transparent">
         {/* Cover Image & Header */}
         <div className="relative w-full h-[200px] overflow-hidden md:rounded-t-3xl" style={{ background: headerGradient }}>

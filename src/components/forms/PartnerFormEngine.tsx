@@ -296,7 +296,7 @@ export default function PartnerFormEngine({
                 {eligibilityResults.length > 0 ? (
                     <div className="flex-1 overflow-y-auto space-y-2 mb-4">
                         <div className={`p-3 rounded-xl border-2 text-center mb-2 ${metCount === totalCount ? 'border-green-300 bg-green-50' : 'border-amber-300 bg-amber-50'}`}>
-                            <p className="text-base font-bold text-[#024F86]">{metCount}/{totalCount} critérios atendidos</p>
+                            <p className="text-base font-bold text-[#024F86]">{metCount}/{totalCount} critérios de elegibilidade atendidos</p>
                         </div>
                         {eligibilityResults.map((result, idx) => (
                             <div key={idx} className={`flex items-center gap-2 p-2 rounded-xl border-2 ${result.met ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'}`}>

@@ -205,7 +205,7 @@ export default function PartnerFormsPage() {
 
   // ── Eligibility computation ─────────────────────────────────────────────────
   const computeEligibility = (data: Record<string, unknown>) => {
-    const criterionFields = fields.filter((f) => f.is_criterion && f.criterion_rule);
+    const criterionFields = fields.filter((f) => f.is_criterion && f.criterion_rule && f.criterion_type !== 'priority');
     return criterionFields.map((f) => {
       const userAnswer = data[f.field_name];
       let met = false;

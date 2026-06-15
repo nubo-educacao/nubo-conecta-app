@@ -22,6 +22,7 @@ import ImportantDatesSection from './ImportantDatesSection';
 import OpportunityCarousel from '@/components/home/OpportunityCarousel';
 import { supabase } from '@/lib/supabase';
 import { useProfile } from '@/contexts/ProfileContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { createApplication } from '@/app/(app)/oportunidades/[id]/actions';
 
 type SisuVacancyRow = Record<string, unknown>;
@@ -52,6 +53,8 @@ export default function DetailsLayout({
 }: DetailsLayoutProps) {
   const router = useRouter();
   const { activeProfileId } = useProfile();
+  const { user, openAuthModal } = useAuth();
+  const [pendingApply, setPendingApply] = React.useState(false);
   const [isRegistrationOpen, setIsRegistrationOpen] = React.useState<boolean | null>(null);
   const [registrationDates, setRegistrationDates] = React.useState<{ start: string; end: string } | null>(null);
   const [mecImportantDates, setMecImportantDates] = React.useState<{ title: string; start_date: string; end_date: string | null }[]>([]);
@@ -204,6 +207,12 @@ export default function DetailsLayout({
   };
 
   const handleApply = async () => {
+    if (!user) {
+      setPendingApply(true);
+      openAuthModal('LOGIN');
+      return;
+    }
+
     if (!opportunity.is_partner) {
       if (opportunity.external_redirect?.enabled && opportunity.external_redirect?.url) {
         window.open(opportunity.external_redirect.url, '_blank');
@@ -228,6 +237,13 @@ export default function DetailsLayout({
       setApplyError('Erro ao iniciar candidatura. Tente novamente.');
     }
   };
+
+  React.useEffect(() => {
+    if (user && pendingApply && activeProfileId) {
+      setPendingApply(false);
+      handleApply();
+    }
+  }, [user, pendingApply, activeProfileId]);
 
   // Helper for Category Chips
   const categoryLabel = opportunity.opportunity_type?.toUpperCase() || 'PROGRAMA';
@@ -708,16 +724,18 @@ export default function DetailsLayout({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gray-50 rounded-2xl p-4">
-              <p className="text-[10px] text-gray-400 font-bold uppercase">IGC (MEC)</p>
-              <p className="text-lg font-black text-[#3092BB]">{opportunity.institution_igc || 'N/A'}</p>
+          {!isPartner && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gray-50 rounded-2xl p-4">
+                <p className="text-[10px] text-gray-400 font-bold uppercase">IGC (MEC)</p>
+                <p className="text-lg font-black text-[#3092BB]">{opportunity.institution_igc || 'N/A'}</p>
+              </div>
+              <div className="bg-gray-50 rounded-2xl p-4">
+                <p className="text-[10px] text-gray-400 font-bold uppercase">Organização</p>
+                <p className="text-sm font-bold text-[#3A424E] line-clamp-1">{opportunity.institution_organization || 'Universidade'}</p>
+              </div>
             </div>
-            <div className="bg-gray-50 rounded-2xl p-4">
-              <p className="text-[10px] text-gray-400 font-bold uppercase">Organização</p>
-              <p className="text-sm font-bold text-[#3A424E] line-clamp-1">{opportunity.institution_organization || 'Universidade'}</p>
-            </div>
-          </div>
+          )}
 
           <Link
             href={`/instituicoes/${opportunity.institution_id}`}
