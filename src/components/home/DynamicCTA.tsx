@@ -10,12 +10,12 @@
 import Link from 'next/link';
 import { ChevronRight, Loader2, Sparkles, Search, ClipboardList } from 'lucide-react';
 
-export type CTAState = 
-  | 'loading' 
-  | 'visitor' 
-  | 'no-profile' 
-  | 'no-applications' 
-  | 'application-in-progress' 
+export type CTAState =
+  | 'loading'
+  | 'visitor'
+  | 'no-profile'
+  | 'no-applications'
+  | 'application-in-progress'
   | 'completed-application';
 
 interface DynamicCTAProps {
@@ -47,8 +47,8 @@ export default function DynamicCTA({
       <div
         onClick={onOpenAuth}
         className={`w-full ${cardBorderRadius} p-5 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border border-transparent text-left cursor-pointer`}
-        style={{ 
-          background: 'linear-gradient(135deg, #024F86 0%, #01375E 100%)', 
+        style={{
+          background: 'linear-gradient(135deg, #024F86 0%, #01375E 100%)',
           color: 'white',
           boxShadow: '0 8px 32px rgba(2, 79, 134, 0.15)'
         }}
@@ -72,7 +72,7 @@ export default function DynamicCTA({
             <h3 className="block md:hidden font-bold text-base leading-tight tracking-tight text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>
               Descubra vagas para você
             </h3>
-            
+
             {/* Desktop Description */}
             <p className="hidden md:block text-xs md:text-sm text-white/80 leading-normal" style={{ fontFamily: 'Montserrat, sans-serif' }}>
               Mais de 12 mil oportunidades te esperando
@@ -91,7 +91,7 @@ export default function DynamicCTA({
 
         {/* Right Side: CTA Button */}
         <div className="w-full md:w-auto">
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onOpenAuth?.();
@@ -111,7 +111,7 @@ export default function DynamicCTA({
       <Link
         href="/oportunidades?tab=para-voce"
         className={`w-full ${cardBorderRadius} p-5 md:p-6 flex items-center justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border border-[#FFE4A3] text-left cursor-pointer`}
-        style={{ 
+        style={{
           background: '#FFFDF6',
           boxShadow: '0 8px 24px rgba(217, 119, 6, 0.04)'
         }}
@@ -127,21 +127,21 @@ export default function DynamicCTA({
             <span className="px-2 py-0.5 rounded-md bg-[#F59E0B] text-white text-[9px] font-bold tracking-wider w-fit uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
               Ação necessária
             </span>
-            
+
             <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#92400E]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
               Complete seu perfil
             </h3>
-            
+
             {/* Description (Web only) */}
             <p className="hidden md:block text-xs md:text-sm text-[#B45309] opacity-90" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-              Perfis completos recebem 3× mais convites de empresas
+              Falta pouco! Complete seu perfil para não perder oportunidades disponíveis
             </p>
 
             {/* Dash Indicators (Progress) */}
             <div className="flex items-center gap-1 mt-1">
               {[1, 2, 3, 4, 5].map((idx) => (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   className={`h-1.5 w-8 rounded-full ${idx <= 3 ? 'bg-[#F59E0B]' : 'bg-[#E2E8F0]'}`}
                 />
               ))}
@@ -180,13 +180,13 @@ export default function DynamicCTA({
               <span className="block md:hidden">Sua primeira vaga te espera</span>
               <span className="hidden md:block">Sua primeira candidatura te espera</span>
             </h3>
-            
+
             <p className="text-xs md:text-sm text-[#64748B]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
               <span className="block md:hidden">Encontre oportunidades para você</span>
               <span className="hidden md:block">Encontre vagas que combinam com o seu perfil</span>
             </p>
 
-            <button 
+            <button
               className="mt-1 flex items-center gap-1 px-3 py-1 rounded-full bg-[#F0F9FF] border border-[#BAE6FD] text-[#0369A1] text-xs font-bold w-fit transition-colors hover:bg-[#E0F2FE]"
               style={{ fontFamily: 'Montserrat, sans-serif' }}
             >
@@ -210,7 +210,7 @@ export default function DynamicCTA({
       <Link
         href={href}
         className={`w-full ${cardBorderRadius} p-5 md:p-6 flex items-center justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border border-[#BAE6FD] text-left cursor-pointer`}
-        style={{ 
+        style={{
           background: '#F4F9FF',
           boxShadow: '0 8px 24px rgba(3, 105, 161, 0.04)'
         }}
@@ -225,7 +225,7 @@ export default function DynamicCTA({
             <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#024F86]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
               Candidatura em andamento
             </h3>
-            
+
             <p className="text-xs md:text-sm text-[#0369A1]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
               <span className="block md:hidden">Continue de onde parou</span>
               <span className="hidden md:block">Continue de onde você parou</span>
@@ -258,8 +258,8 @@ export default function DynamicCTA({
       <Link
         href="/oportunidades"
         className="flex-1 rounded-[20px] px-5 py-5 md:px-6 md:py-6 flex flex-col gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.98] border border-transparent"
-        style={{ 
-          background: 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)', 
+        style={{
+          background: 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)',
           color: 'white',
           boxShadow: '0 8px 30px rgba(2, 79, 134, 0.12)'
         }}
