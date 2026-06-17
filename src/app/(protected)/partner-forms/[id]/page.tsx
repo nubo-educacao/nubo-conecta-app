@@ -227,6 +227,7 @@ export default function PartnerFormsPage() {
     if (!application) return { success: false };
 
     const finalStatus = isRedirect ? 'redirected' : 'SUBMITTED';
+    const eligibilityResults = computeEligibility(data);
 
     // Pre-open the window to bypass popup blocker
     let redirectWindow: Window | null = null;
@@ -246,9 +247,71 @@ export default function PartnerFormsPage() {
         return { success: false };
       }
 
+      // Save eligibility results and map data to user profile
+      const userId = selectedProfileId || user!.id;
+
+      // 1. Build profile updates from field mappings
+      const profileUpdates: Record<string, any> = {
+        eligibility_results: eligibilityResults,
+      };
+
+      const userPrefUpdates: Record<string, any> = {};
+
+      fields.forEach(field => {
+        const userAnswer = data[field.field_name];
+        if (userAnswer === undefined || userAnswer === null) return;
+
+        // Map to user_profiles columns
+        if (field.mapping_source?.startsWith("user_profiles.")) {
+          const column = field.mapping_source.split(".")[1];
+          profileUpdates[column] = userAnswer;
+        }
+        // Map to user_preferences json key
+        else if (field.mapping_source?.startsWith("user_preferences.")) {
+          const jsonKey = field.mapping_source.split(".")[1];
+          userPrefUpdates[jsonKey] = userAnswer;
+        }
+      });
+
+      // 2. Update user_profiles
+      if (Object.keys(profileUpdates).length > 0) {
+        const { error: profileError } = await supabase
+          .from("user_profiles")
+          .update(profileUpdates)
+          .eq("id", userId);
+
+        if (profileError) {
+          console.error("Failed to update user profile:", profileError);
+        }
+      }
+
+      // 3. Update user_preferences (upsert json)
+      if (Object.keys(userPrefUpdates).length > 0) {
+        const { data: existingPrefs } = await supabase
+          .from("user_preferences")
+          .select("preferences")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        const mergedPrefs = {
+          ...(existingPrefs?.preferences ?? {}),
+          ...userPrefUpdates
+        };
+
+        const { error: prefError } = await supabase
+          .from("user_preferences")
+          .upsert({
+            user_id: userId,
+            preferences: mergedPrefs
+          });
+
+        if (prefError) {
+          console.error("Failed to update user preferences:", prefError);
+        }
+      }
+
       if (isRedirect && application.external_redirect?.url) {
         try {
-          const userId = selectedProfileId || user!.id;
           const { url } = await trackAndRedirect(
             userId,
             application.partner_id,
@@ -271,7 +334,7 @@ export default function PartnerFormsPage() {
     }
 
     setPhase("submitted");
-    return { success: true, eligibilityResults: computeEligibility(data) };
+    return { success: true, eligibilityResults };
   };
 
   // ── Merge localStorage draft ───────────────────────────────────────────────
