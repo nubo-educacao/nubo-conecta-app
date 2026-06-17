@@ -273,15 +273,16 @@ export default function PartnerFormsPage() {
         }
       });
 
-      // 2. Update user_profiles
+      // 2. Upsert user_profiles — upsert (not update) so the mapping still
+      // works when the profile row doesn't exist yet. A plain UPDATE on a
+      // missing row affects 0 rows silently and the full_name/mapping is lost.
       if (Object.keys(profileUpdates).length > 0) {
         const { error: profileError } = await supabase
           .from("user_profiles")
-          .update(profileUpdates)
-          .eq("id", userId);
+          .upsert({ id: userId, ...profileUpdates }, { onConflict: "id" });
 
         if (profileError) {
-          console.error("Failed to update user profile:", profileError);
+          console.error("Failed to upsert user profile:", profileError);
         }
       }
 
