@@ -15,7 +15,6 @@ interface ApplicationCard {
   status: string;
   created_at: string;
   updated_at: string;
-  eligibility_score: number | null;
   opportunity_name: string | null;
   institution_name: string | null;
   logo_url: string | null;
@@ -57,7 +56,7 @@ export default function CandidaturasPage() {
     supabase
       .from("student_applications")
       .select(`
-        id, partner_id, status, created_at, updated_at, eligibility_score,
+        id, partner_id, status, created_at, updated_at,
         partner_opportunities:partner_id (
           name,
           institutions:institution_id (
@@ -81,7 +80,6 @@ export default function CandidaturasPage() {
             status: row.status as string,
             created_at: row.created_at as string,
             updated_at: row.updated_at as string,
-            eligibility_score: row.eligibility_score as number | null,
             opportunity_name: (opp.name as string) ?? null,
             institution_name: (inst.name as string) ?? null,
             logo_url: pi.logo_url ?? null,
