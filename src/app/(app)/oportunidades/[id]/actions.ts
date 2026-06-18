@@ -41,3 +41,39 @@ export async function createApplication(
 
   return { id: data.id };
 }
+
+/**
+ * getExistingApplication — Server Action
+ * Fetches an existing student_application record by user profile ID and partner opportunity ID.
+ */
+export async function getExistingApplication(
+  partnerOppId: string,
+  profileId: string,
+): Promise<{ id: string; status: string; redirect_url?: string | null } | null> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: () => {},
+      },
+    },
+  );
+
+  const { data, error } = await supabase
+    .from('student_applications')
+    .select('id, status, redirect_url:answers->>redirect_url')
+    .eq('user_id', profileId)
+    .eq('partner_id', partnerOppId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[getExistingApplication] Error fetching:', error.message);
+    return null;
+  }
+
+  return data;
+}
+

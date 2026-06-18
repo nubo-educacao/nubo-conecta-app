@@ -7,6 +7,7 @@ import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import CloudBackground from "@/components/CloudBackground";
 import ChatFAB from "@/components/chat/ChatFAB";
 import GlobalAuthModal from "@/components/auth/GlobalAuthModal";
+import Script from "next/script";
 
 const montserrat = Montserrat({ subsets: ["latin"] });
 
@@ -30,7 +31,9 @@ export default function RootLayout({
     <html lang="pt-BR">
       <head>
         {/* Meta Pixel Code */}
-        <script
+        <Script
+          id="meta-pixel"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
 !function(f,b,e,v,n,t,s)
@@ -46,6 +49,7 @@ fbq('track', 'PageView');
             `,
           }}
         />
+
         <noscript>
           <img
             height="1"
