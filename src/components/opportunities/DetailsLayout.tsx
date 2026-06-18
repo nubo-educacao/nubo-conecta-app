@@ -23,7 +23,7 @@ import OpportunityCarousel from '@/components/home/OpportunityCarousel';
 import { supabase } from '@/lib/supabase';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { createApplication } from '@/app/(app)/oportunidades/[id]/actions';
+import { createApplication, getExistingApplication } from '@/app/(app)/oportunidades/[id]/actions';
 
 type SisuVacancyRow = Record<string, unknown>;
 type ProuniVacancyRow = Record<string, unknown>;
@@ -63,8 +63,34 @@ export default function DetailsLayout({
   const [applyError, setApplyError] = React.useState<string | null>(null);
   const [similarOpps, setSimilarOpps] = React.useState<IUnifiedOpportunity[]>([]);
   const [coverStatus, setCoverStatus] = React.useState<'initial' | 'fallback' | 'failed'>('initial');
+  const [existingApplication, setExistingApplication] = React.useState<{ id: string; status: string; redirect_url?: string | null } | null>(null);
+  const [loadingApplication, setLoadingApplication] = React.useState(false);
 
   const isPartner = opportunity.is_partner;
+
+  React.useEffect(() => {
+    if (!user || !isPartner) {
+      setExistingApplication(null);
+      return;
+    }
+
+    const fetchExisting = async () => {
+      setLoadingApplication(true);
+      try {
+        const partnerOppId = opportunity.id.replace('partner_', '');
+        const profileId = activeProfileId || user.id;
+        const app = await getExistingApplication(partnerOppId, profileId);
+        setExistingApplication(app);
+      } catch (err) {
+        console.error('Error fetching existing application:', err);
+      } finally {
+        setLoadingApplication(false);
+      }
+    };
+
+    fetchExisting();
+  }, [user, activeProfileId, opportunity.id, isPartner]);
+
   const brandColor = opportunity.brand_color || (isPartner ? '#7030C2' : '#3092BB');
 
   const mobileFallback = isPartner ? "/assets/institution-partner-cover.png" : "/assets/institution-cover.png";
@@ -221,9 +247,29 @@ export default function DetailsLayout({
     }
 
     const partnerOppId = opportunity.id.replace('partner_', '');
-    const profileId = activeProfileId || '';
+    const profileId = activeProfileId || user.id;
     if (!profileId) {
       setApplyError('Selecione um perfil para continuar.');
+      return;
+    }
+
+    if (existingApplication) {
+      if (existingApplication.status === 'DRAFT') {
+        router.push(`/partner-forms/${existingApplication.id}`);
+        return;
+      }
+      if (existingApplication.status === 'redirected') {
+        if (existingApplication.redirect_url) {
+          window.open(existingApplication.redirect_url, '_blank');
+        } else if (opportunity.external_redirect?.url) {
+          window.open(opportunity.external_redirect.url, '_blank');
+        }
+        return;
+      }
+      if (existingApplication.status === 'REJECTED') {
+        router.push(`/partner-forms/${existingApplication.id}`);
+        return;
+      }
       return;
     }
 
@@ -237,6 +283,7 @@ export default function DetailsLayout({
       setApplyError('Erro ao iniciar candidatura. Tente novamente.');
     }
   };
+
 
   React.useEffect(() => {
     if (user && pendingApply && activeProfileId) {
@@ -809,19 +856,35 @@ export default function DetailsLayout({
       const floatShell = "fixed bottom-6 left-4 right-4 md:left-8 md:right-8 z-[200] flex flex-col items-stretch gap-2";
       const btnBase = "w-full h-14 rounded-full font-black text-base flex items-center justify-center gap-2 transition-all duration-200";
       const shadow = isPartner ? 'shadow-[#7030C2]/40' : 'shadow-[#3092BB]/40';
-      const label = isPartner ? 'Candidatar Agora' : 'Quero me Candidatar';
+      
+      let label = isPartner ? 'Candidatar Agora' : 'Quero me Candidatar';
+      let isDisabled = applying || loadingApplication;
+      
+      if (isPartner && existingApplication) {
+        const status = existingApplication.status;
+        if (status === 'DRAFT') {
+          label = 'Continuar Rascunho';
+        } else if (status === 'redirected') {
+          label = 'Acessar Link de Inscrição';
+        } else if (['SUBMITTED', 'IN_REVIEW', 'APPROVED'].includes(status)) {
+          label = 'Já Candidatado';
+          isDisabled = true;
+        } else if (status === 'REJECTED') {
+          label = 'Tentar Novamente';
+        }
+      }
 
       return (
         <div className={floatShell}>
           {applyError && <p className="text-center text-xs text-red-500 font-medium bg-white px-3 py-1 rounded-full shadow-md">{applyError}</p>}
           <button
             onClick={handleApply}
-            disabled={applying}
-            className={`${btnBase} text-white shadow-2xl ${shadow} active:scale-95 disabled:opacity-70`}
+            disabled={isDisabled}
+            className={`${btnBase} text-white shadow-2xl ${shadow} active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed`}
             style={{ background: brandColor }}
           >
-            {applying ? <Loader2 size={22} className="animate-spin" /> : (
-              <>{label}{opportunity.external_redirect?.enabled && <ExternalLink size={18} />}</>
+            {applying || loadingApplication ? <Loader2 size={22} className="animate-spin" /> : (
+              <>{label}{(opportunity.external_redirect?.enabled || (existingApplication?.status === 'redirected')) && <ExternalLink size={18} />}</>
             )}
           </button>
         </div>

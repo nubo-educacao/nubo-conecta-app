@@ -8,6 +8,8 @@ import AppShell from "@/components/layout/AppShell";
 import ApplicationStepper from "@/components/ApplicationStepper";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/contexts/ProfileContext";
+
 
 interface ApplicationCard {
   id: string;
@@ -47,12 +49,15 @@ const SHOW_STEPPER_FOR: AppStatus[] = ["SUBMITTED", "IN_REVIEW", "APPROVED"];
 
 export default function CandidaturasPage() {
   const { user, setShowAuthModal } = useAuth();
+  const { activeProfileId } = useProfile();
   const router = useRouter();
   const [applications, setApplications] = useState<ApplicationCard[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
+
+    const profileId = activeProfileId || user.id;
 
     supabase
       .from("student_applications")
@@ -66,7 +71,7 @@ export default function CandidaturasPage() {
           )
         )
       `)
-      .eq("user_id", user.id)
+      .eq("user_id", profileId)
       .order("updated_at", { ascending: false })
       .then(({ data }: { data: any[] | null }) => {
         const mapped = (data || []).map((row: Record<string, unknown>) => {
@@ -90,7 +95,7 @@ export default function CandidaturasPage() {
         setApplications(mapped);
         setLoading(false);
       });
-  }, [user]);
+  }, [user, activeProfileId]);
 
   const handleCardClick = (app: ApplicationCard) => {
     router.push(`/partner-forms/${app.id}`);
