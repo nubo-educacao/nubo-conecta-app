@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, ArrowLeft, CheckCircle2, User, Users } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle2, User, Users, ExternalLink } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import PartnerFormEngine, { type PartnerStep } from "@/components/forms/PartnerFormEngine";
 import { type PartnerFormField } from "@/components/forms/FormFieldRenderer";
@@ -397,31 +397,86 @@ export default function PartnerFormsPage() {
   }
 
   if (phase === "submitted") {
+    const isRedirected = application?.status === 'redirected';
+    const redirectUrl = application?.external_redirect?.url;
+
     return (
-      <AppShell title="Candidatura enviada">
-        <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+      <AppShell title={isRedirected ? "Redirecionamento" : "Candidatura enviada"}>
+        <div className="flex flex-col items-center justify-center py-16 md:py-24 px-4 sm:px-6">
           <motion.div
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4"
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="w-full max-w-md bg-white rounded-3xl p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/50 flex flex-col items-center text-center relative overflow-hidden"
           >
-            <CheckCircle2 size={32} className="text-green-500" />
+            {/* Top accent line */}
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#024F86] to-[#38B1E4]" />
+
+            <motion.div
+              initial={{ scale: 0, rotate: -45 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
+              className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6 shadow-inner"
+            >
+              <CheckCircle2 size={40} className="text-green-500" strokeWidth={2.5} />
+            </motion.div>
+
+            <motion.h2 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-2xl font-black text-[#024F86] mb-3 tracking-tight"
+            >
+              {isRedirected ? 'Tudo pronto!' : 'Candidatura enviada!'}
+            </motion.h2>
+
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="text-sm text-[#3A424E]/70 mb-8 leading-relaxed"
+            >
+              {isRedirected ? (
+                <>
+                  Você está sendo redirecionado para o portal oficial de <strong className="text-[#024F86]">{application?.partner_name}</strong>. Finalize sua inscrição por lá.
+                </>
+              ) : (
+                <>
+                  Sua candidatura para <strong className="text-[#024F86]">{application?.partner_name}</strong> foi registrada e seu match foi atualizado com sucesso.
+                </>
+              )}
+            </motion.p>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="flex flex-col w-full gap-3"
+            >
+              {isRedirected && redirectUrl && (
+                <a
+                  href={redirectUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#024F86] to-[#38B1E4] text-white text-sm font-bold shadow-lg shadow-blue-900/20 hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+                >
+                  <ExternalLink size={18} />
+                  Acessar link da inscrição
+                </a>
+              )}
+              
+              <button
+                onClick={() => router.push("/candidaturas")}
+                className={`w-full py-3.5 rounded-full text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                  isRedirected && redirectUrl 
+                    ? "bg-gray-50 text-[#3A424E] border border-gray-200 hover:bg-gray-100 hover:text-[#024F86]" 
+                    : "bg-gradient-to-r from-[#024F86] to-[#38B1E4] text-white shadow-lg shadow-blue-900/20 hover:shadow-xl hover:scale-[1.02]"
+                }`}
+              >
+                Ver minhas candidaturas
+              </button>
+            </motion.div>
           </motion.div>
-          <h2 className="text-lg font-bold text-[#024F86] mb-1">
-            {application?.status === 'redirected' ? 'Redirecionado!' : 'Candidatura enviada!'}
-          </h2>
-          <p className="text-xs text-[#3A424E]/60 mb-6">
-            {application?.status === 'redirected'
-              ? <>Você foi redirecionado para o portal oficial de <strong>{application?.partner_name}</strong>. Finalize sua inscrição por lá.</>
-              : <>Sua candidatura para <strong>{application?.partner_name}</strong> foi registrada e seu match foi atualizado.</>
-            }
-          </p>
-          <button
-            onClick={() => router.push("/candidaturas")}
-            className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#024F86] to-[#38B1E4] text-white text-xs font-bold shadow"
-          >
-            Ver minhas candidaturas
-          </button>
         </div>
       </AppShell>
     );
