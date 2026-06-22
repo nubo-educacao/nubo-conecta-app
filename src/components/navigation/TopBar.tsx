@@ -43,6 +43,7 @@ export default function TopBar({ title }: TopBarProps) {
   const activeProfile = profiles.find((p) => p.id === activeProfileId);
   const userLabel = activeProfile?.full_name ?? user?.email ?? "";
   const userInitial = userLabel.charAt(0).toUpperCase();
+  const onboardingCompleted = user?.user_metadata?.onboarding_completed as boolean | undefined;
 
   function handleProfileClick() {
     if (user) {
@@ -267,14 +268,16 @@ export default function TopBar({ title }: TopBarProps) {
                 )}
 
                 {/* Adicionar dependente */}
-                <button
-                  onClick={handleAddDependent}
-                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm transition-colors hover:bg-black/5"
-                  style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}
-                >
-                  <UserPlus size={15} />
-                  Adicionar dependente
-                </button>
+                {onboardingCompleted && (
+                  <button
+                    onClick={handleAddDependent}
+                    className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm transition-colors hover:bg-black/5"
+                    style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}
+                  >
+                    <UserPlus size={15} />
+                    Adicionar dependente
+                  </button>
+                )}
 
                 {/* Sair */}
                 <div className="border-t border-black/5">

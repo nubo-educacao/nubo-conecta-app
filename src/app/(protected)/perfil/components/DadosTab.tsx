@@ -7,6 +7,7 @@ import {
   GraduationCap as EnemIcon, Users, Globe,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 import { saveUserData, saveUserIncome, saveUserEnemScore } from "@/services/profileService";
 import { useProfile } from "@/contexts/ProfileContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -163,6 +164,8 @@ interface DadosTabProps {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) {
+  const { user } = useAuth();
+  const onboardingCompleted = user?.user_metadata?.onboarding_completed as boolean | undefined;
   const { profiles, refreshProfiles } = useProfile();
   const { openAuthModal, user } = useAuth();
   const [addDependentOpen, setAddDependentOpen] = useState(false);
@@ -398,6 +401,7 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
             <FieldRow label="Cidade" value={endereco.city} editing={editingEnd} name="city" onChange={(n, v) => setEndereco((e) => ({ ...e, [n]: v }))} />
           </div>
         )}
+<<<<<<< HEAD
       </Accordion>
 
       {/* ── Escolaridade ── */}
@@ -583,14 +587,16 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
 
       {/* ── Actions ── */}
       <div className="mt-8 space-y-3">
-        <button
-          onClick={() => setAddDependentOpen(true)}
-          className="flex items-center gap-2 w-full justify-center py-3.5 rounded-2xl bg-white border border-[#E2E8F0] shadow-sm text-sm font-bold transition-all hover:border-[#38B1E4] hover:text-[#38B1E4]"
-          style={{ color: "#3A424E", fontFamily: "Montserrat, sans-serif" }}
-        >
-          <UserPlus size={18} className="text-[#38B1E4]" />
-          Adicionar Dependente
-        </button>
+        {onboardingCompleted && (
+          <button
+            onClick={() => setAddDependentOpen(true)}
+            className="flex items-center gap-2 w-full justify-center py-3.5 rounded-2xl bg-white border border-[#E2E8F0] shadow-sm text-sm font-bold transition-all hover:border-[#38B1E4] hover:text-[#38B1E4]"
+            style={{ color: "#3A424E", fontFamily: "Montserrat, sans-serif" }}
+          >
+            <UserPlus size={18} className="text-[#38B1E4]" />
+            Adicionar Dependente
+          </button>
+        )}
 
         <button
           onClick={async () => {
