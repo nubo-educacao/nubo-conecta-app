@@ -401,7 +401,6 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
             <FieldRow label="Cidade" value={endereco.city} editing={editingEnd} name="city" onChange={(n, v) => setEndereco((e) => ({ ...e, [n]: v }))} />
           </div>
         )}
-<<<<<<< HEAD
       </Accordion>
 
       {/* ── Escolaridade ── */}
