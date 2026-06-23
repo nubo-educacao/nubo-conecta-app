@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { CloudLightning, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import Image from 'next/image';
 import ChatDrawer from './ChatDrawer';
 import { useSystemIntents } from '@/hooks/useSystemIntents';
 import { useAuth } from '@/contexts/AuthContext';
@@ -77,7 +78,7 @@ export default function ChatFAB() {
       {/* FAB button */}
       <button
         onClick={handleToggle}
-        className="fixed z-30 flex items-center justify-center rounded-full shadow-lg transition-all hover:scale-105 active:scale-95"
+        className="fixed z-30 flex items-center justify-center rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 overflow-hidden"
         style={{
           bottom: 'calc(env(safe-area-inset-bottom) + 112px)',
           right: '16px',
@@ -96,7 +97,13 @@ export default function ChatFAB() {
         {isOpen ? (
           <X size={22} style={{ color: '#38B1E4' }} />
         ) : (
-          <CloudLightning size={22} color="white" />
+          <Image
+            src="/assets/cloudinha.jpeg"
+            alt="Cloudinha"
+            width={52}
+            height={52}
+            className="rounded-full object-cover w-full h-full"
+          />
         )}
 
         {/* Badge de notificação */}

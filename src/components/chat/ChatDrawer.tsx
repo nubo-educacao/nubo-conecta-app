@@ -6,7 +6,8 @@
 //   Desktop: fixed side panel (right, 380px)
 
 import { useEffect, useRef } from 'react';
-import { X, CloudLightning } from 'lucide-react';
+import { X } from 'lucide-react';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatMessageList from './ChatMessageList';
@@ -133,9 +134,15 @@ export default function ChatDrawer({ onClose, initialMessages = [] }: ChatDrawer
           <div className="flex items-center justify-between px-4 py-3 border-b border-nubo-line/50">
             <div className="flex items-center gap-2.5">
               <div
-                className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-nubo-primary to-nubo-primary-dark shadow-sm"
+                className="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden shadow-sm"
               >
-                <CloudLightning size={16} color="white" />
+                <Image
+                  src="/assets/cloudinha.jpeg"
+                  alt="Cloudinha"
+                  width={32}
+                  height={32}
+                  className="object-cover w-full h-full"
+                />
               </div>
               <div className="flex flex-col">
                 <p className="text-sm font-bold leading-tight text-nubo-text-head font-sans">
