@@ -99,7 +99,7 @@ export default function ChatFAB() {
         ) : (
           <div className="relative w-full h-full rounded-full overflow-hidden">
             <Image
-              src="/assets/cloudinha.png"
+              src="/assets/cloudinha.jpeg"
               alt="Cloudinha"
               fill
               className="object-cover"

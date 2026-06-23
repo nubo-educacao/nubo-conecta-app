@@ -135,7 +135,7 @@ export default function ChatDrawer({ onClose, initialMessages = [] }: ChatDrawer
             <div className="flex items-center gap-2.5">
               <div className="relative w-8 h-8 rounded-full overflow-hidden shadow-sm border border-nubo-primary/10">
                 <Image
-                  src="/assets/cloudinha.png"
+                  src="/assets/cloudinha.jpeg"
                   alt="Cloudinha Avatar"
                   fill
                   className="object-cover"

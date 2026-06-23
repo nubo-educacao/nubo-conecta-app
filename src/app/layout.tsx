@@ -54,9 +54,9 @@ export const metadata: Metadata = {
     "plataforma gratuita para estudantes"
   ],
   icons: {
-    icon: "/assets/cloudinha.png",
-    shortcut: "/assets/cloudinha.png",
-    apple: "/assets/cloudinha.png",
+    icon: "/assets/cloudinha.jpeg",
+    shortcut: "/assets/cloudinha.jpeg",
+    apple: "/assets/cloudinha.jpeg",
   },
   openGraph: {
     title: "Nubo Conecta | Seu guia para as melhores oportunidades educacionais",
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     siteName: "Nubo Conecta",
     images: [
       {
-        url: "/assets/cloudinha.png",
+        url: "/assets/cloudinha.jpeg",
         width: 512,
         height: 512,
         alt: "Cloudinha - Assistente de Educação do Nubo",
@@ -77,7 +77,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: "Nubo Conecta | Seu guia para as melhores oportunidades educacionais",
     description: "O Nubo Conecta estudantes a oportunidades reais de educação. Encontre bolsas de estudo, programas educacionais e caminhos para ingressar na universidade.",
-    images: ["/assets/cloudinha.png"],
+    images: ["/assets/cloudinha.jpeg"],
   },
 };
 
