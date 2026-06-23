@@ -8,6 +8,7 @@
 import { useEffect, useRef } from 'react';
 import { X, CloudLightning } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatMessageList from './ChatMessageList';
 import ChatInput from './ChatInput';
@@ -132,10 +133,13 @@ export default function ChatDrawer({ onClose, initialMessages = [] }: ChatDrawer
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-nubo-line/50">
             <div className="flex items-center gap-2.5">
-              <div
-                className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-nubo-primary to-nubo-primary-dark shadow-sm"
-              >
-                <CloudLightning size={16} color="white" />
+              <div className="relative w-8 h-8 rounded-full overflow-hidden shadow-sm border border-nubo-primary/10">
+                <Image
+                  src="/assets/cloudinha.png"
+                  alt="Cloudinha Avatar"
+                  fill
+                  className="object-cover"
+                />
               </div>
               <div className="flex flex-col">
                 <p className="text-sm font-bold leading-tight text-nubo-text-head font-sans">
