@@ -10,7 +10,6 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { saveUserData, saveUserIncome, saveUserEnemScore } from "@/services/profileService";
 import { useProfile } from "@/contexts/ProfileContext";
-import { useAuth } from "@/contexts/AuthContext";
 import AddDependentSheet from "@/components/profile/AddDependentSheet";
 import type { PerfilData } from "../page";
 
@@ -164,10 +163,9 @@ interface DadosTabProps {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) {
-  const { user } = useAuth();
+  const { user, openAuthModal } = useAuth();
   const onboardingCompleted = user?.user_metadata?.onboarding_completed as boolean | undefined;
   const { profiles, refreshProfiles } = useProfile();
-  const { openAuthModal, user } = useAuth();
   const [addDependentOpen, setAddDependentOpen] = useState(false);
 
   // ── Dados Pessoais ─────────────────────────────────────────────────────────
