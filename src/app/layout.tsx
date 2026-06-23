@@ -8,12 +8,77 @@ import CloudBackground from "@/components/CloudBackground";
 import ChatFAB from "@/components/chat/ChatFAB";
 import GlobalAuthModal from "@/components/auth/GlobalAuthModal";
 import Script from "next/script";
+import Footer from "@/components/layout/Footer";
 
 const montserrat = Montserrat({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Nubo Conecta",
-  description: "Sua ponte para oportunidades educacionais",
+  title: "Nubo Conecta | Seu guia para as melhores oportunidades educacionais",
+  description: "O Nubo Conecta estudantes a oportunidades reais de educação. Encontre bolsas de estudo, programas educacionais e caminhos para ingressar na universidade.",
+  keywords: [
+    "ENEM",
+    "nota do ENEM",
+    "acesso ao ensino superior",
+    "entrar na faculdade",
+    "como entrar na universidade",
+    "SISU",
+    "simulador SISU",
+    "nota de corte",
+    "minha nota passa",
+    "estratégia SISU",
+    "lista de espera SISU",
+    "vagas SISU",
+    "ProUni",
+    "bolsa ProUni",
+    "bolsa de estudo faculdade",
+    "bolsas de estudo",
+    "oportunidades educacionais",
+    "programas para estudantes",
+    "oportunidades para ensino médio",
+    "plataforma de bolsas",
+    "programas educacionais",
+    "iniciativas educacionais",
+    "institutos educacionais",
+    "projetos para estudantes",
+    "processo seletivo estudante",
+    "inscrição programa educacional",
+    "inscrição bolsa de estudo",
+    "seleção para estudantes",
+    "orientação educacional",
+    "planejamento para faculdade",
+    "escolher curso",
+    "escolher faculdade",
+    "Nubo Conecta",
+    "Cloudinha",
+    "Nubo Educação",
+    "plataforma gratuita para estudantes"
+  ],
+  icons: {
+    icon: "/assets/cloudinha.png",
+    shortcut: "/assets/cloudinha.png",
+    apple: "/assets/cloudinha.png",
+  },
+  openGraph: {
+    title: "Nubo Conecta | Seu guia para as melhores oportunidades educacionais",
+    description: "O Nubo Conecta estudantes a oportunidades reais de educação. Encontre bolsas de estudo, programas educacionais e caminhos para ingressar na universidade.",
+    type: "website",
+    locale: "pt_BR",
+    siteName: "Nubo Conecta",
+    images: [
+      {
+        url: "/assets/cloudinha.png",
+        width: 512,
+        height: 512,
+        alt: "Cloudinha - Assistente de Educação do Nubo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "Nubo Conecta | Seu guia para as melhores oportunidades educacionais",
+    description: "O Nubo Conecta estudantes a oportunidades reais de educação. Encontre bolsas de estudo, programas educacionais e caminhos para ingressar na universidade.",
+    images: ["/assets/cloudinha.png"],
+  },
 };
 
 export const viewport = {
@@ -66,8 +131,11 @@ fbq('track', 'PageView');
         <AuthProvider>
           <ProfileProvider>
             <FavoritesProvider>
-              <div className="relative z-10 min-h-screen">
-                {children}
+              <div className="relative z-10 min-h-screen flex flex-col">
+                <main className="flex-grow">
+                  {children}
+                </main>
+                <Footer />
               </div>
               <ChatFAB />
               <GlobalAuthModal />

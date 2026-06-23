@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/contexts/ProfileContext";
@@ -43,7 +44,6 @@ export default function TopBar({ title }: TopBarProps) {
   const activeProfile = profiles.find((p) => p.id === activeProfileId);
   const userLabel = activeProfile?.full_name ?? user?.email ?? "";
   const userInitial = userLabel.charAt(0).toUpperCase();
-  const onboardingCompleted = user?.user_metadata?.onboarding_completed as boolean | undefined;
 
   function handleProfileClick() {
     if (user) {
@@ -82,21 +82,15 @@ export default function TopBar({ title }: TopBarProps) {
         <div className="flex items-center justify-between h-14 px-4 max-w-[1200px] mx-auto">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0" aria-label="Home">
-            {title ? (
-              <h1
-                className="text-base font-bold"
-                style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}
-              >
-                {title}
-              </h1>
-            ) : (
-              <span
-                className="text-base font-bold whitespace-nowrap"
-                style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}
-              >
-                Nubo Conecta
-              </span>
-            )}
+            <div className="relative h-7 w-28 md:h-8 md:w-32">
+              <Image
+                src="/assets/logo.png"
+                alt="Nubo Conecta"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
           </Link>
 
           {/* Desktop nav */}
@@ -268,16 +262,14 @@ export default function TopBar({ title }: TopBarProps) {
                 )}
 
                 {/* Adicionar dependente */}
-                {onboardingCompleted && (
-                  <button
-                    onClick={handleAddDependent}
-                    className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm transition-colors hover:bg-black/5"
-                    style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}
-                  >
-                    <UserPlus size={15} />
-                    Adicionar dependente
-                  </button>
-                )}
+                <button
+                  onClick={handleAddDependent}
+                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm transition-colors hover:bg-black/5"
+                  style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}
+                >
+                  <UserPlus size={15} />
+                  Adicionar dependente
+                </button>
 
                 {/* Sair */}
                 <div className="border-t border-black/5">
