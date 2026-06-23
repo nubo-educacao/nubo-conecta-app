@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { CloudLightning, X } from 'lucide-react';
+import Image from 'next/image';
 import ChatDrawer from './ChatDrawer';
 import { useSystemIntents } from '@/hooks/useSystemIntents';
 import { useAuth } from '@/contexts/AuthContext';
@@ -96,7 +97,14 @@ export default function ChatFAB() {
         {isOpen ? (
           <X size={22} style={{ color: '#38B1E4' }} />
         ) : (
-          <CloudLightning size={22} color="white" />
+          <div className="relative w-full h-full rounded-full overflow-hidden">
+            <Image
+              src="/assets/cloudinha.png"
+              alt="Cloudinha"
+              fill
+              className="object-cover"
+            />
+          </div>
         )}
 
         {/* Badge de notificação */}
