@@ -23,6 +23,7 @@ import OpportunityCarousel from '@/components/home/OpportunityCarousel';
 import { supabase } from '@/lib/supabase';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFavorites } from '@/contexts/FavoritesContext';
 import { createApplication, getExistingApplication } from '@/app/(app)/oportunidades/[id]/actions';
 
 type SisuVacancyRow = Record<string, unknown>;
@@ -54,6 +55,8 @@ export default function DetailsLayout({
   const router = useRouter();
   const { activeProfileId } = useProfile();
   const { user, openAuthModal } = useAuth();
+  const { isFavorited: isFavoritedContext, toggleFavorite } = useFavorites();
+  const isActuallyFavorited = isFavorited !== undefined ? isFavorited : isFavoritedContext(opportunity.id);
   const [pendingApply, setPendingApply] = React.useState(false);
   const [isRegistrationOpen, setIsRegistrationOpen] = React.useState<boolean | null>(null);
   const [registrationDates, setRegistrationDates] = React.useState<{ start: string; end: string } | null>(null);
@@ -412,10 +415,20 @@ export default function DetailsLayout({
               <Share2 size={18} />
             </button>
             <button
-              onClick={onFavorite}
+              onClick={() => {
+                if (!user) {
+                  openAuthModal('LOGIN');
+                  return;
+                }
+                if (onFavorite) {
+                  onFavorite();
+                } else {
+                  toggleFavorite(opportunity.id);
+                }
+              }}
               className="size-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 hover:bg-white/30 transition-all"
             >
-              <Heart size={20} className={cn(isFavorited && 'fill-red-500 text-red-500 border-none')} />
+              <Heart size={20} className={cn(isActuallyFavorited && 'fill-red-500 text-red-500 border-none')} />
             </button>
           </div>
         </div>
@@ -457,7 +470,7 @@ export default function DetailsLayout({
         </div>
 
         {/* Match Score Circular Badge */}
-        {opportunity.match_score !== undefined && (
+        {opportunity.match_score != null && Number(opportunity.match_score) > 0 && (
           <div className="relative size-16 shrink-0">
             <svg className="size-full -rotate-90" viewBox="0 0 36 36">
               <circle cx="18" cy="18" r="16" fill="none" className="stroke-gray-100" strokeWidth="3" />

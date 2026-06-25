@@ -34,6 +34,8 @@ interface UseSystemIntentsReturn {
   pendingMessages: ChatMessage[];
   unreadCount: number;
   hasPriorityMessage: boolean;
+  shouldOpenDrawer: boolean;
+  setShouldOpenDrawer: (v: boolean) => void;
   consumeMessages: () => ChatMessage[];
 }
 
@@ -48,6 +50,7 @@ export function useSystemIntents({
   const [pendingMessages, setPendingMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasPriorityMessage, setHasPriorityMessage] = useState(false);
+  const [shouldOpenDrawer, setShouldOpenDrawer] = useState(false);
 
   // Rastreia qual rota+userId já foi disparado para evitar duplicatas
   // Formato: "userId::pathname"
@@ -58,6 +61,7 @@ export function useSystemIntents({
     if (isDrawerOpen) {
       setUnreadCount(0);
       setHasPriorityMessage(false);
+      setShouldOpenDrawer(false);
     }
   }, [isDrawerOpen]);
 
@@ -136,6 +140,8 @@ export function useSystemIntents({
           if (event.type === 'intent_metadata') {
             console.log('[SystemIntent] intent_metadata recebido:', event);
             if (event.open_drawer && !isDrawerOpen) {
+              setShouldOpenDrawer(true);
+            } else if (event.pulsate && !isDrawerOpen) {
               setHasPriorityMessage(true);
             }
           }
@@ -198,8 +204,12 @@ export function useSystemIntents({
               if (!isDrawerOpen) setUnreadCount((n) => n + 1);
             }
           }
-          if (event.type === 'intent_metadata' && event.open_drawer && !isDrawerOpen) {
-            setHasPriorityMessage(true);
+          if (event.type === 'intent_metadata') {
+            if (event.open_drawer && !isDrawerOpen) {
+              setShouldOpenDrawer(true);
+            } else if (event.pulsate && !isDrawerOpen) {
+              setHasPriorityMessage(true);
+            }
           }
         }
       } catch (err) {
@@ -263,8 +273,12 @@ export function useSystemIntents({
               if (!isDrawerOpen) setUnreadCount((n) => n + 1);
             }
           }
-          if (event.type === 'intent_metadata' && event.open_drawer && !isDrawerOpen) {
-            setHasPriorityMessage(true);
+          if (event.type === 'intent_metadata') {
+            if (event.open_drawer && !isDrawerOpen) {
+              setShouldOpenDrawer(true);
+            } else if (event.pulsate && !isDrawerOpen) {
+              setHasPriorityMessage(true);
+            }
           }
         }
       } catch (e) {
@@ -287,5 +301,12 @@ export function useSystemIntents({
     return msgs;
   }, [pendingMessages]);
 
-  return { pendingMessages, unreadCount, hasPriorityMessage, consumeMessages };
+  return { 
+    pendingMessages, 
+    unreadCount, 
+    hasPriorityMessage,
+    shouldOpenDrawer,
+    setShouldOpenDrawer,
+    consumeMessages 
+  };
 }

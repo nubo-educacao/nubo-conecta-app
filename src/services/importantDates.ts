@@ -13,6 +13,8 @@ export interface IImportantDate {
   description: string | null;
   /** Data principal para exibição — mapeada de start_date */
   date: string;
+  /** Data final do período, se houver */
+  endDate?: string;
   category: ImportantDateCategory;
   /** Derivado do campo `type` — true quando type indica urgência/prazo */
   is_urgent: boolean;
@@ -44,6 +46,11 @@ function mapTypeToCategory(type: string): ImportantDateCategory {
   if (normalized === 'green')  return 'green';
   if (normalized === 'blue')   return 'blue';
 
+  // Mapeamento específico solicitado pelo Design
+  if (normalized.includes('prouni')) return 'purple';
+  if (normalized.includes('sisu')) return 'blue';
+  if (['partner', 'parceiro', 'instituicao', 'instituição'].some(k => normalized.includes(k))) return 'orange';
+
   // Mapeamento semântico
   if (['deadline', 'prazo', 'inscricao', 'inscrição'].some(k => normalized.includes(k))) return 'orange';
   if (['warning', 'aviso', 'alerta', 'urgente'].some(k => normalized.includes(k))) return 'purple';
@@ -64,6 +71,7 @@ function mapRowToDate(row: ImportantDateRow): IImportantDate {
     title:       row.title,
     description: row.description,
     date:        row.start_date,          // UI usa start_date como data principal
+    endDate:     row.end_date || undefined,
     category:    mapTypeToCategory(row.type),
     is_urgent:   deriveIsUrgent(row.type),
     created_at:  row.created_at,
