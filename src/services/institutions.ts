@@ -29,6 +29,7 @@ export async function getPartnerInstitutions(): Promise<IPartnerInstitution[]> {
     .from('v_unified_institutions')
     .select('id, name, location, logo_url, cover_url, brand_color, description, type, opp_types')
     .eq('type', 'partner')
+    .not('opp_types', 'is', null)
     .order('name', { ascending: true })
     .limit(12);
 
@@ -85,6 +86,9 @@ export async function getUnifiedInstitutions(filters: InstitutionsFilters = {}):
   } else if (type === 'other') {
     queryBuilder = queryBuilder.eq('type', 'mec');
   }
+
+  // Always filter out institutions with no opportunities
+  queryBuilder = queryBuilder.not('opp_types', 'is', null);
 
   if (q) {
     const searchFilter = `name.ilike.%${q}%,location.ilike.%${q}%,acronym.ilike.%${q}%`;
