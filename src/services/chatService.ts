@@ -15,6 +15,7 @@ export interface ChatEvent {
   tool?: string;
   args?: Record<string, unknown>;
   open_drawer?: boolean;
+  pulsate?: boolean;
   delay_ms?: number;
   output?: string;
   items?: string[];
