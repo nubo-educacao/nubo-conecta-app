@@ -225,10 +225,9 @@ export default function PartnerFormEngine({
             if (nextStep) {
                 onStepChange?.(nextStep.step_name);
                 sendSystemIntent('step_change', {
-                    current_step: nextIndex + 1,
                     step_name: nextStep.step_name,
                     form_type: 'partner_application',
-                    applicationId,
+                    applicationId
                 });
             }
         }
