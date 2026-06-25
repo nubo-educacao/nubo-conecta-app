@@ -34,6 +34,8 @@ interface UseSystemIntentsReturn {
   pendingMessages: ChatMessage[];
   unreadCount: number;
   hasPriorityMessage: boolean;
+  shouldOpenDrawer: boolean;
+  setShouldOpenDrawer: (v: boolean) => void;
   consumeMessages: () => ChatMessage[];
 }
 
