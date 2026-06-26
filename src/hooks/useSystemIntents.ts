@@ -166,7 +166,7 @@ export function useSystemIntents({
 
     const handleCloudinhaIntent = async (e: Event) => {
       const { type: intentType, metadata } = (e as CustomEvent).detail ?? {};
-      if (!intentType || !['step_change', 'validation_error', 'welcome_back'].includes(intentType)) return;
+      if (!intentType || !['step_change', 'validation_error', 'welcome_back', 'submit'].includes(intentType)) return;
 
       console.log('[SystemIntent] CustomEvent recebido:', intentType, metadata);
       let cancelled = false;
