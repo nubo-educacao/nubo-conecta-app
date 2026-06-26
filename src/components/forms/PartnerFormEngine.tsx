@@ -43,6 +43,7 @@ interface FormEngineProps {
     /** When true, final button says "Continuar para inscrição oficial" instead of "Enviar Candidatura" */
     isRedirectFlow?: boolean;
     onStepIndexChange?: (index: number) => void;
+    opportunityId?: string;
 }
 
 const sendSystemIntent = (
@@ -71,6 +72,7 @@ export default function PartnerFormEngine({
     onValidationError,
     isRedirectFlow,
     onStepIndexChange,
+    opportunityId,
 }: FormEngineProps) {
     const methods = useForm({ defaultValues, mode: 'onSubmit' });
     const { handleSubmit, control, trigger, getValues } = methods;
@@ -266,7 +268,12 @@ export default function PartnerFormEngine({
                 // Clean up localStorage draft
                 try { localStorage.removeItem(localStorageKey); } catch { /* noop */ }
                 // Dispatch only AFTER confirmed success
-                sendSystemIntent('submit', { applicationId, partnerName });
+                sendSystemIntent('submit', { 
+                    applicationId, 
+                    partnerName,
+                    opportunity_id: opportunityId || '',
+                    unified_id: opportunityId ? `partner_${opportunityId}` : ''
+                });
             }
         } finally {
             setSubmitting(false);

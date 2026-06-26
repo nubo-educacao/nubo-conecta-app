@@ -556,6 +556,7 @@ export default function PartnerFormsPage() {
               key={formKey}
               partnerName={application.partner_name}
               applicationId={application.id}
+              opportunityId={application.partner_id}
               steps={steps}
               fields={fields}
               defaultValues={defaultValues}

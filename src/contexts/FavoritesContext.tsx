@@ -24,7 +24,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
 
     const { data } = await supabase
       .from("user_favorites")
-      .select("course_id, partner_opportunities_id")
+      .select("course_id, partner_opportunities_id, institution_id")
       .eq("user_id", activeProfileId);
 
     const ids = new Set<string>();
@@ -32,6 +32,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
       data.forEach((f: any) => {
         if (f.course_id) ids.add(`mec_${f.course_id}`);
         if (f.partner_opportunities_id) ids.add(`partner_${f.partner_opportunities_id}`);
+        if (f.institution_id) ids.add(`institution_${f.institution_id}`);
       });
     }
     setFavoriteIds(ids);
@@ -45,7 +46,8 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     if (!activeProfileId) return;
 
     const isPartner = opportunityId.startsWith("partner_");
-    const rawId = opportunityId.replace("partner_", "").replace("mec_", "");
+    const isInstitution = opportunityId.startsWith("institution_");
+    const rawId = opportunityId.replace("partner_", "").replace("mec_", "").replace("institution_", "");
     const currentlyFavorited = favoriteIds.has(opportunityId);
 
     // Optimistic UI Update
@@ -57,7 +59,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (currentlyFavorited) {
-      const column = isPartner ? "partner_opportunities_id" : "course_id";
+      const column = isInstitution ? "institution_id" : (isPartner ? "partner_opportunities_id" : "course_id");
       const { error } = await supabase
         .from("user_favorites")
         .delete()
@@ -74,9 +76,11 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
         });
       }
     } else {
-      const payload = isPartner 
-        ? { user_id: activeProfileId, partner_opportunities_id: rawId }
-        : { user_id: activeProfileId, course_id: rawId };
+      const payload = isInstitution
+        ? { user_id: activeProfileId, institution_id: rawId }
+        : isPartner 
+          ? { user_id: activeProfileId, partner_opportunities_id: rawId }
+          : { user_id: activeProfileId, course_id: rawId };
         
       const { error } = await supabase
         .from("user_favorites")
