@@ -258,7 +258,6 @@ export default function PartnerFormEngine({
     const submitFinalForm = async (data: Record<string, unknown>) => {
         if (submitting) return;
         setSubmitting(true);
-        sendSystemIntent('submit', { applicationId, partnerName });
         try {
             const result = await onSubmitForm(data);
             if (result.success) {
@@ -266,6 +265,8 @@ export default function PartnerFormEngine({
                 setIsSubmitted(true);
                 // Clean up localStorage draft
                 try { localStorage.removeItem(localStorageKey); } catch { /* noop */ }
+                // Dispatch only AFTER confirmed success
+                sendSystemIntent('submit', { applicationId, partnerName });
             }
         } finally {
             setSubmitting(false);

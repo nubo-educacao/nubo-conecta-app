@@ -10,8 +10,8 @@
  * Quando o backend responde:
  *   - A resposta da Cloudinha (real, gerada pelo LLM) é armazenada como pendingMessage
  *   - O FAB exibe um badge com o contador de mensagens não lidas
- *   - Se o backend envia intent_metadata com open_drawer=true, sinaliza hasPriorityMessage
- *     para o FAB exibir animação de pulso — NÃO abre o drawer automaticamente
+ *   - Se o backend envia intent_metadata com open_drawer=true, o drawer é aberto automaticamente
+ *   - Se pulsate=true, o FAB exibe animação de pulso
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -39,6 +39,72 @@ interface UseSystemIntentsReturn {
   consumeMessages: () => ChatMessage[];
 }
 
+/**
+ * Shared helper to stream a system intent and update state.
+ * Returns cleanup function.
+ */
+async function streamIntent(
+  params: Parameters<typeof streamChat>[0],
+  token: string,
+  {
+    isDrawerOpen,
+    setPendingMessages,
+    setUnreadCount,
+    setShouldOpenDrawer,
+    setHasPriorityMessage,
+    cancelled: cancelledRef,
+  }: {
+    isDrawerOpen: boolean;
+    setPendingMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+    setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
+    setShouldOpenDrawer: (v: boolean) => void;
+    setHasPriorityMessage: React.Dispatch<React.SetStateAction<boolean>>;
+    cancelled: { current: boolean };
+  }
+) {
+  const stream = streamChat(params, token);
+  let hasContent = false;
+
+  for await (const event of stream) {
+    if (cancelledRef.current) break;
+
+    if (event.type === 'text' && event.content) {
+      setPendingMessages((prev) => {
+        if (hasContent && prev.length > 0) {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: updated[updated.length - 1].content + event.content,
+          };
+          return updated;
+        }
+        return [...prev, {
+          id: genId(),
+          sender: 'model' as const,
+          content: event.content!,
+          timestamp: new Date(),
+        }];
+      });
+
+      if (!hasContent) {
+        hasContent = true;
+        if (!isDrawerOpen) {
+          setUnreadCount((n) => n + 1);
+        }
+      }
+    }
+
+    if (event.type === 'intent_metadata') {
+      console.log('[SystemIntent] intent_metadata recebido:', event);
+      if (event.open_drawer && !isDrawerOpen) {
+        setShouldOpenDrawer(true);
+      } else if (event.pulsate && !isDrawerOpen) {
+        setHasPriorityMessage(true);
+      }
+    }
+  }
+}
+
 export function useSystemIntents({
   userId,
   profileId,
@@ -53,7 +119,6 @@ export function useSystemIntents({
   const [shouldOpenDrawer, setShouldOpenDrawer] = useState(false);
 
   // Rastreia qual rota+userId já foi disparado para evitar duplicatas
-  // Formato: "userId::pathname"
   const dispatchedRef = useRef<string>('');
 
   // Zerar badge e prioridade quando drawer é aberto
@@ -65,9 +130,8 @@ export function useSystemIntents({
     }
   }, [isDrawerOpen]);
 
-  // Disparar quando pathname OU auth mudam — resolve race condition de auth carregando
+  // Disparar page_context quando pathname OU auth mudam
   useEffect(() => {
-    // Não disparar sem auth
     if (!userId || !accessToken) {
       console.log('[SystemIntent] Aguardando auth...', { userId: !!userId, token: !!accessToken });
       return;
@@ -80,14 +144,14 @@ export function useSystemIntents({
 
     console.log('[SystemIntent] Disparando page_context para:', pathname);
 
-    let cancelled = false;
+    const cancelled = { current: false };
 
-    async function dispatchPageContext() {
+    async function run() {
       try {
         const segments = pathname.split('/').filter(Boolean);
         const resourceId = segments[segments.length - 1] || '';
 
-        const stream = streamChat(
+        await streamIntent(
           {
             chatInput: 'page_context',
             userId,
@@ -100,79 +164,33 @@ export function useSystemIntents({
             },
           },
           accessToken,
+          { isDrawerOpen, setPendingMessages, setUnreadCount, setShouldOpenDrawer, setHasPriorityMessage, cancelled }
         );
-
-        let hasContent = false;
-
-        for await (const event of stream) {
-          if (cancelled) break;
-
-          // Resposta real da Cloudinha (chunks de texto do LLM)
-          if (event.type === 'text' && event.content) {
-            setPendingMessages((prev) => {
-              if (hasContent && prev.length > 0) {
-                // Acumular no último chunk
-                const updated = [...prev];
-                updated[updated.length - 1] = {
-                  ...updated[updated.length - 1],
-                  content: updated[updated.length - 1].content + event.content,
-                };
-                return updated;
-              }
-              // Primeiro chunk — criar nova mensagem
-              return [...prev, {
-                id: genId(),
-                sender: 'model' as const,
-                content: event.content!,
-                timestamp: new Date(),
-              }];
-            });
-
-            if (!hasContent) {
-              hasContent = true;
-              if (!isDrawerOpen) {
-                setUnreadCount((n) => n + 1);
-              }
-            }
-          }
-
-          // Metadados do intent — emitidos pelo backend pós-pipeline (NÃO vai pro agente)
-          if (event.type === 'intent_metadata') {
-            console.log('[SystemIntent] intent_metadata recebido:', event);
-            if (event.open_drawer && !isDrawerOpen) {
-              setShouldOpenDrawer(true);
-            } else if (event.pulsate && !isDrawerOpen) {
-              setHasPriorityMessage(true);
-            }
-          }
-        }
       } catch (e) {
         console.warn('[SystemIntent] Falha ao disparar page_context:', e);
       }
     }
 
-    dispatchPageContext();
-
-    return () => {
-      cancelled = true;
-    };
+    run();
+    return () => { cancelled.current = true; };
   // Intencionalmente inclui userId e accessToken para retentar quando auth carrega
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, userId, accessToken]);
 
-  // Escutar CustomEvents do PartnerFormEngine (step_change, validation_error)
+  // Escutar CustomEvents do PartnerFormEngine e outros componentes
+  // Tipos aceitos: step_change, validation_error, welcome_back, submit, on_error
   useEffect(() => {
     if (!userId || !accessToken) return;
 
     const handleCloudinhaIntent = async (e: Event) => {
       const { type: intentType, metadata } = (e as CustomEvent).detail ?? {};
-      if (!intentType || !['step_change', 'validation_error', 'welcome_back'].includes(intentType)) return;
+      if (!intentType || !['step_change', 'validation_error', 'welcome_back', 'submit'].includes(intentType)) return;
 
       console.log('[SystemIntent] CustomEvent recebido:', intentType, metadata);
-      let cancelled = false;
+      const cancelled = { current: false };
 
       try {
-        const stream = streamChat(
+        await streamIntent(
           {
             chatInput: intentType,
             userId,
@@ -182,47 +200,17 @@ export function useSystemIntents({
             ui_context: { current_page: pathname, page_data: metadata ?? {} },
           },
           accessToken,
+          { isDrawerOpen, setPendingMessages, setUnreadCount, setShouldOpenDrawer, setHasPriorityMessage, cancelled }
         );
-
-        let hasContent = false;
-        for await (const event of stream) {
-          if (cancelled) break;
-          if (event.type === 'text' && event.content) {
-            setPendingMessages((prev) => {
-              if (hasContent && prev.length > 0) {
-                const updated = [...prev];
-                updated[updated.length - 1] = {
-                  ...updated[updated.length - 1],
-                  content: updated[updated.length - 1].content + event.content,
-                };
-                return updated;
-              }
-              return [...prev, { id: genId(), sender: 'model' as const, content: event.content!, timestamp: new Date() }];
-            });
-            if (!hasContent) {
-              hasContent = true;
-              if (!isDrawerOpen) setUnreadCount((n) => n + 1);
-            }
-          }
-          if (event.type === 'intent_metadata') {
-            if (event.open_drawer && !isDrawerOpen) {
-              setShouldOpenDrawer(true);
-            } else if (event.pulsate && !isDrawerOpen) {
-              setHasPriorityMessage(true);
-            }
-          }
-        }
       } catch (err) {
         console.warn('[SystemIntent] Falha ao processar CustomEvent:', err);
       }
-
-      return () => { cancelled = true; };
     };
 
     window.addEventListener('cloudinha-intent', handleCloudinhaIntent);
     return () => window.removeEventListener('cloudinha-intent', handleCloudinhaIntent);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, accessToken]);
+  }, [userId, accessToken, pathname]);
 
   // Tutorial para usuários anônimos: dispara 1x por sessão via sessionStorage
   useEffect(() => {
@@ -236,12 +224,14 @@ export function useSystemIntents({
     const ANON_UUID = '00000000-0000-0000-0000-000000000000';
     const effectiveUserId = userId || ANON_UUID;
     const effectiveProfileId = profileId || ANON_UUID;
+    // Tutorial pode ser disparado sem token (usuário anônimo) — passa string vazia
+    const effectiveToken = accessToken || '';
 
-    let cancelled = false;
+    const cancelled = { current: false };
 
-    async function dispatchTutorial() {
+    async function run() {
       try {
-        const stream = streamChat(
+        await streamIntent(
           {
             chatInput: 'tutorial',
             userId: effectiveUserId,
@@ -250,44 +240,16 @@ export function useSystemIntents({
             intent_type: 'system_intent',
             ui_context: { current_page: pathname },
           },
-          accessToken,
+          effectiveToken,
+          { isDrawerOpen, setPendingMessages, setUnreadCount, setShouldOpenDrawer, setHasPriorityMessage, cancelled }
         );
-
-        let hasContent = false;
-        for await (const event of stream) {
-          if (cancelled) break;
-          if (event.type === 'text' && event.content) {
-            setPendingMessages((prev) => {
-              if (hasContent && prev.length > 0) {
-                const updated = [...prev];
-                updated[updated.length - 1] = {
-                  ...updated[updated.length - 1],
-                  content: updated[updated.length - 1].content + event.content,
-                };
-                return updated;
-              }
-              return [...prev, { id: genId(), sender: 'model' as const, content: event.content!, timestamp: new Date() }];
-            });
-            if (!hasContent) {
-              hasContent = true;
-              if (!isDrawerOpen) setUnreadCount((n) => n + 1);
-            }
-          }
-          if (event.type === 'intent_metadata') {
-            if (event.open_drawer && !isDrawerOpen) {
-              setShouldOpenDrawer(true);
-            } else if (event.pulsate && !isDrawerOpen) {
-              setHasPriorityMessage(true);
-            }
-          }
-        }
       } catch (e) {
         console.warn('[SystemIntent] Falha ao disparar tutorial:', e);
       }
     }
 
-    dispatchTutorial();
-    return () => { cancelled = true; };
+    run();
+    return () => { cancelled.current = true; };
   // Executa apenas 1x na montagem — sessionStorage garante deduplicação entre renders
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
