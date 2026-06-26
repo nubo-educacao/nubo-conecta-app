@@ -210,7 +210,12 @@ export default function OpportunityCard({
           onClick={handleFavorite}
           className="bg-white/30 hover:bg-white/50 backdrop-blur-sm rounded-full flex items-center justify-center size-[32px] transition-all border border-white/40 shadow-sm"
         >
-          <Heart size={16} color="white" fill={isActuallyFavorited ? 'white' : 'none'} strokeWidth={1.5} />
+          <Heart 
+            size={16} 
+            color={isActuallyFavorited ? '#E11D48' : 'white'} 
+            fill={isActuallyFavorited ? '#E11D48' : 'none'} 
+            strokeWidth={1.5} 
+          />
         </button>
       </div>
 
