@@ -6,6 +6,8 @@ import { Heart, MapPin, GraduationCap, Star, BookOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { UnifiedInstitution } from '@/types/institutions';
 import { cn } from '@/lib/utils';
+import { useFavorites } from '@/contexts/FavoritesContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface InstitutionCardProps {
   institution: UnifiedInstitution;
@@ -21,6 +23,15 @@ export default function InstitutionCard({
   const router = useRouter();
   const [imgError, setImgError] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const { isFavorited, toggleFavorite } = useFavorites();
+  const { user, setShowAuthModal } = useAuth();
+  const favorited = isFavorited(`institution_${institution.id}`);
+
+  const handleFavorite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) { setShowAuthModal(true); return; }
+    toggleFavorite(`institution_${institution.id}`);
+  };
 
   const handleViewDetails = () => {
     if (onClick) {
@@ -139,10 +150,16 @@ export default function InstitutionCard({
         isPartner ? "top-[36px]" : "top-[32px]"
       )}>
         <button
-          onClick={(e) => { e.stopPropagation(); }}
+          onClick={handleFavorite}
           className="bg-white/30 hover:bg-white/50 backdrop-blur-sm rounded-full flex items-center justify-center size-[32px] transition-all border border-white/40 shadow-sm"
+          aria-label={favorited ? "Remover dos favoritos" : "Adicionar aos favoritos"}
         >
-          <Heart size={16} color="white" fill="none" strokeWidth={1.5} />
+          <Heart 
+            size={16} 
+            color={favorited ? '#E11D48' : 'white'} 
+            fill={favorited ? '#E11D48' : 'none'} 
+            strokeWidth={1.5} 
+          />
         </button>
       </div>
 
