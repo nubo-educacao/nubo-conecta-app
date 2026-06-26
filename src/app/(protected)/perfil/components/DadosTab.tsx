@@ -417,7 +417,7 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
             {editingEsc && (
               <select
                 value={escolaridade.education}
-                onChange={(e) => setEscolaridade((p) => ({ ...p, education: e.target.value }))}
+                onChange={(e) => setEscolaridade((p) => ({ ...p, education: e.target.value, education_year: '' }))}
                 className={inputCls}
                 style={inputStyle}
               >
@@ -426,7 +426,36 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
               </select>
             )}
           </FieldRow>
-          <FieldRow label="Ano escolar" value={escolaridade.education_year} editing={editingEsc} name="education_year" onChange={(n, v) => setEscolaridade((p) => ({ ...p, [n]: v }))} />
+          {(escolaridade.education === 'Ensino Fundamental' || escolaridade.education === 'Ensino Médio Incompleto') && (
+            <FieldRow label="Ano Escolar" value={escolaridade.education_year} editing={editingEsc} name="education_year" onChange={(n, v) => setEscolaridade((p) => ({ ...p, [n]: v }))}>
+              {editingEsc && (
+                <select
+                  value={escolaridade.education_year}
+                  onChange={(e) => setEscolaridade((p) => ({ ...p, education_year: e.target.value }))}
+                  className={inputCls}
+                  style={inputStyle}
+                >
+                  <option value="">Selecione o ano...</option>
+                  {['1º Ano','2º Ano','3º Ano','4º Ano','5º Ano','6º Ano','7º Ano','8º Ano','9º Ano'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+              )}
+            </FieldRow>
+          )}
+          {escolaridade.education === 'Ensino Superior Incompleto' && (
+            <FieldRow label="Semestre" value={escolaridade.education_year} editing={editingEsc} name="education_year" onChange={(n, v) => setEscolaridade((p) => ({ ...p, [n]: v }))}>
+              {editingEsc && (
+                <select
+                  value={escolaridade.education_year}
+                  onChange={(e) => setEscolaridade((p) => ({ ...p, education_year: e.target.value }))}
+                  className={inputCls}
+                  style={inputStyle}
+                >
+                  <option value="">Selecione o semestre...</option>
+                  {['1º Semestre','2º Semestre','3º Semestre','4º Semestre','5º Semestre','6º Semestre','7º Semestre','8º Semestre','9º Semestre','10º Semestre'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+              )}
+            </FieldRow>
+          )}
         </div>
       </Accordion>
 

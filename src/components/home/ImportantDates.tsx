@@ -1,66 +1,90 @@
+'use client';
+
 // ImportantDates — Sprint 3.5 (rev. Design Review)
 // Seção "Avisos e Datas Importantes".
-// Calendar box: bg-white rounded-full shadow-sm, ícone grafite (#3A424E).
-// Data: texto bold colorido pela categoria — SEM badge/background.
-// AlertCircle vermelho quando is_urgent === true.
+// Mobile: Calendar box com cores dinâmicas e texto bold colorido pela categoria.
+// Desktop: CalendarAccordion interativo completo com AppCalendar e CalendarDatesList (estilo Hub).
+// Cores: ProUni = roxo, Sisu = azul, Parceiros = laranja/amarelo.
 
+import React, { useState } from 'react';
 import { Calendar, AlertCircle } from 'lucide-react';
 import type { IImportantDate, ImportantDateCategory } from '@/services/importantDates';
+import AppCalendar from './AppCalendar';
+import CalendarDatesList from './CalendarDatesList';
 
 const CATEGORY_STYLES: Record<
   ImportantDateCategory,
-  { bg: string; border: string; dateColor: string }
+  { bg: string; border: string; dateColor: string; dot: string; icon: string }
 > = {
   purple: {
-    bg: 'rgba(112,48,194,0.07)',
-    border: 'rgba(112,48,194,0.18)',
-    dateColor: '#7030C2',
-  },
-  orange: {
-    bg: 'rgba(234,88,12,0.07)',
-    border: 'rgba(234,88,12,0.18)',
-    dateColor: '#EA580C',
-  },
-  green: {
-    bg: 'rgba(22,163,74,0.07)',
-    border: 'rgba(22,163,74,0.18)',
-    dateColor: '#16A34A',
+    bg: 'rgba(151, 71, 255, 0.1)',
+    border: 'rgba(151, 71, 255, 0.2)',
+    dateColor: '#9747FF',
+    dot: 'text-[#9747FF]',
+    icon: 'text-[#9747FF]',
   },
   blue: {
-    bg: 'rgba(56,177,228,0.07)',
-    border: 'rgba(56,177,228,0.18)',
+    bg: 'rgba(56, 177, 228, 0.1)',
+    border: 'rgba(56, 177, 228, 0.2)',
     dateColor: '#38B1E4',
+    dot: 'text-[#38B1E4]',
+    icon: 'text-[#38B1E4]',
+  },
+  orange: {
+    bg: 'rgba(255, 153, 0, 0.1)',
+    border: 'rgba(255, 153, 0, 0.2)',
+    dateColor: '#FF9900',
+    dot: 'text-[#FF9900]',
+    icon: 'text-[#FF9900]',
+  },
+  green: {
+    bg: 'rgba(22, 163, 74, 0.1)',
+    border: 'rgba(22, 163, 74, 0.2)',
+    dateColor: '#16A34A',
+    dot: 'text-[#16A34A]',
+    icon: 'text-[#16A34A]',
   },
 };
 
-function formatDate(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat('pt-BR', {
-      day: '2-digit',
-      month: 'short',
-    }).format(new Date(iso));
-  } catch {
-    return iso;
+const formatMonth = (date: Date) => {
+  const month = date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
+  return month.charAt(0).toUpperCase() + month.slice(1);
+};
+
+const formatDateRange = (start: string, end?: string) => {
+  const d1 = new Date(start);
+  const d1Str = `${d1.getDate().toString().padStart(2, '0')} ${formatMonth(d1)}`;
+  
+  if (end) {
+    const d2 = new Date(end);
+    const d2Str = `${d2.getDate().toString().padStart(2, '0')} ${formatMonth(d2)}`;
+    return `${d1Str} - ${d2Str}`;
   }
-}
+
+  return d1Str;
+};
 
 interface ImportantDatesProps {
   dates: IImportantDate[];
 }
 
 export default function ImportantDates({ dates }: ImportantDatesProps) {
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<Date | undefined>();
+
   if (dates.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-3 px-4">
+    <section className="flex flex-col gap-3 px-4 w-full">
       <h2
         className="text-base font-bold"
         style={{ color: '#3a424e', fontFamily: 'Montserrat, sans-serif' }}
       >
-        Avisos e Datas Importantes
+        Datas importantes
       </h2>
 
-      <div className="flex flex-col gap-3 md:grid md:grid-cols-2 lg:grid-cols-3">
+      {/* MOBILE VERSION (Cards) */}
+      <div className="flex flex-col gap-3 md:hidden">
         {dates.map((item) => {
           const styles = CATEGORY_STYLES[item.category] ?? CATEGORY_STYLES.blue;
           return (
@@ -111,12 +135,30 @@ export default function ImportantDates({ dates }: ImportantDatesProps) {
                   className="text-xs font-bold mt-1.5"
                   style={{ color: styles.dateColor, fontFamily: 'Montserrat, sans-serif' }}
                 >
-                  {formatDate(item.date)}
+                  {formatDateRange(item.date, item.endDate)}
                 </p>
               </div>
             </div>
           );
         })}
+      </div>
+
+      {/* DESKTOP VERSION (Calendar side-by-side with dates list) */}
+      <div className="hidden md:block w-full">
+        <div className="flex flex-col md:flex-row gap-6 items-stretch w-full">
+          <div className="shrink-0 flex flex-col">
+            <AppCalendar
+              dates={dates}
+              selectedMonth={selectedMonth}
+              onMonthChange={setSelectedMonth}
+              selectedDay={selectedDay}
+              onDaySelect={setSelectedDay}
+            />
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col">
+            <CalendarDatesList dates={dates} selectedMonth={selectedMonth} />
+          </div>
+        </div>
       </div>
     </section>
   );

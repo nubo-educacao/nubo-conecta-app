@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { CloudLightning, X } from 'lucide-react';
 import Image from 'next/image';
 import ChatDrawer from './ChatDrawer';
@@ -26,11 +26,18 @@ export default function ChatFAB() {
   const [drawerMessages, setDrawerMessages] = useState<ChatMessage[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  // pendingMessagesRef: sempre tem o valor mais atual do pendingMessages
+  // pendingMessagesRef: sempre tem o value mais atual do pendingMessages
   // Usado pelo onOpen para leitura síncrona sem depender de closure
   const pendingMessagesRef = useRef<ChatMessage[]>([]);
 
-  const { pendingMessages, unreadCount, hasPriorityMessage } = useSystemIntents({
+  const { 
+    pendingMessages, 
+    unreadCount, 
+    hasPriorityMessage, 
+    shouldOpenDrawer, 
+    setShouldOpenDrawer,
+    consumeMessages 
+  } = useSystemIntents({
     userId: user?.id ?? '',
     profileId: user?.id ?? '',
     sessionId,
@@ -40,6 +47,14 @@ export default function ChatFAB() {
 
   // Sincronizar ref com o state atual (síncrono, sem delay de useEffect)
   pendingMessagesRef.current = pendingMessages;
+
+  useEffect(() => {
+    if (shouldOpenDrawer) {
+      setDrawerMessages([...pendingMessagesRef.current]);
+      setIsOpen(true);
+      setShouldOpenDrawer(false);
+    }
+  }, [shouldOpenDrawer, setShouldOpenDrawer]);
 
   function handleToggle() {
     if (isOpen) {

@@ -447,6 +447,12 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         errs.education = true;
         errorDetails.push({ field: 'Escolaridade', error_message: 'Selecione o seu nível de escolaridade.' });
       }
+      const requiresYear = education === 'Ensino Fundamental' || education === 'Ensino Médio Incompleto' || education === 'Ensino Superior Incompleto';
+      if (requiresYear && !educationYear) {
+        errs.educationYear = true;
+        const label = education === 'Ensino Superior Incompleto' ? 'Semestre' : 'Ano Escolar';
+        errorDetails.push({ field: label, error_message: `Selecione o ${label} atual.` });
+      }
       if (!outsideBrazil) {
         if (zipCode.length < 8) {
           errs.zipCode = true;
@@ -737,11 +743,29 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               </div>
               <div className="md:col-span-2">
                 <FieldLabel label="Escolaridade" icon={GraduationCap} required error={errors.education} htmlFor="education" />
-                <select id="education" className={inputCls} value={education} onChange={e => setEducation(e.target.value)}>
+                <select id="education" className={inputCls} value={education} onChange={e => { setEducation(e.target.value); setEducationYear(''); }}>
                   <option value="">Selecione...</option>
                   {EDUCATION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               </div>
+              {(education === 'Ensino Fundamental' || education === 'Ensino Médio Incompleto') && (
+                <div className="md:col-span-2">
+                  <FieldLabel label="Ano Escolar" icon={GraduationCap} required error={errors.educationYear} htmlFor="educationYear" />
+                  <select id="educationYear" className={inputCls} value={educationYear} onChange={e => setEducationYear(e.target.value)}>
+                    <option value="">Selecione o ano...</option>
+                    {['1º Ano','2º Ano','3º Ano','4º Ano','5º Ano','6º Ano','7º Ano','8º Ano','9º Ano'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+              )}
+              {education === 'Ensino Superior Incompleto' && (
+                <div className="md:col-span-2">
+                  <FieldLabel label="Semestre" icon={GraduationCap} required error={errors.educationYear} htmlFor="educationYear" />
+                  <select id="educationYear" className={inputCls} value={educationYear} onChange={e => setEducationYear(e.target.value)}>
+                    <option value="">Selecione o semestre...</option>
+                    {['1º Semestre','2º Semestre','3º Semestre','4º Semestre','5º Semestre','6º Semestre','7º Semestre','8º Semestre','9º Semestre','10º Semestre'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="pt-4 border-t border-white/20">
