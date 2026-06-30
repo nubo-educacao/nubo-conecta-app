@@ -9,6 +9,8 @@ import { RefreshCcw, MapPin } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import MatchScoreBadge from './MatchScoreBadge';
 import type { MatchResult } from '@/services/matchService';
+import { registerPartnerClick } from '@/services/partnersClickService';
+import Link from 'next/link';
 
 interface EnrichedMatch extends MatchResult {
   title: string;
@@ -90,9 +92,15 @@ export default function MatchResults({ results, onRegenerate, isLoading }: Match
       {/* Results grid */}
       <div className="flex flex-col gap-3">
         {enriched.map((item) => (
-          <a
+          <Link
             key={item.unified_opportunity_id}
             href={`/oportunidades/${item.unified_opportunity_id}`}
+            onClick={(e) => {
+              if (item.is_partner) {
+                const partnerId = item.unified_opportunity_id.replace('partner_', '');
+                registerPartnerClick(partnerId).catch(console.error);
+              }
+            }}
             className="group flex items-center gap-4 rounded-2xl p-4 transition-all hover:shadow-md"
             style={{
               background: 'rgba(255,255,255,0.7)',
@@ -170,7 +178,7 @@ export default function MatchResults({ results, onRegenerate, isLoading }: Match
                 <span className="truncate">{item.location}</span>
               </div>
             </div>
-          </a>
+          </Link>
         ))}
       </div>
 

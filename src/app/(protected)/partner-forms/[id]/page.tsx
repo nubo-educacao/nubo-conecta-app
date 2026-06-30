@@ -206,18 +206,21 @@ export default function PartnerFormsPage() {
   // ── Eligibility computation ─────────────────────────────────────────────────
   const computeEligibility = (data: Record<string, unknown>) => {
     const criterionFields = fields.filter((f) => f.is_criterion && f.criterion_rule && f.criterion_type !== 'priority');
-    return criterionFields.map((f) => {
-      const userAnswer = data[f.field_name];
-      let met = false;
-      try {
-        met = !!evaluateJsonLogic(f.criterion_rule!, { [f.field_name]: userAnswer });
-      } catch { /* rule evaluation failed — treat as unmet */ }
-      return {
-        question_text: f.question_text,
-        met,
-        user_answer: userAnswer != null ? String(userAnswer) : undefined,
-      };
-    });
+    
+    return criterionFields
+      .filter((f) => data[f.field_name] !== undefined && data[f.field_name] !== null)
+      .map((f) => {
+        const userAnswer = data[f.field_name];
+        let met = false;
+        try {
+          met = !!evaluateJsonLogic(f.criterion_rule!, { [f.field_name]: userAnswer });
+        } catch { /* rule evaluation failed — treat as unmet */ }
+        return {
+          question_text: f.question_text,
+          met,
+          user_answer: String(userAnswer),
+        };
+      });
   };
 
   // ── Final submit ───────────────────────────────────────────────────────────
@@ -250,10 +253,16 @@ export default function PartnerFormsPage() {
       // Save eligibility results and map data to user profile
       const userId = selectedProfileId || user!.id;
 
+      // Save eligibility results directly to student_applications
+      if (eligibilityResults && eligibilityResults.length > 0) {
+        await supabase
+          .from("student_applications")
+          .update({ eligibility_results: eligibilityResults })
+          .eq("id", application.id);
+      }
+
       // 1. Build profile updates from field mappings
-      const profileUpdates: Record<string, any> = {
-        eligibility_results: eligibilityResults,
-      };
+      const profileUpdates: Record<string, any> = {};
 
       const userPrefUpdates: Record<string, any> = {};
 
