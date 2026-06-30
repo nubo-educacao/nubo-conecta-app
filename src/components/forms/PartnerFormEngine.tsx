@@ -130,7 +130,19 @@ export default function PartnerFormEngine({
                 }
             }
         }, 30000); // 30 seconds
-        return () => clearInterval(interval);
+    }, [onSaveDraft, getValues]);
+
+    // Save draft on unmount (e.g. when navigating away via "Minhas candidaturas")
+    useEffect(() => {
+        return () => {
+            const currentValues = getValues();
+            const currentValuesStr = JSON.stringify(currentValues);
+            if (currentValuesStr !== lastSavedValuesRef.current) {
+                onSaveDraft(currentValues as Record<string, unknown>).catch(err => {
+                    console.error("Failed to save draft on unmount:", err);
+                });
+            }
+        };
     }, [onSaveDraft, getValues]);
 
     const evaluationData = useMemo(() => {
