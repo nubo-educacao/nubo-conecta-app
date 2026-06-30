@@ -44,6 +44,7 @@ interface FormEngineProps {
     isRedirectFlow?: boolean;
     onStepIndexChange?: (index: number) => void;
     opportunityId?: string;
+    userContextData?: Record<string, unknown>;
 }
 
 const sendSystemIntent = (
@@ -73,6 +74,7 @@ export default function PartnerFormEngine({
     isRedirectFlow,
     onStepIndexChange,
     opportunityId,
+    userContextData = {},
 }: FormEngineProps) {
     const methods = useForm({ defaultValues, mode: 'onSubmit' });
     const { handleSubmit, control, trigger, getValues } = methods;
@@ -112,7 +114,7 @@ export default function PartnerFormEngine({
     }, [watchedValues, localStorageKey, getValues]);
 
     const evaluationData = useMemo(() => {
-        const flat: Record<string, unknown> = {};
+        const flat: Record<string, unknown> = { ...userContextData };
         Object.keys(liveAnswers).forEach(key => {
             if (!Array.isArray(liveAnswers[key])) flat[key] = liveAnswers[key];
         });
@@ -125,7 +127,7 @@ export default function PartnerFormEngine({
         flat['_iteration_index'] = 0;
         flat['is_first_iteration'] = true;
         return flat;
-    }, [liveAnswers, steps]);
+    }, [liveAnswers, steps, userContextData]);
 
     const visibleSteps = useMemo(() => {
         return steps.filter(s => {

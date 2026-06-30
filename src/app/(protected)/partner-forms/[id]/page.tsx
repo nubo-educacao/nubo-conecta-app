@@ -360,14 +360,12 @@ export default function PartnerFormsPage() {
     try {
       const lsDraft = JSON.parse(localStorage.getItem(localStorageKey) ?? "{}");
       return {
-        ...profileData,
         ...dbAnswers,
         ...mappedProfileData,
         ...lsDraft
       };
     } catch {
       return {
-        ...profileData,
         ...dbAnswers,
         ...mappedProfileData
       };
@@ -566,6 +564,7 @@ export default function PartnerFormsPage() {
               onComputeEligibility={fields.some(f => f.is_criterion) ? computeEligibility : undefined}
               isRedirectFlow={isRedirect}
               onStepIndexChange={setStepIndex}
+              userContextData={profileData}
             />
           )}
         </div>
