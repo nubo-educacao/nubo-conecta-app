@@ -35,29 +35,21 @@ export async function createApplication(
   let prefilledAnswers: Record<string, any> = {};
 
   if (profile) {
-    const { data: oppData } = await supabase
-      .from('partner_opportunities')
-      .select('partner_form_id')
-      .eq('id', partnerOppId)
-      .single();
+    const { data: fields } = await supabase
+      .from('partner_forms')
+      .select('*')
+      .eq('partner_id', partnerOppId);
 
-    if (oppData?.partner_form_id) {
-      const { data: fields } = await supabase
-        .from('partner_form_fields')
-        .select('*')
-        .eq('form_id', oppData.partner_form_id);
-
-      if (fields) {
-        fields.forEach((field: any) => {
-          if (field.mapping_source && field.mapping_source.startsWith('user_profiles.')) {
-            const column = field.mapping_source.split('.')[1];
-            const value = profile[column];
-            if (value !== undefined && value !== null) {
-              prefilledAnswers[field.field_name] = value;
-            }
+    if (fields) {
+      fields.forEach((field: any) => {
+        if (field.mapping_source && field.mapping_source.startsWith('user_profiles.')) {
+          const column = field.mapping_source.split('.')[1];
+          const value = profile[column];
+          if (value !== undefined && value !== null) {
+            prefilledAnswers[field.field_name] = value;
           }
-        });
-      }
+        }
+      });
     }
   }
 
