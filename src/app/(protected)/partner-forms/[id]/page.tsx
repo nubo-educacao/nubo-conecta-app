@@ -343,32 +343,14 @@ export default function PartnerFormsPage() {
     const dbAnswers = application?.answers ?? {};
     if (!application) return dbAnswers;
 
-    // Build initial values mapped from profileData
-    const mappedProfileData: Record<string, any> = {};
-    if (profileData && fields.length > 0) {
-      fields.forEach(field => {
-        if (field.mapping_source && field.mapping_source.startsWith("user_profiles.")) {
-          const column = field.mapping_source.split(".")[1];
-          const value = profileData[column];
-          if (value !== undefined && value !== null) {
-            mappedProfileData[field.field_name] = value;
-          }
-        }
-      });
-    }
-
     try {
       const lsDraft = JSON.parse(localStorage.getItem(localStorageKey) ?? "{}");
       return {
         ...dbAnswers,
-        ...mappedProfileData,
         ...lsDraft
       };
     } catch {
-      return {
-        ...dbAnswers,
-        ...mappedProfileData
-      };
+      return dbAnswers;
     }
   })();
 
