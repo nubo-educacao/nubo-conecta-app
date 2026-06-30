@@ -33,7 +33,8 @@ interface FormEngineProps {
     applicationId: string;
     steps: PartnerStep[];
     fields: PartnerFormField[];
-    defaultValues: Record<string, unknown>;
+    defaultValues?: Record<string, unknown>;
+    dbAnswers?: Record<string, unknown>;
     localStorageKey: string;
     onSaveDraft: (data: Record<string, unknown>) => Promise<void>;
     onSubmitForm: (data: Record<string, unknown>) => Promise<{ success: boolean; eligibilityResults?: EligibilityResult[] }>;
@@ -64,7 +65,8 @@ export default function PartnerFormEngine({
     applicationId,
     steps,
     fields,
-    defaultValues,
+    defaultValues = {},
+    dbAnswers = {},
     localStorageKey,
     onSaveDraft,
     onSubmitForm,
@@ -114,7 +116,7 @@ export default function PartnerFormEngine({
     }, [watchedValues, localStorageKey, getValues]);
 
     // Periodic auto-save to DB (every 30 seconds if values changed)
-    const lastSavedValuesRef = useRef<string>(JSON.stringify(defaultValues));
+    const lastSavedValuesRef = useRef<string>(JSON.stringify(dbAnswers));
     useEffect(() => {
         const interval = setInterval(async () => {
             const currentValuesStr = JSON.stringify(getValues());

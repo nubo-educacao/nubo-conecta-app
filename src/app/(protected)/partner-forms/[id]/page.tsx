@@ -558,6 +558,7 @@ export default function PartnerFormsPage() {
               steps={steps}
               fields={fields}
               defaultValues={defaultValues}
+              dbAnswers={application.answers}
               localStorageKey={localStorageKey}
               onSaveDraft={handleSaveDraft}
               onSubmitForm={handleSubmitForm}
