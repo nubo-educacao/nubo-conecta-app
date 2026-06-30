@@ -113,6 +113,26 @@ export default function PartnerFormEngine({
         };
     }, [watchedValues, localStorageKey, getValues]);
 
+    // Periodic auto-save to DB (every 30 seconds if values changed)
+    const lastSavedValuesRef = useRef<string>(JSON.stringify(defaultValues));
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            const currentValuesStr = JSON.stringify(getValues());
+            if (currentValuesStr !== lastSavedValuesRef.current) {
+                setSavingDraft(true);
+                try {
+                    await onSaveDraft(getValues() as Record<string, unknown>);
+                    lastSavedValuesRef.current = currentValuesStr;
+                } catch (err) {
+                    console.error("Failed to auto-save draft:", err);
+                } finally {
+                    setSavingDraft(false);
+                }
+            }
+        }, 30000); // 30 seconds
+        return () => clearInterval(interval);
+    }, [onSaveDraft, getValues]);
+
     const evaluationData = useMemo(() => {
         const flat: Record<string, unknown> = { ...userContextData };
         Object.keys(liveAnswers).forEach(key => {
@@ -211,7 +231,9 @@ export default function PartnerFormEngine({
         // Step transition → persist draft to DB
         setSavingDraft(true);
         try {
-            await onSaveDraft(getValues() as Record<string, unknown>);
+            const currentValues = getValues();
+            await onSaveDraft(currentValues as Record<string, unknown>);
+            lastSavedValuesRef.current = JSON.stringify(currentValues);
         } finally {
             setSavingDraft(false);
         }
