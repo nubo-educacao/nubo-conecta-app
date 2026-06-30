@@ -108,14 +108,17 @@ vi.mock('@/lib/supabase', () => ({
 // ── PartnerFormEngine — captura callbacks passados pela page ──────────────────
 let capturedOnStepIndexChange: ((idx: number) => void) | undefined;
 let capturedDefaultValues: Record<string, unknown> | undefined;
+let capturedUserContextData: Record<string, unknown> | undefined;
 
 vi.mock('@/components/forms/PartnerFormEngine', () => ({
   default: (props: {
     onStepIndexChange?: (idx: number) => void;
     defaultValues?: Record<string, unknown>;
+    userContextData?: Record<string, unknown>;
   }) => {
     capturedOnStepIndexChange = props.onStepIndexChange;
     capturedDefaultValues = props.defaultValues;
+    capturedUserContextData = props.userContextData;
     return <div data-testid="partner-form-engine" />;
   },
 }));
@@ -139,6 +142,7 @@ describe('PartnerFormsPage — 9.4.2: Seletor de Perfil só no Step 1', () => {
     vi.clearAllMocks();
     capturedOnStepIndexChange = undefined;
     capturedDefaultValues = undefined;
+    capturedUserContextData = undefined;
     capturedCalls.length = 0;
     // Restore default mockSingleProfile response
     mockSingleProfile.mockResolvedValue({
@@ -192,6 +196,7 @@ describe('PartnerFormsPage — 9.4.3: Pré-preenchimento Adaptativo', () => {
     vi.clearAllMocks();
     capturedOnStepIndexChange = undefined;
     capturedDefaultValues = undefined;
+    capturedUserContextData = undefined;
     capturedCalls.length = 0;
     mockSingleProfile.mockResolvedValue({
       data: { full_name: 'Main User', age: 20, city: 'São Paulo', state: 'SP' },
@@ -206,9 +211,10 @@ describe('PartnerFormsPage — 9.4.3: Pré-preenchimento Adaptativo', () => {
     });
   }
 
-  it('inclui dados do perfil nos defaultValues passados ao PartnerFormEngine', async () => {
+  it('inclui dados do perfil no userContextData do PartnerFormEngine', async () => {
     await renderAndWaitForForm();
-    expect(capturedDefaultValues).toMatchObject({ full_name: 'Main User' });
+    expect(capturedUserContextData).toMatchObject({ full_name: 'Main User' });
+    expect(capturedDefaultValues).not.toHaveProperty('full_name');
   });
 
   it('busca dados do perfil no banco (user_profiles) durante o boot', async () => {
@@ -232,7 +238,7 @@ describe('PartnerFormsPage — 9.4.3: Pré-preenchimento Adaptativo', () => {
     render(<PartnerFormsPage />);
     await waitFor(() => expect(screen.getByTestId('partner-form-engine')).toBeInTheDocument());
 
-    // Verify initial defaultValues include profile seed from boot
-    expect(capturedDefaultValues).toMatchObject({ full_name: 'Main User' });
+    // Verify initial userContextData includes profile
+    expect(capturedUserContextData).toMatchObject({ full_name: 'Main User' });
   });
 });
