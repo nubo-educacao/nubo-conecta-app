@@ -24,18 +24,49 @@ export async function createApplication(
     },
   );
 
+  // 1. Fetch user profile
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('id', profileId)
+    .single();
+
+  // 2. Fetch form mapping for the opportunity
+  let prefilledAnswers: Record<string, any> = {};
+
+  if (profile) {
+    const { data: fields } = await supabase
+      .from('partner_forms')
+      .select('*')
+      .eq('partner_id', partnerOppId);
+
+    if (fields) {
+      fields.forEach((field: any) => {
+        if (field.mapping_source && field.mapping_source.startsWith('user_profiles.')) {
+          const column = field.mapping_source.split('.')[1];
+          const value = profile[column];
+          if (value !== undefined && value !== null) {
+            prefilledAnswers[field.field_name] = value;
+          }
+        }
+      });
+    }
+  }
+
+  // 3. Create application with prefilled answers
   const { data, error } = await supabase
     .from('student_applications')
     .insert({
       user_id: profileId,
       partner_id: partnerOppId,
       status: 'DRAFT',
-      answers: {},
+      answers: prefilledAnswers,
     })
     .select('id')
     .single();
 
   if (error || !data) {
+    console.error('[createApplication] Error:', error?.message);
     throw new Error('Erro ao iniciar candidatura');
   }
 

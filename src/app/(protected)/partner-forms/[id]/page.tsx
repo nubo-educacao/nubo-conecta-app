@@ -206,18 +206,21 @@ export default function PartnerFormsPage() {
   // ── Eligibility computation ─────────────────────────────────────────────────
   const computeEligibility = (data: Record<string, unknown>) => {
     const criterionFields = fields.filter((f) => f.is_criterion && f.criterion_rule && f.criterion_type !== 'priority');
-    return criterionFields.map((f) => {
-      const userAnswer = data[f.field_name];
-      let met = false;
-      try {
-        met = !!evaluateJsonLogic(f.criterion_rule!, { [f.field_name]: userAnswer });
-      } catch { /* rule evaluation failed — treat as unmet */ }
-      return {
-        question_text: f.question_text,
-        met,
-        user_answer: userAnswer != null ? String(userAnswer) : undefined,
-      };
-    });
+    
+    return criterionFields
+      .filter((f) => data[f.field_name] !== undefined && data[f.field_name] !== null)
+      .map((f) => {
+        const userAnswer = data[f.field_name];
+        let met = false;
+        try {
+          met = !!evaluateJsonLogic(f.criterion_rule!, { [f.field_name]: userAnswer });
+        } catch { /* rule evaluation failed — treat as unmet */ }
+        return {
+          question_text: f.question_text,
+          met,
+          user_answer: String(userAnswer),
+        };
+      });
   };
 
   // ── Final submit ───────────────────────────────────────────────────────────
@@ -250,10 +253,16 @@ export default function PartnerFormsPage() {
       // Save eligibility results and map data to user profile
       const userId = selectedProfileId || user!.id;
 
+      // Save eligibility results directly to student_applications
+      if (eligibilityResults && eligibilityResults.length > 0) {
+        await supabase
+          .from("student_applications")
+          .update({ eligibility_results: eligibilityResults })
+          .eq("id", application.id);
+      }
+
       // 1. Build profile updates from field mappings
-      const profileUpdates: Record<string, any> = {
-        eligibility_results: eligibilityResults,
-      };
+      const profileUpdates: Record<string, any> = {};
 
       const userPrefUpdates: Record<string, any> = {};
 
@@ -343,34 +352,14 @@ export default function PartnerFormsPage() {
     const dbAnswers = application?.answers ?? {};
     if (!application) return dbAnswers;
 
-    // Build initial values mapped from profileData
-    const mappedProfileData: Record<string, any> = {};
-    if (profileData && fields.length > 0) {
-      fields.forEach(field => {
-        if (field.mapping_source && field.mapping_source.startsWith("user_profiles.")) {
-          const column = field.mapping_source.split(".")[1];
-          const value = profileData[column];
-          if (value !== undefined && value !== null) {
-            mappedProfileData[field.field_name] = value;
-          }
-        }
-      });
-    }
-
     try {
       const lsDraft = JSON.parse(localStorage.getItem(localStorageKey) ?? "{}");
       return {
-        ...profileData,
         ...dbAnswers,
-        ...mappedProfileData,
         ...lsDraft
       };
     } catch {
-      return {
-        ...profileData,
-        ...dbAnswers,
-        ...mappedProfileData
-      };
+      return dbAnswers;
     }
   })();
 
@@ -560,12 +549,14 @@ export default function PartnerFormsPage() {
               steps={steps}
               fields={fields}
               defaultValues={defaultValues}
+              dbAnswers={application.answers}
               localStorageKey={localStorageKey}
               onSaveDraft={handleSaveDraft}
               onSubmitForm={handleSubmitForm}
               onComputeEligibility={fields.some(f => f.is_criterion) ? computeEligibility : undefined}
               isRedirectFlow={isRedirect}
               onStepIndexChange={setStepIndex}
+              userContextData={profileData}
             />
           )}
         </div>

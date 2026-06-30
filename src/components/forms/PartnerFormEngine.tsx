@@ -33,7 +33,8 @@ interface FormEngineProps {
     applicationId: string;
     steps: PartnerStep[];
     fields: PartnerFormField[];
-    defaultValues: Record<string, unknown>;
+    defaultValues?: Record<string, unknown>;
+    dbAnswers?: Record<string, unknown>;
     localStorageKey: string;
     onSaveDraft: (data: Record<string, unknown>) => Promise<void>;
     onSubmitForm: (data: Record<string, unknown>) => Promise<{ success: boolean; eligibilityResults?: EligibilityResult[] }>;
@@ -44,6 +45,7 @@ interface FormEngineProps {
     isRedirectFlow?: boolean;
     onStepIndexChange?: (index: number) => void;
     opportunityId?: string;
+    userContextData?: Record<string, unknown>;
 }
 
 const sendSystemIntent = (
@@ -63,7 +65,8 @@ export default function PartnerFormEngine({
     applicationId,
     steps,
     fields,
-    defaultValues,
+    defaultValues = {},
+    dbAnswers = {},
     localStorageKey,
     onSaveDraft,
     onSubmitForm,
@@ -73,6 +76,7 @@ export default function PartnerFormEngine({
     isRedirectFlow,
     onStepIndexChange,
     opportunityId,
+    userContextData = {},
 }: FormEngineProps) {
     const methods = useForm({ defaultValues, mode: 'onSubmit' });
     const { handleSubmit, control, trigger, getValues } = methods;
@@ -111,8 +115,40 @@ export default function PartnerFormEngine({
         };
     }, [watchedValues, localStorageKey, getValues]);
 
+    // Periodic auto-save to DB (every 30 seconds if values changed)
+    const lastSavedValuesRef = useRef<string>(JSON.stringify(dbAnswers));
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            const currentValuesStr = JSON.stringify(getValues());
+            if (currentValuesStr !== lastSavedValuesRef.current) {
+                setSavingDraft(true);
+                try {
+                    await onSaveDraft(getValues() as Record<string, unknown>);
+                    lastSavedValuesRef.current = currentValuesStr;
+                } catch (err) {
+                    console.error("Failed to auto-save draft:", err);
+                } finally {
+                    setSavingDraft(false);
+                }
+            }
+        }, 30000); // 30 seconds
+    }, [onSaveDraft, getValues]);
+
+    // Save draft on unmount (e.g. when navigating away via "Minhas candidaturas")
+    useEffect(() => {
+        return () => {
+            const currentValues = getValues();
+            const currentValuesStr = JSON.stringify(currentValues);
+            if (currentValuesStr !== lastSavedValuesRef.current) {
+                onSaveDraft(currentValues as Record<string, unknown>).catch(err => {
+                    console.error("Failed to save draft on unmount:", err);
+                });
+            }
+        };
+    }, [onSaveDraft, getValues]);
+
     const evaluationData = useMemo(() => {
-        const flat: Record<string, unknown> = {};
+        const flat: Record<string, unknown> = { ...userContextData };
         Object.keys(liveAnswers).forEach(key => {
             if (!Array.isArray(liveAnswers[key])) flat[key] = liveAnswers[key];
         });
@@ -125,7 +161,7 @@ export default function PartnerFormEngine({
         flat['_iteration_index'] = 0;
         flat['is_first_iteration'] = true;
         return flat;
-    }, [liveAnswers, steps]);
+    }, [liveAnswers, steps, userContextData]);
 
     const visibleSteps = useMemo(() => {
         return steps.filter(s => {
@@ -209,7 +245,9 @@ export default function PartnerFormEngine({
         // Step transition → persist draft to DB
         setSavingDraft(true);
         try {
-            await onSaveDraft(getValues() as Record<string, unknown>);
+            const currentValues = getValues();
+            await onSaveDraft(currentValues as Record<string, unknown>);
+            lastSavedValuesRef.current = JSON.stringify(currentValues);
         } finally {
             setSavingDraft(false);
         }

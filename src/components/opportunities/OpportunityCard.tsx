@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 import { cn } from '@/lib/utils';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { registerPartnerClick } from '@/services/partnersClickService';
 
 interface OpportunityCardProps {
   opportunity: IUnifiedOpportunity;
@@ -69,6 +70,13 @@ export default function OpportunityCard({
       onClickOverride(opportunity.id);
       return;
     }
+    
+    // Register click if it's a partner opportunity
+    if (opportunity.is_partner) {
+      const partnerId = opportunity.id.replace('partner_', '');
+      registerPartnerClick(partnerId).catch(console.error);
+    }
+
     if (!isAuthenticated) { setShowAuthModal(true); return; }
     router.push(`/oportunidades/${opportunity.id}`);
   };
