@@ -106,6 +106,7 @@ const getShiftDetails = (shift: string) => {
 export default function OpportunitiesListCard({ opportunities, highlightedOpportunityId, bestConcurrencyType }: OpportunitiesListCardProps) {
 
   const isSisu = opportunities[0]?.opportunity_type?.toLowerCase() === 'sisu';
+  const isProuni = opportunities[0]?.opportunity_type?.toLowerCase() === 'prouni';
   const accentColor = isSisu ? '#3092BB' : '#7030C2';
 
   const renderTags = (tags: any) => {
@@ -172,7 +173,7 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
               <th className="px-6 py-4 w-[80px]">Turno</th>
               <th className="px-6 py-4">Modalidade e Cotas</th>
               <th className="px-4 py-4 text-right w-[90px]">Vagas</th>
-              <th className="px-6 py-4 text-right w-[140px]">Nota de Corte</th>
+              {!isProuni && <th className="px-6 py-4 text-right w-[140px]">Nota de Corte</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -193,7 +194,7 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                     <div className="relative group/shift flex items-center justify-center">
                       <div className={`size-8 rounded-xl bg-white shadow-sm border ${
                         isBest ? 'border-[#38B1E4]/30' : 'border-gray-100'
-                      } flex items-center justify-center ${color}`}>
+                       } flex items-center justify-center ${color}`}>
                         <Icon size={16} />
                       </div>
                       <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 px-2 py-1 bg-[#3A424E] text-white text-[10px] rounded-lg opacity-0 group-hover/shift:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-xl">
@@ -204,12 +205,30 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      {renderTags(opp.concurrency_tags || opp.scholarship_tags)}
+                      {isProuni ? (
+                        <>
+                          {opp.vacancies && (opp.vacancies.broad_competition_offered ?? 0) > 0 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-100 whitespace-nowrap">
+                              Ampla Concorrência
+                            </span>
+                          )}
+                          {opp.vacancies && (opp.vacancies.quotas_offered ?? 0) > 0 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border bg-purple-50 text-purple-700 border-purple-100 whitespace-nowrap">
+                              Cotas
+                            </span>
+                          )}
+                          {renderTags(opp.scholarship_tags)}
+                        </>
+                      ) : (
+                        <>
+                          {renderTags(opp.concurrency_tags || opp.scholarship_tags)}
 
-                      {!opp.concurrency_tags && !opp.scholarship_tags && (
-                        <span className="text-xs text-[#636E7C]">
-                          {opp.concurrency_type || opp.scholarship_type || 'Ampla Concorrência'}
-                        </span>
+                          {!opp.concurrency_tags && !opp.scholarship_tags && (
+                            <span className="text-xs text-[#636E7C]">
+                              {opp.concurrency_type || opp.scholarship_type || 'Ampla Concorrência'}
+                            </span>
+                          )}
+                        </>
                       )}
 
                       {isBest && (
@@ -234,21 +253,23 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                         : '---'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex flex-col items-end">
-                      <div className="flex items-center gap-1.5">
-                        <Award size={14} className={isBest ? 'text-[#38B1E4]' : 'text-[#FF9900]'} />
-                        <span className={`text-sm font-black ${isBest ? 'text-[#38B1E4]' : 'text-[#3A424E]'}`}>
-                          {opp.cutoff_score ? opp.cutoff_score.toFixed(1) : '---'}
+                  {!isProuni && (
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex flex-col items-end">
+                        <div className="flex items-center gap-1.5">
+                          <Award size={14} className={isBest ? 'text-[#38B1E4]' : 'text-[#FF9900]'} />
+                          <span className={`text-sm font-black ${isBest ? 'text-[#38B1E4]' : 'text-[#3A424E]'}`}>
+                            {opp.cutoff_score ? opp.cutoff_score.toFixed(1) : '---'}
+                          </span>
+                        </div>
+                        <span className="text-[9px] text-[#636E7C] font-medium">
+                          Nota de corte {opp.cutoff_score_year
+                            ? `(${opp.cutoff_score_year}${opp.cutoff_score_semester ? `.${opp.cutoff_score_semester}` : ''})`
+                            : 'final'}
                         </span>
                       </div>
-                      <span className="text-[9px] text-[#636E7C] font-medium">
-                        Nota de corte {opp.cutoff_score_year
-                          ? `(${opp.cutoff_score_year}${opp.cutoff_score_semester ? `.${opp.cutoff_score_semester}` : ''})`
-                          : 'final'}
-                      </span>
-                    </div>
-                  </td>
+                    </td>
+                  )}
                 </tr>
               );
             })}

@@ -16,6 +16,7 @@ interface SisuProuniCardProps {
   cycle_year?: number;
   cycle_semester?: string;
   nu_media_minima_enem?: number | null;
+  total_vacancies?: number | null;
 }
 
 function renderMarkdown(text: string, accentColor: string): React.ReactNode {
@@ -70,7 +71,8 @@ export default function SisuProuniCard({
   qt_aprovados,
   cycle_year,
   cycle_semester,
-  nu_media_minima_enem
+  nu_media_minima_enem,
+  total_vacancies
 }: SisuProuniCardProps) {
   const isSisu = opportunity_type.toLowerCase() === 'sisu';
   const accentColor = isSisu ? '#3092BB' : '#7030C2';
@@ -126,11 +128,11 @@ export default function SisuProuniCard({
         </div>
 
         {(() => {
-          const hasInscritosOrAprovados = qt_inscricao_prev != null || (isSisu && qt_aprovados != null);
+          const hasInscritosOrAprovados = isSisu && (qt_inscricao_prev != null || qt_aprovados != null);
           return (
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 mt-2`}>
-              {/* Inscritos / Aprovados */}
-              {hasInscritosOrAprovados && (
+              {/* Inscritos / Aprovados (SiSU Only) */}
+              {isSisu && hasInscritosOrAprovados && (
                 <div className="bg-[#F9FAFB] p-4 rounded-2xl flex flex-col gap-2 h-full">
                   <div className="size-8 rounded-full bg-blue-50 flex items-center justify-center text-[#3092BB]">
                     <Users size={16} />
@@ -146,30 +148,63 @@ export default function SisuProuniCard({
                 </div>
               )}
 
-              {/* Nota de Corte */}
-              <div className={`bg-[#F9FAFB] p-4 rounded-2xl flex ${hasInscritosOrAprovados ? 'flex-col gap-2' : 'items-center gap-4'} h-full`}>
-                <div className={`${hasInscritosOrAprovados ? 'size-8 rounded-full' : 'size-10 rounded-xl shrink-0'} bg-orange-50 flex items-center justify-center text-[#FF9900]`}>
-                  <Award size={hasInscritosOrAprovados ? 16 : 20} />
+              {/* Nota de Corte (SiSU Only) */}
+              {isSisu && (
+                <div className={`bg-[#F9FAFB] p-4 rounded-2xl flex ${hasInscritosOrAprovados ? 'flex-col gap-2' : 'items-center gap-4'} h-full`}>
+                  <div className={`${hasInscritosOrAprovados ? 'size-8 rounded-full' : 'size-10 rounded-xl shrink-0'} bg-orange-50 flex items-center justify-center text-[#FF9900]`}>
+                    <Award size={hasInscritosOrAprovados ? 16 : 20} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#636E7C] font-bold uppercase">Nota de Corte</p>
+                    <p className={`${hasInscritosOrAprovados ? 'text-xl' : 'text-sm'} font-black text-[#3A424E]`}>
+                      {(() => {
+                        if (min_cutoff_score && max_cutoff_score) {
+                          return min_cutoff_score === max_cutoff_score
+                            ? min_cutoff_score.toFixed(1)
+                            : `${min_cutoff_score.toFixed(1)} a ${max_cutoff_score.toFixed(1)}`;
+                        }
+                        if (max_cutoff_score) return max_cutoff_score.toFixed(1);
+                        if (min_cutoff_score) return min_cutoff_score.toFixed(1);
+                        return '---';
+                      })()}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] text-[#636E7C] font-bold uppercase">Nota de Corte</p>
-                  <p className={`${hasInscritosOrAprovados ? 'text-xl' : 'text-sm'} font-black text-[#3A424E]`}>
-                    {(() => {
-                      if (min_cutoff_score && max_cutoff_score) {
-                        return min_cutoff_score === max_cutoff_score
-                          ? min_cutoff_score.toFixed(1)
-                          : `${min_cutoff_score.toFixed(1)} a ${max_cutoff_score.toFixed(1)}`;
-                      }
-                      if (max_cutoff_score) return max_cutoff_score.toFixed(1);
-                      if (min_cutoff_score) return min_cutoff_score.toFixed(1);
-                      return '---';
-                    })()}
-                  </p>
-                </div>
-              </div>
+              )}
 
-              {/* ── Média Mínima ENEM Pre-requisite Alert ── */}
-              {nu_media_minima_enem && Number(nu_media_minima_enem) > 0 ? (
+              {/* ProUni Metrics: Vagas Ofertadas & Vagas Ociosas */}
+              {!isSisu && (
+                <>
+                  <div className="bg-[#F9FAFB] p-4 rounded-2xl flex items-center gap-4 h-full">
+                    <div className="size-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#3092BB] shrink-0">
+                      <GraduationCap size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[#636E7C] font-bold uppercase">Vagas Ofertadas</p>
+                      <p className="text-xl font-black text-[#3A424E]">
+                        {total_vacancies != null ? total_vacancies : '---'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {vagas_ociosas_prev === true && (
+                    <div className="bg-[#F9FAFB] p-4 rounded-2xl flex items-center gap-4 h-full">
+                      <div className="size-10 rounded-xl bg-purple-50 flex items-center justify-center text-[#7030C2] shrink-0">
+                        <TrendingUp size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-[#636E7C] font-bold uppercase">Status das Vagas</p>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[10px] font-black uppercase tracking-wider">
+                          Vagas Ociosas
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── Média Mínima ENEM Pre-requisite Alert (SiSU Only) ── */}
+              {isSisu && nu_media_minima_enem && Number(nu_media_minima_enem) > 0 ? (
                 <div className={`bg-red-50 border border-red-100 rounded-2xl p-4 flex items-center gap-4 h-full ${hasInscritosOrAprovados ? 'md:col-span-2' : ''}`}>
                   <div className="size-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600 shrink-0">
                     <Award size={20} />

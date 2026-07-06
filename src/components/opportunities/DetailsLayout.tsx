@@ -590,17 +590,25 @@ export default function DetailsLayout({
               cycle_year={relatedOpportunities[0]?.year}
               cycle_semester={relatedOpportunities[0]?.semester}
               qt_inscricao_prev={opportunity.qt_inscricao_current ?? opportunity.qt_inscricao_prev}
-              min_cutoff_score={(() => {
+              min_cutoff_score={opportunity.opportunity_type?.toLowerCase() === 'prouni' ? null : (() => {
                 const validScores = relatedOpportunities.map(o => o.cutoff_score).filter((s): s is number => s != null);
                 return validScores.length > 0 ? Math.min(...validScores) : (opportunity.min_cutoff_score_current ?? opportunity.min_cutoff_score_prev ?? null);
               })()}
-              max_cutoff_score={(() => {
+              max_cutoff_score={opportunity.opportunity_type?.toLowerCase() === 'prouni' ? null : (() => {
                 const validScores = relatedOpportunities.map(o => o.cutoff_score).filter((s): s is number => s != null);
                 return validScores.length > 0 ? Math.max(...validScores) : (opportunity.max_cutoff_score_current ?? opportunity.max_cutoff_score_prev ?? null);
               })()}
               vagas_ociosas_prev={opportunity.vagas_ociosas_current ?? opportunity.vagas_ociosas_prev}
               qt_aprovados={approvalStats?.reduce((sum, row) => sum + (Number(row.qt_aprovados) || 0), 0) || null}
               nu_media_minima_enem={opportunity.nu_media_minima_enem_current ?? opportunity.nu_media_minima_enem_prev ?? null}
+              total_vacancies={(() => {
+                const totalVagas = relatedOpportunities.reduce((sum, opp) => {
+                  const broad = Number(opp.vacancies?.broad_competition_offered) || 0;
+                  const quotas = Number(opp.vacancies?.quotas_offered) || 0;
+                  return sum + broad + quotas;
+                }, 0);
+                return totalVagas > 0 ? totalVagas : (Number(opportunity.nu_vagas_autorizadas) || null);
+              })()}
             />
 
             {(opportunity.weights || opportunity.opportunity_type === 'prouni') && (
