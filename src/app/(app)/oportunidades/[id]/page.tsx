@@ -106,7 +106,7 @@ async function getOpportunity(unifiedId: string): Promise<[IUnifiedOpportunity, 
 
     let programQuery = supabase
       .from('programs')
-      .select('status, redirect_url, starts_at, ends_at')
+      .select('status, redirect_url, starts_at, ends_at, prev_program_id')
       .eq('type', programType);
 
     if (latestOpportunity && latestOpportunity.year) {
@@ -133,6 +133,19 @@ async function getOpportunity(unifiedId: string): Promise<[IUnifiedOpportunity, 
       oppData.external_redirect_url = programData.redirect_url;
       oppData.external_redirect_enabled = !!programData.redirect_url;
       console.log(`[getOpportunity] Enriched ${unifiedId}: status=${programData.status}, redirect=${programData.redirect_url}`);
+
+      // Se o ciclo vigente foi clonado de um ciclo anterior, os dados de vagas ainda
+      // refletem aquele ciclo de origem — usado para o rótulo "* Vagas referentes ao Ciclo X.Y".
+      if (programData.prev_program_id) {
+        const { data: prevProgram } = await supabase
+          .from('programs')
+          .select('cycle_year, cycle_semester')
+          .eq('id', programData.prev_program_id)
+          .maybeSingle();
+        if (prevProgram) {
+          oppData.vacancies_source_cycle = `${prevProgram.cycle_year}.${prevProgram.cycle_semester}`;
+        }
+      }
     } else {
       console.warn(`[getOpportunity] No program found for ${unifiedId} (type=${programType}). Status remains '${oppData.status}'.`);
     }
@@ -202,6 +215,7 @@ async function getOpportunity(unifiedId: string): Promise<[IUnifiedOpportunity, 
     institution_cover_url:    oppData.institution_cover_url,
     weights:                  oppData.weights,
     description:              description,
+    vacancies_source_cycle:   oppData.vacancies_source_cycle,
   }, bestConcurrencyType];
 }
 

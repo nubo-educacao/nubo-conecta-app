@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 import SisuProuniCard from './SisuProuniCard';
 import PartnerDescriptionCard from './PartnerDescriptionCard';
-import OpportunitiesListCard, { Opportunity } from './OpportunitiesListCard';
+import OpportunitiesListCard, { Opportunity, getScholarshipTypeDetails } from './OpportunitiesListCard';
 import SisuScoreDisplay from './SisuScoreDisplay';
 import OpportunityCard from './OpportunityCard';
 import CriteriaSection from './CriteriaSection';
@@ -508,16 +508,25 @@ export default function DetailsLayout({
           </div>
         </div>
 
-        {/* Turno — icons from relatedOpportunities */}
+        {/* Turno (SiSU) / Tipo de Bolsa (ProUni não tem dimensão de turno relevante) */}
         {!isPartner && (
           <div className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-gray-50">
             <div className="size-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 text-orange-500">
               <Clock size={18} />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">Turno</p>
+              <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">
+                {opportunity.opportunity_type?.toLowerCase() === 'prouni' ? 'Tipo de Bolsa' : 'Turno'}
+              </p>
               <div className="flex items-center gap-1.5 mt-0.5">
-                {(() => {
+                {opportunity.opportunity_type?.toLowerCase() === 'prouni' ? (() => {
+                  const scholarshipTypes = [...new Set(relatedOpportunities.map(r => r.scholarship_type).filter(Boolean))] as string[];
+                  if (scholarshipTypes.length === 0) return <span className="text-[13px] font-bold text-[#3A424E]">Consultar</span>;
+                  return scholarshipTypes.map(st => {
+                    const { icon: Icon, color, label } = getScholarshipTypeDetails(st);
+                    return <Icon key={st} size={20} className={color} title={label} />;
+                  });
+                })() : (() => {
                   const shifts = [...new Set(relatedOpportunities.map(r => r.shift).filter(Boolean))];
                   if (shifts.length === 0) {
                     const badgeShift = opportunity.badges.find(b => ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EaD', 'EAD', 'Curso a distância'].includes(b));
@@ -669,6 +678,7 @@ export default function DetailsLayout({
               }]}
               highlightedOpportunityId={opportunity.id}
               bestConcurrencyType={!opportunity.is_partner ? bestConcurrencyType : undefined}
+              vacanciesCycleLabel={opportunity.vacancies_source_cycle}
             />
 
 

@@ -31,4 +31,6 @@ export interface IUnifiedOpportunity {
   institution_id?: string; institution_igc?: string; institution_organization?: string; institution_category?: string; institution_site?: string;
   eligibility_criteria?: any; benefits?: any; brand_color?: string; description?: string;
   weights?: { redacao?: number; matematica?: number; linguagens?: number; humanas?: number; natureza?: number; };
+  /** Ciclo de origem dos dados de vagas (ex: "2025.2"), quando o ciclo vigente foi clonado de um ciclo anterior */
+  vacancies_source_cycle?: string;
 }

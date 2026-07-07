@@ -61,6 +61,8 @@ interface OpportunitiesListCardProps {
   opportunities: Opportunity[];
   highlightedOpportunityId?: string;
   bestConcurrencyType?: string;
+  /** Ciclo de origem dos dados de vagas (ex: "2025.2"), quando as vagas vêm de um ciclo clonado */
+  vacanciesCycleLabel?: string;
 }
 
 const getTagStyle = (tag: string) => {
@@ -103,7 +105,37 @@ const getShiftDetails = (shift: string) => {
   }
 };
 
-export default function OpportunitiesListCard({ opportunities, highlightedOpportunityId, bestConcurrencyType }: OpportunitiesListCardProps) {
+interface ScholarshipIconProps {
+  size?: number;
+  className?: string;
+  title?: string;
+}
+
+// Ícone de círculo preenchido — Bolsa Integral (100%)
+export const ScholarshipIntegralIcon = ({ size = 16, className = '', title }: ScholarshipIconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {title && <title>{title}</title>}
+    <circle cx="12" cy="12" r="9" fill="currentColor" />
+  </svg>
+);
+
+// Ícone de círculo meio-preenchido — Bolsa Parcial (50%)
+export const ScholarshipParcialIcon = ({ size = 16, className = '', title }: ScholarshipIconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {title && <title>{title}</title>}
+    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M12 3 A9 9 0 0 1 12 21 Z" fill="currentColor" />
+  </svg>
+);
+
+export const getScholarshipTypeDetails = (scholarshipType?: string | null) => {
+  const s = (scholarshipType || '').toUpperCase();
+  if (s.includes('INTEGRAL')) return { icon: ScholarshipIntegralIcon, label: 'Bolsa Integral', color: 'text-sky-600' };
+  if (s.includes('PARCIAL')) return { icon: ScholarshipParcialIcon, label: 'Bolsa Parcial', color: 'text-orange-500' };
+  return { icon: ScholarshipParcialIcon, label: scholarshipType || 'Bolsa', color: 'text-slate-400' };
+};
+
+export default function OpportunitiesListCard({ opportunities, highlightedOpportunityId, bestConcurrencyType, vacanciesCycleLabel }: OpportunitiesListCardProps) {
 
   const isSisu = opportunities[0]?.opportunity_type?.toLowerCase() === 'sisu';
   const isProuni = opportunities[0]?.opportunity_type?.toLowerCase() === 'prouni';
@@ -170,15 +202,17 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
         <table className="w-full text-left">
           <thead className="bg-[#F9FAFB] text-[#636E7C] text-[10px] uppercase font-bold tracking-wider">
             <tr>
-              <th className="px-6 py-4 w-[80px]">Turno</th>
+              <th className="px-6 py-4 w-[80px]">{isProuni ? 'Tipo de Bolsa' : 'Turno'}</th>
               <th className="px-6 py-4">Modalidade e Cotas</th>
-              <th className="px-4 py-4 text-right w-[90px]">Vagas</th>
+              <th className="px-4 py-4 text-right w-[90px]">Vagas{vacanciesCycleLabel ? '*' : ''}</th>
               {!isProuni && <th className="px-6 py-4 text-right w-[140px]">Nota de Corte</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {opportunities.map((opp) => {
-              const { icon: Icon, label, color } = getShiftDetails(opp.shift);
+              const { icon: Icon, label, color } = isProuni
+                ? getScholarshipTypeDetails(opp.scholarship_type)
+                : getShiftDetails(opp.shift);
               const isBest = !!(bestConcurrencyType && oppMatchesBestConcurrency(opp, bestConcurrencyType));
 
               return (
@@ -217,7 +251,6 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                               Cotas
                             </span>
                           )}
-                          {renderTags(opp.scholarship_tags)}
                         </>
                       ) : (
                         <>
@@ -280,6 +313,14 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
       {opportunities.length === 0 && (
         <div className="p-12 text-center">
           <p className="text-sm text-[#636E7C]">Nenhuma modalidade disponível para este curso.</p>
+        </div>
+      )}
+
+      {vacanciesCycleLabel && (
+        <div className="px-6 py-3 border-t border-gray-50">
+          <p className="text-[10px] text-[#636E7C] leading-tight">
+            * Vagas referentes ao Ciclo {vacanciesCycleLabel} do MEC.
+          </p>
         </div>
       )}
     </motion.section>
