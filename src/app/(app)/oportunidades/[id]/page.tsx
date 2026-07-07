@@ -322,7 +322,7 @@ async function getRelatedOpportunities(unifiedId: string): Promise<Opportunity[]
   // Deduplicate identical modalities
   const uniqueRelated: Opportunity[] = [];
   const seen = new Set();
-  
+
   for (const item of mapped) {
     // create a unique signature for this opportunity to filter DB duplicates
     const key = `${item.year}|${item.semester}|${item.shift}|${item._raw_tp_cota || item.concurrency_type}|${JSON.stringify(item.concurrency_tags)}|${item.cutoff_score}|${item.vacancies?.broad_competition_offered}`;
@@ -333,7 +333,33 @@ async function getRelatedOpportunities(unifiedId: string): Promise<Opportunity[]
     }
   }
 
-  return uniqueRelated;
+  // ProUni: o split Ampla/Cotas vive em COLUNAS de opportunities_prouni_vacancies
+  // (1 linha por opportunity). Para a lista de opções exibir cada modalidade como
+  // linha própria (paridade com o SiSU), explodimos em até 2 linhas — cada uma com
+  // suas vagas. As somas agregadas (header Vagas, Métricas) se preservam (X+0 / 0+Y).
+  const exploded: Opportunity[] = [];
+  for (const item of uniqueRelated) {
+    const isProuni = item.opportunity_type?.toLowerCase() === 'prouni';
+    const ampla = Number(item.vacancies?.broad_competition_offered) || 0;
+    const cota = Number(item.vacancies?.quotas_offered) || 0;
+
+    if (isProuni && ampla > 0 && cota > 0) {
+      exploded.push({
+        ...item,
+        id: `${item.id}_ampla`,
+        vacancies: { broad_competition_offered: ampla, quotas_offered: 0 },
+      });
+      exploded.push({
+        ...item,
+        id: `${item.id}_cota`,
+        vacancies: { broad_competition_offered: 0, quotas_offered: cota },
+      });
+    } else {
+      exploded.push(item);
+    }
+  }
+
+  return exploded;
 }
 
 type SisuVacancyRow = Record<string, unknown>;
