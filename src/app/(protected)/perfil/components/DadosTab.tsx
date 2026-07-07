@@ -24,8 +24,8 @@ const EDUCATION_OPTIONS = [
 ];
 
 const STATES_BR = [
-  "AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT",
-  "PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO",
+  "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT",
+  "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO",
 ];
 
 const formatCurrency = (v: number | null | undefined) => {
@@ -232,10 +232,10 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
   // ── Save handlers ──────────────────────────────────────────────────────────
   async function savePessoais() {
     setSavingPessoais(true);
-    try { 
+    try {
       const { phone, ...profileData } = pessoais;
-      await saveUserData(profileId, profileData); 
-      onRefresh(); 
+      await saveUserData(profileId, profileData);
+      onRefresh();
     }
     finally { setSavingPessoais(false); setEditingPessoais(false); }
   }
@@ -314,11 +314,11 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <FieldRow label="Nome completo" value={pessoais.full_name} editing={editingPessoais} name="full_name" onChange={(n, v) => setPessoais((p) => ({ ...p, [n]: v }))} />
-          
+
           <FieldRow label="Data de nascimento" value={editingPessoais ? pessoais.birth_date : formatDateBR(pessoais.birth_date)} editing={editingPessoais} name="birth_date" type="date" onChange={(n, v) => setPessoais((p) => ({ ...p, [n]: v }))} />
-          
+
           <FieldRow label="CPF" value={pessoais.cpf} editing={editingPessoais} name="cpf" onChange={(n, v) => setPessoais((p) => ({ ...p, [n]: v }))} />
-          
+
           <div className="mb-3">
             <label className="block text-xs font-semibold mb-1 uppercase tracking-wider" style={labelStyle}>
               Telefone

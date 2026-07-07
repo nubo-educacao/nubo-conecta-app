@@ -293,7 +293,9 @@ export async function getUnifiedOpportunities(
 
   // Filtros de Explorar (Sprint 2.5 + Hotfix)
   if (options.q) {
-    query = query.ilike('title', `%${options.q}%`);
+    const unaccentedQ = options.q.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const term = `%${unaccentedQ}%`;
+    query = query.ilike('search_text', term);
   }
   if (options.category === 'programa de bolsa' || options.category === 'programa educacional') {
     query = query.eq('opportunity_type', options.category);
@@ -317,14 +319,14 @@ export async function getUnifiedOpportunities(
       s === 'EaD' ? ['EaD', 'Curso a distância'] : [s]
     );
     const orClause = shiftValues
-      .map(s => `badges.cs.${JSON.stringify([s])}`)
+      .map(s => `computed_badges.cs.${JSON.stringify([s])}`)
       .join(',');
     query = query.or(orClause);
   }
 
   if (options.quota_types && options.quota_types.length > 0) {
     const quotaClause = options.quota_types
-      .map(q => `badges.cs.${JSON.stringify([q])}`)
+      .map(q => `computed_badges.cs.${JSON.stringify([q])}`)
       .join(',');
     query = query.or(quotaClause);
   }
@@ -337,10 +339,14 @@ export async function getUnifiedOpportunities(
     }
   }
 
+  // Prevent impossible queries (e.g. sisu + privada)
   if (options.university_preference === 'publica') {
     query = query.eq('is_partner', false);
   } else if (options.university_preference === 'privada') {
-    query = query.eq('is_partner', true);
+    // Only apply 'privada' if we aren't explicitly requesting a public program
+    if (options.program_preference !== 'sisu' && options.program_preference !== 'prouni') {
+      query = query.eq('is_partner', true);
+    }
   }
 
   if (options.course_interests && options.course_interests.length > 0) {
