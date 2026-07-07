@@ -32,6 +32,8 @@ interface UnifiedOpportunityRow {
   max_cutoff_score_prev?: number;
   nu_media_minima_enem_current?: number;
   nu_media_minima_enem_prev?: number;
+  vagas_ociosas_current?: boolean;
+  vagas_ociosas_prev?: boolean;
   institution_cover_url?: string;
 }
 
@@ -75,6 +77,8 @@ function mapRowToOpportunity(row: UnifiedOpportunityRow): IUnifiedOpportunity {
     max_cutoff_score_prev: row.max_cutoff_score_prev,
     nu_media_minima_enem_current: row.nu_media_minima_enem_current,
     nu_media_minima_enem_prev: row.nu_media_minima_enem_prev,
+    vagas_ociosas_current: row.vagas_ociosas_current,
+    vagas_ociosas_prev: row.vagas_ociosas_prev,
     institution_cover_url: row.institution_cover_url,
   };
 }

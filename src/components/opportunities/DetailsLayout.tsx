@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 import SisuProuniCard from './SisuProuniCard';
 import PartnerDescriptionCard from './PartnerDescriptionCard';
-import OpportunitiesListCard, { Opportunity } from './OpportunitiesListCard';
+import OpportunitiesListCard, { Opportunity, getTagStyle } from './OpportunitiesListCard';
 import SisuScoreDisplay from './SisuScoreDisplay';
 import OpportunityCard from './OpportunityCard';
 import CriteriaSection from './CriteriaSection';
@@ -187,7 +187,7 @@ export default function DetailsLayout({
 
       const { data: opps } = await supabase
         .from('v_unified_opportunities')
-        .select('unified_id, title, provider_name, location, opportunity_type, type, is_partner, category, badges, brand_color, institution_cover_url, created_at, min_cutoff_score_current, min_cutoff_score_prev, max_cutoff_score_current, max_cutoff_score_prev')
+        .select('unified_id, title, provider_name, location, opportunity_type, type, is_partner, category, badges, brand_color, institution_cover_url, created_at, min_cutoff_score_current, min_cutoff_score_prev, max_cutoff_score_current, max_cutoff_score_prev, vagas_ociosas_current, vagas_ociosas_prev')
         .in('unified_id', ids);
 
       if (!opps || opps.length === 0) return;
@@ -215,6 +215,8 @@ export default function DetailsLayout({
         min_cutoff_score_prev: o.min_cutoff_score_prev,
         max_cutoff_score_current: o.max_cutoff_score_current,
         max_cutoff_score_prev: o.max_cutoff_score_prev,
+        vagas_ociosas_current: o.vagas_ociosas_current,
+        vagas_ociosas_prev: o.vagas_ociosas_prev,
       } as IUnifiedOpportunity));
 
       setSimilarOpps(mapped);
@@ -508,16 +510,35 @@ export default function DetailsLayout({
           </div>
         </div>
 
-        {/* Turno — icons from relatedOpportunities */}
+        {/* Turno (SiSU) / Tipo de Bolsa (ProUni não tem dimensão de turno relevante) */}
         {!isPartner && (
           <div className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-gray-50">
             <div className="size-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 text-orange-500">
-              <Clock size={18} />
+              {opportunity.opportunity_type?.toLowerCase() === 'prouni'
+                ? <GraduationCap size={18} className="text-[#7030C2]" />
+                : <Clock size={18} />}
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">Turno</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                {(() => {
+              <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">
+                {opportunity.opportunity_type?.toLowerCase() === 'prouni' ? 'Tipo de Bolsa' : 'Turno'}
+              </p>
+              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                {opportunity.opportunity_type?.toLowerCase() === 'prouni' ? (() => {
+                  const scholarshipTypes = [...new Set(relatedOpportunities.map(r => r.scholarship_type).filter(Boolean))] as string[];
+                  if (scholarshipTypes.length === 0) return <span className="text-[13px] font-bold text-[#3A424E]">Consultar</span>;
+                  return scholarshipTypes.map(st => {
+                    const stUpper = st.toUpperCase();
+                    const tagKey = stUpper.includes('INTEGRAL') ? 'BOLSA_INTEGRAL' : stUpper.includes('PARCIAL') ? 'BOLSA_PARCIAL' : null;
+                    const style = tagKey ? getTagStyle(tagKey) : null;
+                    return style ? (
+                      <span key={st} className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${style.bg} ${style.text} ${style.border} whitespace-nowrap`}>
+                        {style.label}
+                      </span>
+                    ) : (
+                      <span key={st} className="text-[13px] font-bold text-[#3A424E]">{st}</span>
+                    );
+                  });
+                })() : (() => {
                   const shifts = [...new Set(relatedOpportunities.map(r => r.shift).filter(Boolean))];
                   if (shifts.length === 0) {
                     const badgeShift = opportunity.badges.find(b => ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EaD', 'EAD', 'Curso a distância'].includes(b));
@@ -590,17 +611,25 @@ export default function DetailsLayout({
               cycle_year={relatedOpportunities[0]?.year}
               cycle_semester={relatedOpportunities[0]?.semester}
               qt_inscricao_prev={opportunity.qt_inscricao_current ?? opportunity.qt_inscricao_prev}
-              min_cutoff_score={(() => {
+              min_cutoff_score={opportunity.opportunity_type?.toLowerCase() === 'prouni' ? null : (() => {
                 const validScores = relatedOpportunities.map(o => o.cutoff_score).filter((s): s is number => s != null);
                 return validScores.length > 0 ? Math.min(...validScores) : (opportunity.min_cutoff_score_current ?? opportunity.min_cutoff_score_prev ?? null);
               })()}
-              max_cutoff_score={(() => {
+              max_cutoff_score={opportunity.opportunity_type?.toLowerCase() === 'prouni' ? null : (() => {
                 const validScores = relatedOpportunities.map(o => o.cutoff_score).filter((s): s is number => s != null);
                 return validScores.length > 0 ? Math.max(...validScores) : (opportunity.max_cutoff_score_current ?? opportunity.max_cutoff_score_prev ?? null);
               })()}
               vagas_ociosas_prev={opportunity.vagas_ociosas_current ?? opportunity.vagas_ociosas_prev}
               qt_aprovados={approvalStats?.reduce((sum, row) => sum + (Number(row.qt_aprovados) || 0), 0) || null}
               nu_media_minima_enem={opportunity.nu_media_minima_enem_current ?? opportunity.nu_media_minima_enem_prev ?? null}
+              total_vacancies={(() => {
+                const totalVagas = relatedOpportunities.reduce((sum, opp) => {
+                  const broad = Number(opp.vacancies?.broad_competition_offered) || 0;
+                  const quotas = Number(opp.vacancies?.quotas_offered) || 0;
+                  return sum + broad + quotas;
+                }, 0);
+                return totalVagas > 0 ? totalVagas : (Number(opportunity.nu_vagas_autorizadas) || null);
+              })()}
             />
 
             {(opportunity.weights || opportunity.opportunity_type === 'prouni') && (
@@ -661,6 +690,7 @@ export default function DetailsLayout({
               }]}
               highlightedOpportunityId={opportunity.id}
               bestConcurrencyType={!opportunity.is_partner ? bestConcurrencyType : undefined}
+              vacanciesCycleLabel={opportunity.vacancies_source_cycle}
             />
 
 

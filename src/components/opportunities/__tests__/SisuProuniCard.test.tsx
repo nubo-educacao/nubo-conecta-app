@@ -74,4 +74,38 @@ describe('SisuProuniCard', () => {
     expect(linkEl).toHaveAttribute('target', '_blank');
     expect(linkEl).toHaveStyle({ color: '#7030C2' }); // ProUni color
   });
+
+  it('oculta nota de corte e exibe vagas ofertadas e ociosas para prouni', () => {
+    (useProgram as any).mockReturnValue({
+      title: 'ProUni Custom',
+      description: 'Descrição do ProUni',
+      status: 'active',
+      loading: false,
+    });
+
+    render(
+      <SisuProuniCard
+        opportunity_type="prouni"
+        cycle_year={2025}
+        cycle_semester="1"
+        min_cutoff_score={450}
+        max_cutoff_score={600}
+        total_vacancies={15}
+        vagas_ociosas_prev={true}
+      />
+    );
+
+    // Verify cutoff score is NOT in the document
+    expect(screen.queryByText('Nota de Corte')).not.toBeInTheDocument();
+    expect(screen.queryByText('450.0')).not.toBeInTheDocument();
+    expect(screen.queryByText('450.0 a 600.0')).not.toBeInTheDocument();
+
+    // Verify total vacancies are displayed
+    expect(screen.getByText('Vagas Ofertadas')).toBeInTheDocument();
+    expect(screen.getByText('15')).toBeInTheDocument();
+
+    // Verify status tile with vagas ociosas is displayed
+    expect(screen.getByText('Status das Vagas')).toBeInTheDocument();
+    expect(screen.getByText('Vagas Ociosas')).toBeInTheDocument();
+  });
 });

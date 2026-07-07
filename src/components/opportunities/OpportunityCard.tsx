@@ -264,7 +264,7 @@ export default function OpportunityCard({
               <MapPin size={14} strokeWidth={1.5} className="shrink-0" style={{ color: currentTheme.btnText }} />
               <span className="truncate">{opportunity.location || 'Nacional / Internacional'}</span>
             </div>
-            {(opportunity.type === 'sisu' || opportunity.type === 'prouni') ? (
+            {opportunity.type === 'sisu' ? (
               <div className="flex items-center gap-2 text-[13px] font-medium text-[#3A424E]/70">
                 <GraduationCap size={14} strokeWidth={1.5} className="shrink-0" style={{ color: currentTheme.btnText }} />
                 <span className="truncate">

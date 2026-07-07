@@ -1092,6 +1092,24 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                 </div>
               </div>
 
+              {/* Localização de Preferência */}
+              <div className="pt-4 border-t border-white/20">
+                <FieldLabel label="Localização de Preferência" icon={MapPin} />
+                <div className="grid grid-cols-2 gap-3">
+                  <select className={inputCls} value={statePref} onChange={e => setStatePref(e.target.value)}>
+                    <option value="">UF (qualquer)</option>
+                    {STATES_BR.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                  </select>
+                  <input
+                    className={inputCls}
+                    placeholder="Cidade (opcional)"
+                    value={locationPref}
+                    onChange={e => setLocationPref(e.target.value)}
+                  />
+                </div>
+                <p className="text-[10px] text-[#636E7C] mt-1.5">Usamos para priorizar oportunidades perto de você no cálculo do Match.</p>
+              </div>
+
               {/* Cotas */}
               <div className="pt-4 border-t border-white/20">
                 <FieldLabel label="Modalidades de Cota" icon={Users} />
