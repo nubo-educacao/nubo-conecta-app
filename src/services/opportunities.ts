@@ -207,11 +207,12 @@ export async function getAvailableCategories(): Promise<string[]> {
     supabase.from('v_unified_opportunities').select('unified_id').eq('type', 'sisu').limit(1),
   ]);
 
+  // Ordem de prioridade do produto: Sisu, Prouni, depois opções de parceiros
   const available: string[] = [];
+  if (sisuRes.data && sisuRes.data.length > 0) available.push('sisu');
+  if (prouniRes.data && prouniRes.data.length > 0) available.push('prouni');
   if (bolsaRes.data && bolsaRes.data.length > 0) available.push('programa de bolsa');
   if (educRes.data && educRes.data.length > 0) available.push('programa educacional');
-  if (prouniRes.data && prouniRes.data.length > 0) available.push('prouni');
-  if (sisuRes.data && sisuRes.data.length > 0) available.push('sisu');
 
   return available;
 }

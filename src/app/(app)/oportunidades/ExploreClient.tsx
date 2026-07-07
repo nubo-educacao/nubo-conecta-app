@@ -14,12 +14,13 @@ import FilterModal from './FilterModal';
 import type { IUnifiedOpportunity, ExploreFilters } from '@/types/opportunities';
 import { useState } from 'react';
 
+// Ordem de prioridade do produto: Sisu, Prouni, depois opções de parceiros
 const ALL_CATEGORY_PILLS = [
   { label: 'Todas',                  value: '' },
+  { label: 'Sisu',                   value: 'sisu' },
+  { label: 'Prouni',                 value: 'prouni' },
   { label: 'Programas de Bolsa',      value: 'programa de bolsa' },
   { label: 'Programas Educacionais', value: 'programa educacional' },
-  { label: 'Prouni',                 value: 'prouni' },
-  { label: 'Sisu',                   value: 'sisu' },
 ];
 
 interface ExploreClientProps {
