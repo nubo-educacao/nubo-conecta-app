@@ -42,6 +42,10 @@ interface DetailsLayoutProps {
   onFavorite?: () => void;
   approvalStats?: ApprovalRow[] | null;
   bestConcurrencyType?: string;
+  /** opportunities.id (uuid) da melhor modalidade eleita pelo motor de match */
+  bestOpportunityId?: string;
+  /** true se o score do match veio com cota_bonus — destaca a linha Cotas (ProUni) */
+  bestIsCota?: boolean;
 }
 
 export default function DetailsLayout({
@@ -51,6 +55,8 @@ export default function DetailsLayout({
   onFavorite,
   approvalStats,
   bestConcurrencyType,
+  bestOpportunityId,
+  bestIsCota,
 }: DetailsLayoutProps) {
   const router = useRouter();
   const { activeProfileId } = useProfile();
@@ -671,6 +677,8 @@ export default function DetailsLayout({
               }]}
               highlightedOpportunityId={opportunity.id}
               bestConcurrencyType={!opportunity.is_partner ? bestConcurrencyType : undefined}
+              bestOpportunityId={!opportunity.is_partner ? bestOpportunityId : undefined}
+              bestIsCota={bestIsCota}
               vacanciesCycleLabel={opportunity.vacancies_source_cycle}
             />
 
