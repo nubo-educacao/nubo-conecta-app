@@ -61,6 +61,10 @@ interface OpportunitiesListCardProps {
   opportunities: Opportunity[];
   highlightedOpportunityId?: string;
   bestConcurrencyType?: string;
+  /** opportunities.id (uuid) da melhor modalidade eleita pelo motor de match (match_details.best_opportunity_id) */
+  bestOpportunityId?: string;
+  /** true se o score do match veio com cota_bonus — nas linhas explodidas do ProUni, destaca a Cotas */
+  bestIsCota?: boolean;
   /** Ciclo de origem dos dados de vagas (ex: "2025.2"), quando as vagas vêm de um ciclo clonado */
   vacanciesCycleLabel?: string;
 }
@@ -106,7 +110,7 @@ const getShiftDetails = (shift: string) => {
 };
 
 
-export default function OpportunitiesListCard({ opportunities, highlightedOpportunityId, bestConcurrencyType, vacanciesCycleLabel }: OpportunitiesListCardProps) {
+export default function OpportunitiesListCard({ opportunities, highlightedOpportunityId, bestConcurrencyType, bestOpportunityId, bestIsCota, vacanciesCycleLabel }: OpportunitiesListCardProps) {
 
   const isSisu = opportunities[0]?.opportunity_type?.toLowerCase() === 'sisu';
   const isProuni = opportunities[0]?.opportunity_type?.toLowerCase() === 'prouni';
@@ -182,7 +186,19 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
           <tbody className="divide-y divide-gray-50">
             {opportunities.map((opp) => {
               const { icon: Icon, label, color } = getShiftDetails(opp.shift);
-              const isBest = !!(bestConcurrencyType && oppMatchesBestConcurrency(opp, bestConcurrencyType));
+
+              // Destaque "Melhor Opção":
+              // 1) Por id da opportunity (ProUni e SiSU): match_details.best_opportunity_id
+              //    aponta a modalidade exata eleita pelo motor. Nas linhas explodidas do
+              //    ProUni (sufixo _ampla/_cota), o cota_bonus decide qual das duas destacar.
+              // 2) Fallback SiSU: por rótulo de concorrência (comportamento original).
+              const rowBaseId = opp.id.replace(/_(ampla|cota)$/, '');
+              const rowModality = opp.id.endsWith('_cota') ? 'cota' : opp.id.endsWith('_ampla') ? 'ampla' : null;
+              const isBestByOppId = !!bestOpportunityId
+                && rowBaseId === `mec_${bestOpportunityId}`
+                && (rowModality === null || rowModality === (bestIsCota ? 'cota' : 'ampla'));
+              const isBest = isBestByOppId
+                || !!(bestConcurrencyType && oppMatchesBestConcurrency(opp, bestConcurrencyType));
 
               // Tipo de bolsa como tag (mesmo estilo dos chips de Modalidade e Cotas)
               const scholarshipUpper = (opp.scholarship_type || '').toUpperCase();
