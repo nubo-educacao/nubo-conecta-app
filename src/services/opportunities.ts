@@ -278,10 +278,16 @@ export async function getUnifiedOpportunities(
     }
   }
 
-  // Fallback para explorar ou usuário não autenticado no modo para-voce
+  // Base query — search usa RPC dedicada com f_unaccent() server-side (a ÚNICA forma
+  // de fazer busca sem acento sem modificar a view).
+  // Sem busca: usa distance RPC se tiver coords, senão a view diretamente.
   let query;
-  if (mode === 'explorar' && userLat !== null && userLong !== null) {
-    // Dynamic query fetching the view AND calculating distance using the user coordinates
+  if (options.q) {
+    // RPC usa translate()/f_unaccent() que é built-in, sem dependência de extensões
+    query = supabase
+      .rpc('search_opportunities', { p_q: options.q.trim() })
+      .select('*');
+  } else if (mode === 'explorar' && userLat !== null && userLong !== null) {
     query = supabase
       .rpc('get_unified_opportunities_by_distance', { p_lat: userLat, p_long: userLong })
       .select('*');
@@ -291,18 +297,11 @@ export async function getUnifiedOpportunities(
       .select('*');
   }
 
-  // Filtros de Explorar (Sprint 2.5 + Hotfix)
-  if (options.q) {
-    const unaccentedQ = options.q.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const term = `%${unaccentedQ}%`;
-    query = query.ilike('search_text', term);
-  }
   if (options.category === 'programa de bolsa' || options.category === 'programa educacional') {
     query = query.eq('opportunity_type', options.category);
   } else if (options.category) {
     query = query.eq('type', options.category);
   }
-  
 
   if (options.location && options.location !== '') {
     query = query.ilike('location', `%${options.location}%`);
@@ -313,22 +312,22 @@ export async function getUnifiedOpportunities(
   }
 
   if (options.shifts && options.shifts.length > 0) {
-    // badges is jsonb — use @> (cs) per value, combined with OR
-    // EaD has a synonym "Curso a distância" in MEC data
+    // badges is jsonb — use cs (contains) per value, combined with OR
+    // EaD has synonym "Curso a distância" in MEC data
     const shiftValues = options.shifts.flatMap(s =>
       s === 'EaD' ? ['EaD', 'Curso a distância'] : [s]
     );
     const orClause = shiftValues
-      .map(s => `computed_badges.cs.${JSON.stringify([s])}`)
+      .map(s => `badges.cs.${JSON.stringify([s])}`)
       .join(',');
     query = query.or(orClause);
   }
 
   if (options.quota_types && options.quota_types.length > 0) {
-    const quotaClause = options.quota_types
-      .map(q => `computed_badges.cs.${JSON.stringify([q])}`)
-      .join(',');
-    query = query.or(quotaClause);
+    // Todas as oportunidades MEC (SISU/ProUNI) possuem cotas obrigatórias por lei.
+    // Filtrar por is_partner=false garante que apenas oportunidades públicas com cotas apareçam.
+    // Parceiros (is_partner=true) não têm estrutura de cotas MEC.
+    query = query.eq('is_partner', false);
   }
 
   if (options.program_preference) {
@@ -374,6 +373,22 @@ export async function getUnifiedOpportunities(
   const { data, error } = await query;
 
   if (error) {
+    // Se a RPC search_opportunities ainda não está no schema cache do PostgREST,
+    // cai silenciosamente para ilike (case-insensitive, sem acento — degradado mas funcional).
+    if (options.q && (error.message.includes('schema cache') || error.message.includes('Could not find the function'))) {
+      console.warn('[getUnifiedOpportunities] search_opportunities RPC não encontrada no schema cache — usando ilike fallback');
+      const fallbackTerm = options.q.trim().toLowerCase();
+      const { data: fd, error: fe } = await supabase
+        .from('v_unified_opportunities')
+        .select('*')
+        .or(`title.ilike.%${fallbackTerm}%,provider_name.ilike.%${fallbackTerm}%`)
+        .order('created_at', { ascending: false })
+        .range(page * limit, (page + 1) * limit - 1);
+
+      if (fe) throw new Error(`getUnifiedOpportunities failed [mode=${mode}]: ${fe.message}`);
+      const fallbackMapped = (fd as UnifiedOpportunityRow[]).map(mapRowToOpportunity);
+      return await enrichMecOpportunities(fallbackMapped, supabase);
+    }
     // Fail Fast, Fail Loud (PLAYBOOK § 1) — do not swallow database errors
     throw new Error(`getUnifiedOpportunities failed [mode=${mode}]: ${error.message}`);
   }
