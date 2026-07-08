@@ -1185,6 +1185,11 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               {/* Cotas */}
               <div className="pt-4 border-t border-white/20">
                 <FieldLabel label="Modalidades de Cota" icon={Users} />
+                <p className="text-[11px] text-[#636E7C] leading-tight mb-2">
+                  No <strong>ProUni</strong>, apenas as cotas <strong>PPI (Pretos, Pardos e Indígenas)</strong> e{' '}
+                  <strong>Indígenas</strong> são consideradas no cálculo do match. As demais modalidades se
+                  aplicam ao SiSU e a programas parceiros.
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
                   {QUOTA_OPTIONS.map(q => (
                     <label key={q.id} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${quotaTypes.includes(q.id) ? 'bg-[#E0F2FE] border-[#38B1E4]/50' : 'bg-white/30 border-transparent'}`}>
