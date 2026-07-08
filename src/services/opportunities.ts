@@ -278,18 +278,31 @@ export async function getUnifiedOpportunities(
     }
   }
 
-  // Base query — search usa RPC dedicada com f_unaccent() server-side (a ÚNICA forma
-  // de fazer busca sem acento sem modificar a view).
-  // Sem busca: usa distance RPC se tiver coords, senão a view diretamente.
+  // Normaliza o termo de busca removendo acentos (espelha o f_unaccent da coluna search_text)
+  // Ex: "gráfico" → "grafico", para bater no search_text pré-computado na matview
+  const normalizeSearchTerm = (term: string) =>
+    term.trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+
+  // Escolha da query base:
+  //   1. Explorar + coords (com ou sem busca) → get_unified_opportunities_by_distance
+  //      Garante que distance_km sempre existe no resultado para ordenação
+  //   2. Busca sem coords → search_opportunities (f_unaccent server-side, mais preciso)
+  //   3. Fallback → view direta
+  const useDistanceRpc = mode === 'explorar' && userLat !== null && userLong !== null;
+
   let query;
-  if (options.q) {
-    // RPC usa translate()/f_unaccent() que é built-in, sem dependência de extensões
-    query = supabase
-      .rpc('search_opportunities', { p_q: options.q.trim() })
-      .select('*');
-  } else if (mode === 'explorar' && userLat !== null && userLong !== null) {
+  if (useDistanceRpc) {
     query = supabase
       .rpc('get_unified_opportunities_by_distance', { p_lat: userLat, p_long: userLong })
+      .select('*');
+    // Aplica filtro de busca textual via search_text (já normalizado por f_unaccent na matview)
+    if (options.q) {
+      query = query.ilike('search_text', `%${normalizeSearchTerm(options.q)}%`);
+    }
+  } else if (options.q) {
+    // Sem coords: usa RPC dedicada com f_unaccent() server-side
+    query = supabase
+      .rpc('search_opportunities', { p_q: options.q.trim() })
       .select('*');
   } else {
     query = supabase
@@ -356,16 +369,19 @@ export async function getUnifiedOpportunities(
   }
 
   // Ordenação
-  if (mode === 'explorar' && userLat !== null && userLong !== null) {
-    // Prioritizes Partners first, then distance_km (ascending - closest first), then creation date
+  if (useDistanceRpc) {
+    // get_unified_opportunities_by_distance sempre retorna distance_km
+    // Parceiros primeiro (sem lat/long → distance_km NULL → ficam no final se nullsFirst:false),
+    // depois por proximidade, depois por recência como desempate
     query = query
       .order('is_partner', { ascending: false })
       .order('distance_km', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
   } else {
-    // Sempre ordena por recência via PostgREST (compatível com qualquer view)
+    // search_opportunities ou view direta — sem distance_km, ordena por recência
     query = query.order('created_at', { ascending: false });
   }
+
 
   // Paginação
   query = query.range(page * limit, (page + 1) * limit - 1);
