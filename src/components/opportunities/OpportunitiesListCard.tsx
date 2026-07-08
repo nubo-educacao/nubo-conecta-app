@@ -61,6 +61,10 @@ interface OpportunitiesListCardProps {
   opportunities: Opportunity[];
   highlightedOpportunityId?: string;
   bestConcurrencyType?: string;
+  /** opportunities.id (uuid) da melhor modalidade eleita pelo motor de match (match_details.best_opportunity_id) */
+  bestOpportunityId?: string;
+  /** true se o score do match veio com cota_bonus — nas linhas explodidas do ProUni, destaca a Cotas */
+  bestIsCota?: boolean;
   /** Ciclo de origem dos dados de vagas (ex: "2025.2"), quando as vagas vêm de um ciclo clonado */
   vacanciesCycleLabel?: string;
 }
@@ -105,60 +109,8 @@ const getShiftDetails = (shift: string) => {
   }
 };
 
-interface ScholarshipIconProps {
-  size?: number;
-  className?: string;
-  title?: string;
-}
 
-// Path do capelo (mortarboard) do ícone GraduationCap (lucide) — única parte fechada/preenchível do ícone
-const GRAD_CAP_PATH = "M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z";
-const GRAD_STRAP_PATH = "M22 10v6";
-const GRAD_BAND_PATH = "M6 12.5V16a6 3 0 0 0 12 0v-3.5";
-
-// Capelo de formatura totalmente preenchido (capelo + faixa) — Bolsa Integral (100%)
-export const ScholarshipIntegralIcon = ({ size = 16, className = '', title }: ScholarshipIconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-    {title && <title>{title}</title>}
-    <path d={GRAD_CAP_PATH} fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    <path d={GRAD_STRAP_PATH} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    <path d={GRAD_BAND_PATH} fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-// Capelo de formatura com a metade esquerda preenchida (capelo + faixa) — Bolsa Parcial (50%)
-export const ScholarshipParcialIcon = ({ size = 16, className = '', title }: ScholarshipIconProps) => {
-  const clipId = React.useId();
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      {title && <title>{title}</title>}
-      <defs>
-        <clipPath id={clipId}>
-          <rect x="0" y="0" width="12" height="24" />
-        </clipPath>
-      </defs>
-      {/* Contorno completo do ícone, sempre visível */}
-      <path d={GRAD_CAP_PATH} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d={GRAD_BAND_PATH} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Preenchimento restrito à metade esquerda (capelo + faixa) */}
-      <g clipPath={`url(#${clipId})`}>
-        <path d={GRAD_CAP_PATH} fill="currentColor" />
-        <path d={GRAD_BAND_PATH} fill="currentColor" />
-      </g>
-      <path d={GRAD_STRAP_PATH} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-};
-
-// Cores alinhadas às já usadas nesta tela para os chips BOLSA_INTEGRAL/BOLSA_PARCIAL (ver getTagStyle)
-export const getScholarshipTypeDetails = (scholarshipType?: string | null) => {
-  const s = (scholarshipType || '').toUpperCase();
-  if (s.includes('INTEGRAL')) return { icon: ScholarshipIntegralIcon, label: 'Bolsa Integral', color: 'text-sky-700' };
-  if (s.includes('PARCIAL')) return { icon: ScholarshipParcialIcon, label: 'Bolsa Parcial', color: 'text-orange-700' };
-  return { icon: ScholarshipParcialIcon, label: scholarshipType || 'Bolsa', color: 'text-slate-400' };
-};
-
-export default function OpportunitiesListCard({ opportunities, highlightedOpportunityId, bestConcurrencyType, vacanciesCycleLabel }: OpportunitiesListCardProps) {
+export default function OpportunitiesListCard({ opportunities, highlightedOpportunityId, bestConcurrencyType, bestOpportunityId, bestIsCota, vacanciesCycleLabel }: OpportunitiesListCardProps) {
 
   const isSisu = opportunities[0]?.opportunity_type?.toLowerCase() === 'sisu';
   const isProuni = opportunities[0]?.opportunity_type?.toLowerCase() === 'prouni';
@@ -225,7 +177,7 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
         <table className="w-full text-left">
           <thead className="bg-[#F9FAFB] text-[#636E7C] text-[10px] uppercase font-bold tracking-wider">
             <tr>
-              <th className={`px-6 py-4 ${isProuni ? 'w-[170px]' : 'w-[80px]'}`}>{isProuni ? 'Tipo de Bolsa' : 'Turno'}</th>
+              <th className="px-6 py-4 w-[80px]">Turno</th>
               <th className="px-6 py-4">Modalidade e Cotas</th>
               <th className="px-4 py-4 text-right w-[90px]">Vagas{vacanciesCycleLabel ? '*' : ''}</th>
               {!isProuni && <th className="px-6 py-4 text-right w-[140px]">Nota de Corte</th>}
@@ -233,8 +185,20 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
           </thead>
           <tbody className="divide-y divide-gray-50">
             {opportunities.map((opp) => {
-              const shiftInfo = !isProuni ? getShiftDetails(opp.shift) : null;
-              const isBest = !!(bestConcurrencyType && oppMatchesBestConcurrency(opp, bestConcurrencyType));
+              const { icon: Icon, label, color } = getShiftDetails(opp.shift);
+
+              // Destaque "Melhor Opção":
+              // 1) Por id da opportunity (ProUni e SiSU): match_details.best_opportunity_id
+              //    aponta a modalidade exata eleita pelo motor. Nas linhas explodidas do
+              //    ProUni (sufixo _ampla/_cota), o cota_bonus decide qual das duas destacar.
+              // 2) Fallback SiSU: por rótulo de concorrência (comportamento original).
+              const rowBaseId = opp.id.replace(/_(ampla|cota)$/, '');
+              const rowModality = opp.id.endsWith('_cota') ? 'cota' : opp.id.endsWith('_ampla') ? 'ampla' : null;
+              const isBestByOppId = !!bestOpportunityId
+                && rowBaseId === `mec_${bestOpportunityId}`
+                && (rowModality === null || rowModality === (bestIsCota ? 'cota' : 'ampla'));
+              const isBest = isBestByOppId
+                || !!(bestConcurrencyType && oppMatchesBestConcurrency(opp, bestConcurrencyType));
 
               // Tipo de bolsa como tag (mesmo estilo dos chips de Modalidade e Cotas)
               const scholarshipUpper = (opp.scholarship_type || '').toUpperCase();
@@ -255,30 +219,17 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                   }`}
                 >
                   <td className={`px-6 py-4 transition-all ${isBest ? 'border-l-4 border-[#38B1E4] pl-5' : ''}`}>
-                    {isProuni ? (
-                      scholarshipTagStyle ? (
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${scholarshipTagStyle.bg} ${scholarshipTagStyle.text} ${scholarshipTagStyle.border} whitespace-nowrap`}>
-                          {scholarshipTagStyle.label}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-[#636E7C]">{opp.scholarship_type || '—'}</span>
-                      )
-                    ) : (() => {
-                      const ShiftIcon = shiftInfo!.icon;
-                      return (
-                        <div className="relative group/shift flex items-center justify-center">
-                          <div className={`size-8 rounded-xl bg-white shadow-sm border ${
-                            isBest ? 'border-[#38B1E4]/30' : 'border-gray-100'
-                           } flex items-center justify-center ${shiftInfo!.color}`}>
-                            <ShiftIcon size={16} />
-                          </div>
-                          <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 px-2 py-1 bg-[#3A424E] text-white text-[10px] rounded-lg opacity-0 group-hover/shift:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-xl">
-                            {shiftInfo!.label}
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#3A424E]" />
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    <div className="relative group/shift flex items-center justify-center">
+                      <div className={`size-8 rounded-xl bg-white shadow-sm border ${
+                        isBest ? 'border-[#38B1E4]/30' : 'border-gray-100'
+                       } flex items-center justify-center ${color}`}>
+                        <Icon size={16} />
+                      </div>
+                      <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 px-2 py-1 bg-[#3A424E] text-white text-[10px] rounded-lg opacity-0 group-hover/shift:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-xl">
+                        {label}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#3A424E]" />
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap items-center gap-2">
@@ -292,6 +243,11 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                           {opp.vacancies && (opp.vacancies.quotas_offered ?? 0) > 0 && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border bg-purple-50 text-purple-700 border-purple-100 whitespace-nowrap">
                               Cotas
+                            </span>
+                          )}
+                          {scholarshipTagStyle && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${scholarshipTagStyle.bg} ${scholarshipTagStyle.text} ${scholarshipTagStyle.border} whitespace-nowrap`}>
+                              {scholarshipTagStyle.label}
                             </span>
                           )}
                         </>

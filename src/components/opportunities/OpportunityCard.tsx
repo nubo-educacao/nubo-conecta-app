@@ -187,15 +187,6 @@ export default function OpportunityCard({
             <span className="text-[#3A424E] text-[10px] font-semibold uppercase">{opportunity.opportunity_type || 'PROGRAMAS'}</span>
           </div>
 
-          {vagasOciosas === true && (
-            <div className="bg-purple-100/90 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center gap-1 border border-purple-200 shadow-sm h-[20px]">
-              <TrendingUp size={10} className="text-purple-700" strokeWidth={2.5} />
-              <span className="text-purple-700 text-[9px] font-bold uppercase tracking-wider">
-                Vagas Ociosas
-              </span>
-            </div>
-          )}
-
           {isClosed && (
             <div className="bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-white/10 shadow-lg">
               <Lock size={9} className="text-white/80" strokeWidth={2.5} />
@@ -211,6 +202,15 @@ export default function OpportunityCard({
               <Clock size={9} className="text-white" strokeWidth={2.5} />
               <span className="text-white text-[10px] font-bold uppercase tracking-wider">Em breve</span>
             </motion.div>
+          )}
+
+          {vagasOciosas === true && (
+            <div className="bg-purple-100/90 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center gap-1 border border-purple-200 shadow-sm h-[20px]">
+              <TrendingUp size={10} className="text-purple-700" strokeWidth={2.5} />
+              <span className="text-purple-700 text-[9px] font-bold uppercase tracking-wider">
+                Vagas Ociosas
+              </span>
+            </div>
           )}
         </div>
 

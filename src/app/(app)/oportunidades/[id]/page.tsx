@@ -42,9 +42,14 @@ async function createSupabaseServerClient() {
  * getOpportunity - Fetches enriched metadata from the unified view
  * Hydrates match_score from user_opportunity_matches if a session exists.
  */
-async function getOpportunity(unifiedId: string): Promise<[IUnifiedOpportunity, string | undefined] | null> {
+interface BestMatchInfo {
+  bestOpportunityId?: string;   // opportunities.id (uuid) da melhor modalidade eleita pelo motor
+  bestIsCota?: boolean;         // true se o score veio com cota_bonus (destaca a linha Cotas no ProUni)
+}
+
+async function getOpportunity(unifiedId: string): Promise<[IUnifiedOpportunity, string | undefined, BestMatchInfo] | null> {
   const supabase = await createSupabaseServerClient();
-  
+
   // Get current user to hydrate match_score
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -60,6 +65,7 @@ async function getOpportunity(unifiedId: string): Promise<[IUnifiedOpportunity, 
   // Hydrate Match Score if user is logged in
   let matchScore = null;
   let bestConcurrencyType: string | undefined = undefined;
+  const bestMatch: BestMatchInfo = {};
   if (user) {
     const { data: matchData } = await supabase
       .from('user_opportunity_matches')
@@ -70,7 +76,10 @@ async function getOpportunity(unifiedId: string): Promise<[IUnifiedOpportunity, 
 
     if (matchData) {
       matchScore = matchData.match_score;
-      bestConcurrencyType = (matchData.match_details as any)?.best_concurrency_type ?? undefined;
+      const details = matchData.match_details as any;
+      bestConcurrencyType = details?.best_concurrency_type ?? undefined;
+      bestMatch.bestOpportunityId = details?.best_opportunity_id ?? undefined;
+      bestMatch.bestIsCota = details?.cota_bonus_applied === true;
     }
   }
 
@@ -216,7 +225,7 @@ async function getOpportunity(unifiedId: string): Promise<[IUnifiedOpportunity, 
     weights:                  oppData.weights,
     description:              description,
     vacancies_source_cycle:   oppData.vacancies_source_cycle,
-  }, bestConcurrencyType];
+  }, bestConcurrencyType, bestMatch];
 }
 
 /**
@@ -322,7 +331,7 @@ async function getRelatedOpportunities(unifiedId: string): Promise<Opportunity[]
   // Deduplicate identical modalities
   const uniqueRelated: Opportunity[] = [];
   const seen = new Set();
-  
+
   for (const item of mapped) {
     // create a unique signature for this opportunity to filter DB duplicates
     const key = `${item.year}|${item.semester}|${item.shift}|${item._raw_tp_cota || item.concurrency_type}|${JSON.stringify(item.concurrency_tags)}|${item.cutoff_score}|${item.vacancies?.broad_competition_offered}`;
@@ -333,7 +342,33 @@ async function getRelatedOpportunities(unifiedId: string): Promise<Opportunity[]
     }
   }
 
-  return uniqueRelated;
+  // ProUni: o split Ampla/Cotas vive em COLUNAS de opportunities_prouni_vacancies
+  // (1 linha por opportunity). Para a lista de opções exibir cada modalidade como
+  // linha própria (paridade com o SiSU), explodimos em até 2 linhas — cada uma com
+  // suas vagas. As somas agregadas (header Vagas, Métricas) se preservam (X+0 / 0+Y).
+  const exploded: Opportunity[] = [];
+  for (const item of uniqueRelated) {
+    const isProuni = item.opportunity_type?.toLowerCase() === 'prouni';
+    const ampla = Number(item.vacancies?.broad_competition_offered) || 0;
+    const cota = Number(item.vacancies?.quotas_offered) || 0;
+
+    if (isProuni && ampla > 0 && cota > 0) {
+      exploded.push({
+        ...item,
+        id: `${item.id}_ampla`,
+        vacancies: { broad_competition_offered: ampla, quotas_offered: 0 },
+      });
+      exploded.push({
+        ...item,
+        id: `${item.id}_cota`,
+        vacancies: { broad_competition_offered: 0, quotas_offered: cota },
+      });
+    } else {
+      exploded.push(item);
+    }
+  }
+
+  return exploded;
 }
 
 type SisuVacancyRow = Record<string, unknown>;
@@ -402,7 +437,7 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const [opportunity, bestConcurrencyType] = opportunityResult;
+  const [opportunity, bestConcurrencyType, bestMatch] = opportunityResult;
 
   return (
     <AppShell>
@@ -411,6 +446,8 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
         relatedOpportunities={relatedOpportunities}
         approvalStats={approvalStats}
         bestConcurrencyType={bestConcurrencyType}
+        bestOpportunityId={bestMatch.bestOpportunityId}
+        bestIsCota={bestMatch.bestIsCota}
       />
     </AppShell>
   );

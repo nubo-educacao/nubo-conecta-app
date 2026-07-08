@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 import SisuProuniCard from './SisuProuniCard';
 import PartnerDescriptionCard from './PartnerDescriptionCard';
-import OpportunitiesListCard, { Opportunity, getTagStyle } from './OpportunitiesListCard';
+import OpportunitiesListCard, { Opportunity } from './OpportunitiesListCard';
 import SisuScoreDisplay from './SisuScoreDisplay';
 import OpportunityCard from './OpportunityCard';
 import CriteriaSection from './CriteriaSection';
@@ -42,6 +42,10 @@ interface DetailsLayoutProps {
   onFavorite?: () => void;
   approvalStats?: ApprovalRow[] | null;
   bestConcurrencyType?: string;
+  /** opportunities.id (uuid) da melhor modalidade eleita pelo motor de match */
+  bestOpportunityId?: string;
+  /** true se o score do match veio com cota_bonus — destaca a linha Cotas (ProUni) */
+  bestIsCota?: boolean;
 }
 
 export default function DetailsLayout({
@@ -51,6 +55,8 @@ export default function DetailsLayout({
   onFavorite,
   approvalStats,
   bestConcurrencyType,
+  bestOpportunityId,
+  bestIsCota,
 }: DetailsLayoutProps) {
   const router = useRouter();
   const { activeProfileId } = useProfile();
@@ -510,35 +516,16 @@ export default function DetailsLayout({
           </div>
         </div>
 
-        {/* Turno (SiSU) / Tipo de Bolsa (ProUni não tem dimensão de turno relevante) */}
+        {/* Turno — icons from relatedOpportunities */}
         {!isPartner && (
           <div className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm border border-gray-50">
             <div className="size-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 text-orange-500">
-              {opportunity.opportunity_type?.toLowerCase() === 'prouni'
-                ? <GraduationCap size={18} className="text-[#7030C2]" />
-                : <Clock size={18} />}
+              <Clock size={18} />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">
-                {opportunity.opportunity_type?.toLowerCase() === 'prouni' ? 'Tipo de Bolsa' : 'Turno'}
-              </p>
+              <p className="text-[10px] text-[#707A7E] font-medium uppercase tracking-wider">Turno</p>
               <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                {opportunity.opportunity_type?.toLowerCase() === 'prouni' ? (() => {
-                  const scholarshipTypes = [...new Set(relatedOpportunities.map(r => r.scholarship_type).filter(Boolean))] as string[];
-                  if (scholarshipTypes.length === 0) return <span className="text-[13px] font-bold text-[#3A424E]">Consultar</span>;
-                  return scholarshipTypes.map(st => {
-                    const stUpper = st.toUpperCase();
-                    const tagKey = stUpper.includes('INTEGRAL') ? 'BOLSA_INTEGRAL' : stUpper.includes('PARCIAL') ? 'BOLSA_PARCIAL' : null;
-                    const style = tagKey ? getTagStyle(tagKey) : null;
-                    return style ? (
-                      <span key={st} className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${style.bg} ${style.text} ${style.border} whitespace-nowrap`}>
-                        {style.label}
-                      </span>
-                    ) : (
-                      <span key={st} className="text-[13px] font-bold text-[#3A424E]">{st}</span>
-                    );
-                  });
-                })() : (() => {
+                {(() => {
                   const shifts = [...new Set(relatedOpportunities.map(r => r.shift).filter(Boolean))];
                   if (shifts.length === 0) {
                     const badgeShift = opportunity.badges.find(b => ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EaD', 'EAD', 'Curso a distância'].includes(b));
@@ -690,6 +677,8 @@ export default function DetailsLayout({
               }]}
               highlightedOpportunityId={opportunity.id}
               bestConcurrencyType={!opportunity.is_partner ? bestConcurrencyType : undefined}
+              bestOpportunityId={!opportunity.is_partner ? bestOpportunityId : undefined}
+              bestIsCota={bestIsCota}
               vacanciesCycleLabel={opportunity.vacancies_source_cycle}
             />
 

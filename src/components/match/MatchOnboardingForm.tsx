@@ -23,6 +23,7 @@ import {
   getUserOnboardingData
 } from '@/services/profileService';
 import { generateMatchAsync, getMatchStatus } from '@/services/matchService';
+import { fetchAvailableCategories, type AvailableCategory } from '@/lib/availableCategories';
 
 interface MatchOnboardingFormProps {
   userId: string;
@@ -42,17 +43,11 @@ const EDUCATION_OPTIONS = [
 
 const SHIFTS_OPTIONS = ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EAD'];
 
+// Fallback estático caso o fetch de categorias disponíveis falhe
 const STATIC_PROGRAM_OPTIONS = [
   { label: 'Sisu', value: 'sisu' },
   { label: 'Prouni', value: 'prouni' },
   { label: 'Programa de Bolsa', value: 'programa de bolsa' },
-  { label: 'Indiferente', value: 'indiferente' },
-];
-
-const UNIVERSITY_OPTIONS = [
-  { label: 'Pública', value: 'publica' },
-  { label: 'Privada', value: 'privada' },
-  { label: 'Indiferente', value: 'indiferente' },
 ];
 
 const QUOTA_OPTIONS = [
@@ -256,7 +251,59 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
   const [showCourseSuggestions, setShowCourseSuggestions] = useState(false);
   const courseInputRef = useRef<HTMLDivElement>(null);
 
-  const programOptions = STATIC_PROGRAM_OPTIONS;
+  // ── Programas disponíveis (apenas ciclos ativos no catálogo; ordem Sisu > Prouni > parceiros) ──
+  const [programOptions, setProgramOptions] = useState<{ label: string; value: string }[]>(STATIC_PROGRAM_OPTIONS);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchAvailableCategories()
+      .then((cats: AvailableCategory[]) => {
+        if (!cancelled && cats.length > 0) {
+          setProgramOptions(cats.map(c => ({ label: c.label, value: c.value })));
+        }
+      })
+      .catch(() => { /* mantém fallback estático */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── City Autocomplete (tabela cities, filtrada pela UF selecionada) ────────
+  const [cityResults, setCityResults] = useState<{ name: string; state: string }[]>([]);
+  const [citiesLoading, setCitiesLoading] = useState(false);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const cityInputRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (locationPref.length < 2 || !showCitySuggestions) {
+      setCityResults([]);
+      return;
+    }
+    setCitiesLoading(true);
+    const timer = setTimeout(async () => {
+      let q = supabase
+        .from('cities')
+        .select('name, state')
+        .ilike('name', `%${locationPref}%`)
+        .order('name')
+        .limit(8);
+      if (statePref) q = q.eq('state', statePref);
+      const { data } = await q;
+      setCityResults((data || []) as { name: string; state: string }[]);
+      setCitiesLoading(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationPref, statePref, showCitySuggestions]);
+
+  // Close city dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (cityInputRef.current && !cityInputRef.current.contains(e.target as Node)) {
+        setShowCitySuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
 
   // Course search debounce
@@ -1080,15 +1127,11 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                 </div>
 
                 <div>
-                  <FieldLabel label="Programa / Univ." icon={Building} />
-                  <div className="flex flex-col gap-2">
-                    <select className={inputCls} value={programPref} onChange={e => setProgramPref(e.target.value)}>
-                      {programOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                    <select className={inputCls} value={universityPref} onChange={e => setUniversityPref(e.target.value)}>
-                      {UNIVERSITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                  </div>
+                  <FieldLabel label="Programa" icon={Building} />
+                  <select className={inputCls} value={programPref} onChange={e => setProgramPref(e.target.value)}>
+                    <option value="indiferente">Indiferente</option>
+                    {programOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
                 </div>
               </div>
 
@@ -1096,16 +1139,45 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               <div className="pt-4 border-t border-white/20">
                 <FieldLabel label="Localização de Preferência" icon={MapPin} />
                 <div className="grid grid-cols-2 gap-3">
-                  <select className={inputCls} value={statePref} onChange={e => setStatePref(e.target.value)}>
+                  <select
+                    className={inputCls}
+                    value={statePref}
+                    onChange={e => { setStatePref(e.target.value); setLocationPref(''); setCityResults([]); }}
+                  >
                     <option value="">UF (qualquer)</option>
                     {STATES_BR.map(uf => <option key={uf} value={uf}>{uf}</option>)}
                   </select>
-                  <input
-                    className={inputCls}
-                    placeholder="Cidade (opcional)"
-                    value={locationPref}
-                    onChange={e => setLocationPref(e.target.value)}
-                  />
+                  <div ref={cityInputRef} className="relative">
+                    <input
+                      className={inputCls}
+                      placeholder="Cidade (opcional)"
+                      value={locationPref}
+                      onChange={e => { setLocationPref(e.target.value); setShowCitySuggestions(true); }}
+                      onFocus={() => locationPref.length >= 2 && setShowCitySuggestions(true)}
+                    />
+                    {citiesLoading && (
+                      <Loader2 size={14} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-[#38B1E4]" />
+                    )}
+                    {showCitySuggestions && cityResults.length > 0 && (
+                      <div className="absolute z-50 left-0 right-0 mt-1 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden max-h-56 overflow-y-auto">
+                        {cityResults.map(c => (
+                          <button
+                            key={`${c.name}-${c.state}`}
+                            type="button"
+                            className="w-full text-left px-4 py-2.5 text-[13px] text-[#3A424E] hover:bg-[#E0F2FE] transition-colors"
+                            onMouseDown={e => {
+                              e.preventDefault();
+                              setLocationPref(c.name);
+                              if (!statePref) setStatePref(c.state);
+                              setShowCitySuggestions(false);
+                            }}
+                          >
+                            {c.name}{!statePref ? ` — ${c.state}` : ''}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <p className="text-[10px] text-[#636E7C] mt-1.5">Usamos para priorizar oportunidades perto de você no cálculo do Match.</p>
               </div>

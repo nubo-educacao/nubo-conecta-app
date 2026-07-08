@@ -3,21 +3,38 @@
 // HeroSearch — Sprint 3.5 (rev. Design Review)
 // Container arredondado com gradiente azul, input translúcido e pills de filtro rápido.
 // NÃO é seção edge-to-edge: o componente carrega seu próprio px-4 e rounded-2xl.
+// Pills dinâmicos: só programas com ciclo ativo no catálogo (ordem Sisu > Prouni > parceiros),
+// mesma lógica da tab Explore em /oportunidades.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, ArrowRight } from 'lucide-react';
+import { fetchAvailableCategories } from '@/lib/availableCategories';
 
-const QUICK_FILTERS = [
-  { label: 'Programa de Bolsa', category: 'programa de bolsa' },
-  { label: 'Prouni', category: 'prouni' },
+// Fallback estático enquanto carrega / caso o fetch falhe (mesma ordem de prioridade)
+const DEFAULT_QUICK_FILTERS = [
   { label: 'Sisu', category: 'sisu' },
+  { label: 'Prouni', category: 'prouni' },
+  { label: 'Programa de Bolsa', category: 'programa de bolsa' },
 ];
 
 export default function HeroSearch() {
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [quickFilters, setQuickFilters] = useState(DEFAULT_QUICK_FILTERS);
   const router = useRouter();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchAvailableCategories()
+      .then(cats => {
+        if (!cancelled && cats.length > 0) {
+          setQuickFilters(cats.map(c => ({ label: c.label, category: c.value })));
+        }
+      })
+      .catch(() => { /* mantém fallback estático */ });
+    return () => { cancelled = true; };
+  }, []);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -99,7 +116,7 @@ export default function HeroSearch() {
 
         {/* Pills de filtro rápido */}
         <div className="flex flex-wrap gap-2">
-          {QUICK_FILTERS.map(({ label, category }) => {
+          {quickFilters.map(({ label, category }) => {
             const isSelected = selectedCategory === category;
             return (
               <button
