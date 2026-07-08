@@ -9,6 +9,7 @@ import type { IUnifiedOpportunity, OpportunityCategory, OpportunitySourceType } 
 
 // Row shape returned by v_unified_opportunities — maps directly to view columns
 // Sprint 6: added status, starts_at, ends_at. 'type' is the source type (sisu|prouni|partner).
+// Sprint 8: added search_text (pre-computed f_unaccent for accent-insensitive search).
 interface UnifiedOpportunityRow {
   unified_id: string;
   title: string;
@@ -35,6 +36,7 @@ interface UnifiedOpportunityRow {
   vagas_ociosas_current?: boolean;
   vagas_ociosas_prev?: boolean;
   institution_cover_url?: string;
+  search_text?: string; // pré-computado na matview — adicionado em 20260708120000
 }
 
 // Category label lookup — keeps the service layer free of display-layer concerns
@@ -279,12 +281,31 @@ export async function getUnifiedOpportunities(
     }
   }
 
-  // Fallback para explorar ou usuário não autenticado no modo para-voce
+  // Normaliza o termo de busca removendo acentos (espelha o f_unaccent da coluna search_text)
+  // Ex: "gráfico" → "grafico", para bater no search_text pré-computado na matview
+  const normalizeSearchTerm = (term: string) =>
+    term.trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+
+  // Escolha da query base:
+  //   1. Explorar + coords (com ou sem busca) → get_unified_opportunities_by_distance
+  //      Garante que distance_km sempre existe no resultado para ordenação
+  //   2. Busca sem coords → search_opportunities (f_unaccent server-side, mais preciso)
+  //   3. Fallback → view direta
+  const useDistanceRpc = mode === 'explorar' && userLat !== null && userLong !== null;
+
   let query;
-  if (mode === 'explorar' && userLat !== null && userLong !== null) {
-    // Dynamic query fetching the view AND calculating distance using the user coordinates
+  if (useDistanceRpc) {
     query = supabase
       .rpc('get_unified_opportunities_by_distance', { p_lat: userLat, p_long: userLong })
+      .select('*');
+    // Aplica filtro de busca textual via search_text (já normalizado por f_unaccent na matview)
+    if (options.q) {
+      query = query.ilike('search_text', `%${normalizeSearchTerm(options.q)}%`);
+    }
+  } else if (options.q) {
+    // Sem coords: usa RPC dedicada com f_unaccent() server-side
+    query = supabase
+      .rpc('search_opportunities', { p_q: options.q.trim() })
       .select('*');
   } else {
     query = supabase
@@ -292,16 +313,11 @@ export async function getUnifiedOpportunities(
       .select('*');
   }
 
-  // Filtros de Explorar (Sprint 2.5 + Hotfix)
-  if (options.q) {
-    query = query.ilike('title', `%${options.q}%`);
-  }
   if (options.category === 'programa de bolsa' || options.category === 'programa educacional') {
     query = query.eq('opportunity_type', options.category);
   } else if (options.category) {
     query = query.eq('type', options.category);
   }
-  
 
   if (options.location && options.location !== '') {
     query = query.ilike('location', `%${options.location}%`);
@@ -312,8 +328,8 @@ export async function getUnifiedOpportunities(
   }
 
   if (options.shifts && options.shifts.length > 0) {
-    // badges is jsonb — use @> (cs) per value, combined with OR
-    // EaD has a synonym "Curso a distância" in MEC data
+    // badges is jsonb — use cs (contains) per value, combined with OR
+    // EaD has synonym "Curso a distância" in MEC data
     const shiftValues = options.shifts.flatMap(s =>
       s === 'EaD' ? ['EaD', 'Curso a distância'] : [s]
     );
@@ -324,10 +340,10 @@ export async function getUnifiedOpportunities(
   }
 
   if (options.quota_types && options.quota_types.length > 0) {
-    const quotaClause = options.quota_types
-      .map(q => `badges.cs.${JSON.stringify([q])}`)
-      .join(',');
-    query = query.or(quotaClause);
+    // Todas as oportunidades MEC (SISU/ProUNI) possuem cotas obrigatórias por lei.
+    // Filtrar por is_partner=false garante que apenas oportunidades públicas com cotas apareçam.
+    // Parceiros (is_partner=true) não têm estrutura de cotas MEC.
+    query = query.eq('is_partner', false);
   }
 
   if (options.program_preference) {
@@ -338,10 +354,14 @@ export async function getUnifiedOpportunities(
     }
   }
 
+  // Prevent impossible queries (e.g. sisu + privada)
   if (options.university_preference === 'publica') {
     query = query.eq('is_partner', false);
   } else if (options.university_preference === 'privada') {
-    query = query.eq('is_partner', true);
+    // Only apply 'privada' if we aren't explicitly requesting a public program
+    if (options.program_preference !== 'sisu' && options.program_preference !== 'prouni') {
+      query = query.eq('is_partner', true);
+    }
   }
 
   if (options.course_interests && options.course_interests.length > 0) {
@@ -352,16 +372,19 @@ export async function getUnifiedOpportunities(
   }
 
   // Ordenação
-  if (mode === 'explorar' && userLat !== null && userLong !== null) {
-    // Prioritizes Partners first, then distance_km (ascending - closest first), then creation date
+  if (useDistanceRpc) {
+    // get_unified_opportunities_by_distance sempre retorna distance_km
+    // Parceiros primeiro (sem lat/long → distance_km NULL → ficam no final se nullsFirst:false),
+    // depois por proximidade, depois por recência como desempate
     query = query
       .order('is_partner', { ascending: false })
       .order('distance_km', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
   } else {
-    // Sempre ordena por recência via PostgREST (compatível com qualquer view)
+    // search_opportunities ou view direta — sem distance_km, ordena por recência
     query = query.order('created_at', { ascending: false });
   }
+
 
   // Paginação
   query = query.range(page * limit, (page + 1) * limit - 1);
@@ -369,6 +392,22 @@ export async function getUnifiedOpportunities(
   const { data, error } = await query;
 
   if (error) {
+    // Se a RPC search_opportunities ainda não está no schema cache do PostgREST,
+    // cai silenciosamente para ilike (case-insensitive, sem acento — degradado mas funcional).
+    if (options.q && (error.message.includes('schema cache') || error.message.includes('Could not find the function'))) {
+      console.warn('[getUnifiedOpportunities] search_opportunities RPC não encontrada no schema cache — usando ilike fallback');
+      const fallbackTerm = options.q.trim().toLowerCase();
+      const { data: fd, error: fe } = await supabase
+        .from('v_unified_opportunities')
+        .select('*')
+        .or(`title.ilike.%${fallbackTerm}%,provider_name.ilike.%${fallbackTerm}%`)
+        .order('created_at', { ascending: false })
+        .range(page * limit, (page + 1) * limit - 1);
+
+      if (fe) throw new Error(`getUnifiedOpportunities failed [mode=${mode}]: ${fe.message}`);
+      const fallbackMapped = (fd as UnifiedOpportunityRow[]).map(mapRowToOpportunity);
+      return await enrichMecOpportunities(fallbackMapped, supabase);
+    }
     // Fail Fast, Fail Loud (PLAYBOOK § 1) — do not swallow database errors
     throw new Error(`getUnifiedOpportunities failed [mode=${mode}]: ${error.message}`);
   }

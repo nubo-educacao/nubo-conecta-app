@@ -96,7 +96,7 @@ export default function SisuProuniCard({
         <h3 className="text-[#3A424E] font-bold text-lg mb-3">
           {title}
         </h3>
-        <p className={`text-sm text-[#636E7C] leading-relaxed ${isExpanded ? '' : 'line-clamp-4 md:line-clamp-none'}`}>
+        <p className={`text-sm text-[#636E7C] leading-relaxed whitespace-pre-line ${isExpanded ? '' : 'line-clamp-4 md:line-clamp-none'}`}>
           {renderMarkdown(description, accentColor)}
         </p>
         {description && (

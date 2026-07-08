@@ -108,4 +108,24 @@ describe('SisuProuniCard', () => {
     expect(screen.getByText('Status das Vagas')).toBeInTheDocument();
     expect(screen.getByText('Vagas Ociosas')).toBeInTheDocument();
   });
+
+  it('aplica classe whitespace-pre-line na descrição para suportar parágrafos', () => {
+    (useProgram as any).mockReturnValue({
+      title: 'ProUni Custom',
+      description: 'Primeira linha.\nSegunda linha.',
+      status: 'active',
+      loading: false,
+    });
+
+    const { container } = render(
+      <SisuProuniCard
+        opportunity_type="prouni"
+        cycle_year={2025}
+        cycle_semester="1"
+      />
+    );
+
+    const descriptionParagraph = container.querySelector('p');
+    expect(descriptionParagraph).toHaveClass('whitespace-pre-line');
+  });
 });
