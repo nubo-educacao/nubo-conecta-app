@@ -9,6 +9,7 @@ import type { IUnifiedOpportunity, OpportunityCategory, OpportunitySourceType } 
 
 // Row shape returned by v_unified_opportunities — maps directly to view columns
 // Sprint 6: added status, starts_at, ends_at. 'type' is the source type (sisu|prouni|partner).
+// Sprint 8: added search_text (pre-computed f_unaccent for accent-insensitive search).
 interface UnifiedOpportunityRow {
   unified_id: string;
   title: string;
@@ -35,6 +36,7 @@ interface UnifiedOpportunityRow {
   vagas_ociosas_current?: boolean;
   vagas_ociosas_prev?: boolean;
   institution_cover_url?: string;
+  search_text?: string; // pré-computado na matview — adicionado em 20260708120000
 }
 
 // Category label lookup — keeps the service layer free of display-layer concerns
