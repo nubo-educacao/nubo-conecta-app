@@ -74,6 +74,13 @@ const SALARIO_MINIMO = 1518.00;
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+// Normaliza rótulos EAD legados ('Curso a distância', 'EaD') para o vocabulário do form
+// ('EAD'). Sem isso, um valor legado salvo no banco fica INVISÍVEL nos checkboxes (nenhum
+// corresponde), o usuário não consegue ver/desmarcar, e o save o re-grava para sempre —
+// enquanto o motor de match segue filtrando por ele silenciosamente.
+const normalizeShifts = (shifts: string[] | null | undefined): string[] =>
+  [...new Set((shifts ?? []).map(s => (s === 'Curso a distância' || s === 'EaD') ? 'EAD' : s))];
+
 const calculateAge = (birthDate: string): number | null => {
   if (!birthDate) return null;
   const today = new Date();
@@ -386,7 +393,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
             setQuotaTypes(data.preferences.quota_types);
           }
           if (data.preferences.preferred_shifts && data.preferences.preferred_shifts.length > 0) {
-            setShifts(data.preferences.preferred_shifts);
+            setShifts(normalizeShifts(data.preferences.preferred_shifts));
           }
           setProgramPref(data.preferences.program_preference || 'indiferente');
           setUniversityPref(data.preferences.university_preference || 'indiferente');
@@ -1185,6 +1192,11 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               {/* Cotas */}
               <div className="pt-4 border-t border-white/20">
                 <FieldLabel label="Modalidades de Cota" icon={Users} />
+                <p className="text-[11px] text-[#636E7C] leading-tight mb-2">
+                  No <strong>ProUni</strong>, apenas as cotas <strong>PPI (Pretos, Pardos e Indígenas)</strong> e{' '}
+                  <strong>Indígenas</strong> são consideradas no cálculo do match. As demais modalidades se
+                  aplicam ao SiSU e a programas parceiros.
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
                   {QUOTA_OPTIONS.map(q => (
                     <label key={q.id} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${quotaTypes.includes(q.id) ? 'bg-[#E0F2FE] border-[#38B1E4]/50' : 'bg-white/30 border-transparent'}`}>
