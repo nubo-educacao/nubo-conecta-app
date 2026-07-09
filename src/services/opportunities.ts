@@ -281,29 +281,30 @@ export async function getUnifiedOpportunities(
     }
   }
 
-  // Normaliza o termo de busca removendo acentos (espelha o f_unaccent da coluna search_text)
-  // Ex: "gráfico" → "grafico", para bater no search_text pré-computado na matview
-  const normalizeSearchTerm = (term: string) =>
-    term.trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
-
   // Escolha da query base:
-  //   1. Explorar + coords (com ou sem busca) → get_unified_opportunities_by_distance
-  //      Garante que distance_km sempre existe no resultado para ordenação
-  //   2. Busca sem coords → search_opportunities (f_unaccent server-side, mais preciso)
-  //   3. Fallback → view direta
+  //   1. Explorar + coords + busca → search_opportunities_by_distance
+  //      word_similarity fuzzy search + distance_km em uma única RPC
+  //   2. Explorar + coords sem busca → get_unified_opportunities_by_distance
+  //   3. Busca sem coords → search_opportunities (word_similarity server-side)
+  //   4. Fallback → view direta
   const useDistanceRpc = mode === 'explorar' && userLat !== null && userLong !== null;
 
   let query;
-  if (useDistanceRpc) {
+  if (useDistanceRpc && options.q) {
+    // Busca fuzzy (word_similarity) + distância em uma única RPC
+    query = supabase
+      .rpc('search_opportunities_by_distance', {
+        p_lat: userLat,
+        p_long: userLong,
+        p_q: options.q.trim(),
+      })
+      .select('*');
+  } else if (useDistanceRpc) {
     query = supabase
       .rpc('get_unified_opportunities_by_distance', { p_lat: userLat, p_long: userLong })
       .select('*');
-    // Aplica filtro de busca textual via search_text (já normalizado por f_unaccent na matview)
-    if (options.q) {
-      query = query.ilike('search_text', `%${normalizeSearchTerm(options.q)}%`);
-    }
   } else if (options.q) {
-    // Sem coords: usa RPC dedicada com f_unaccent() server-side
+    // Sem coords: usa RPC dedicada com word_similarity server-side
     query = supabase
       .rpc('search_opportunities', { p_q: options.q.trim() })
       .select('*');
@@ -320,7 +321,7 @@ export async function getUnifiedOpportunities(
   }
 
   if (options.location && options.location !== '') {
-    query = query.ilike('location', `%${options.location}%`);
+    query = query.ilike('location', `%, ${options.location}`);
   }
 
   if (options.city && options.city !== '') {
