@@ -147,9 +147,14 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
     nota_redacao: String(latestEnem?.nota_redacao ?? ""),
   });
 
+  // Normaliza rótulos EAD legados ('Curso a distância', 'EaD') para o vocabulário do form ('EAD') —
+  // valor legado fica invisível nos checkboxes e seria re-gravado silenciosamente a cada save.
+  const normalizeShifts = (shifts: string[] | null | undefined): string[] =>
+    [...new Set((shifts ?? []).map(s => (s === 'Curso a distância' || s === 'EaD') ? 'EAD' : s))];
+
   const [courseInterest, setCourseInterest] = useState<string[]>((prefs?.course_interest as string[]) ?? []);
   const [quotaTypes, setQuotaTypes] = useState<string[]>((prefs?.quota_types as string[]) ?? []);
-  const [preferredShifts, setPreferredShifts] = useState<string[]>((prefs?.preferred_shifts as string[]) ?? []);
+  const [preferredShifts, setPreferredShifts] = useState<string[]>(normalizeShifts(prefs?.preferred_shifts as string[]));
   const [programPref, setProgramPref] = useState<string>(String(prefs?.program_preference ?? "indiferente"));
   const [universityPref, setUniversityPref] = useState<string>(String(prefs?.university_preference ?? "indiferente"));
   const [locationPref, setLocationPref] = useState(String(prefs?.location_preference ?? ""));
@@ -407,7 +412,7 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
           onEdit={() => setEditingShift(true)}
           onCancel={() => {
             setEditingShift(false);
-            setPreferredShifts((prefs?.preferred_shifts as string[]) ?? []);
+            setPreferredShifts(normalizeShifts(prefs?.preferred_shifts as string[]));
           }}
           onSave={() => handleSave(() => setEditingShift(false))}
           saving={saving}
