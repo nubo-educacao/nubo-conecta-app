@@ -17,6 +17,11 @@ describe('useSystemIntents', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    // O hook também dispara o system intent 'tutorial' 1x por sessão (via
+    // sessionStorage) no mount de qualquer usuário anônimo/autenticado. Sem isso,
+    // o mock de streamChat (que não distingue chatInput) responde 2x por teste —
+    // uma vez para page_context, outra para tutorial — inflando unreadCount etc.
+    sessionStorage.setItem('nubo_tutorial_shown', 'true');
   });
 
   afterEach(() => {
@@ -49,7 +54,9 @@ describe('useSystemIntents', () => {
       expect(result.current.unreadCount).toBe(1);
       expect(result.current.pendingMessages).toHaveLength(1);
       expect(result.current.pendingMessages[0].content).toContain('Olá!');
-      expect(result.current.hasPriorityMessage).toBe(true);
+      // open_drawer:true abre o drawer automaticamente (shouldOpenDrawer), não é
+      // o mesmo sinal que pulsate (hasPriorityMessage) — ver useSystemIntents.ts.
+      expect(result.current.shouldOpenDrawer).toBe(true);
     });
 
     // streamChat deve ter sido chamado com page_context
@@ -74,7 +81,7 @@ describe('useSystemIntents', () => {
     expect(streamChat).not.toHaveBeenCalled();
   });
 
-  it('sinaliza hasPriorityMessage se open_drawer=true', async () => {
+  it('sinaliza shouldOpenDrawer se open_drawer=true', async () => {
     vi.useRealTimers();
     (usePathname as Mock).mockReturnValue('/oportunidades/opp-789');
 
@@ -88,7 +95,26 @@ describe('useSystemIntents', () => {
     );
 
     await waitFor(() => {
+      expect(result.current.shouldOpenDrawer).toBe(true);
+    });
+  });
+
+  it('sinaliza hasPriorityMessage se pulsate=true (sem abrir o drawer)', async () => {
+    vi.useRealTimers();
+    (usePathname as Mock).mockReturnValue('/oportunidades/opp-790');
+
+    (streamChat as Mock).mockImplementation(async function* () {
+      yield { type: 'text', content: 'Resposta real da Cloudinha' };
+      yield { type: 'intent_metadata', open_drawer: false, pulsate: true };
+    });
+
+    const { result } = renderHook(() =>
+      useSystemIntents(defaultProps)
+    );
+
+    await waitFor(() => {
       expect(result.current.hasPriorityMessage).toBe(true);
+      expect(result.current.shouldOpenDrawer).toBe(false);
     });
   });
 

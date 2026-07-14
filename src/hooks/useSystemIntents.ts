@@ -184,7 +184,7 @@ export function useSystemIntents({
 
     const handleCloudinhaIntent = async (e: Event) => {
       const { type: intentType, metadata } = (e as CustomEvent).detail ?? {};
-      if (!intentType || !['step_change', 'validation_error', 'welcome_back', 'submit'].includes(intentType)) return;
+      if (!intentType || !['step_change', 'validation_error', 'welcome_back', 'submit', 'explain_match', 'phase_updated'].includes(intentType)) return;
 
       console.log('[SystemIntent] CustomEvent recebido:', intentType, metadata);
       const cancelled = { current: false };
@@ -209,8 +209,13 @@ export function useSystemIntents({
 
     window.addEventListener('cloudinha-intent', handleCloudinhaIntent);
     return () => window.removeEventListener('cloudinha-intent', handleCloudinhaIntent);
+  // isDrawerOpen precisa estar nas deps: sem isso, handleCloudinhaIntent fica com um
+  // closure "congelado" do valor de isDrawerOpen de quando o efeito rodou pela última
+  // vez, e a checagem `!isDrawerOpen` em intent_metadata nunca mais reflete o estado
+  // real do drawer (bug: abrir o drawer manualmente uma vez bloqueia open_drawer
+  // automático pra sempre nessa rota).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, accessToken, pathname]);
+  }, [userId, accessToken, pathname, isDrawerOpen]);
 
   // Tutorial para usuários anônimos: dispara 1x por sessão via sessionStorage
   useEffect(() => {
