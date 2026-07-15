@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/contexts/ProfileContext";
 import { evaluateJsonLogic } from "@/utils/jsonLogic";
 import { trackAndRedirect } from "@/services/redirectService";
+import { OpportunityPhaseStepper } from "@/components/OpportunityPhaseStepper";
 
 interface ApplicationState {
   id: string;
@@ -21,6 +22,7 @@ interface ApplicationState {
   partner_name: string;
   user_id?: string;
   external_redirect?: { enabled: boolean; url?: string };
+  phase_id?: string | null;
 }
 
 type PagePhase = "loading" | "form" | "submitted" | "error";
@@ -41,6 +43,7 @@ export default function PartnerFormsPage() {
   const [steps, setSteps] = useState<PartnerStep[]>([]);
   const [fields, setFields] = useState<PartnerFormField[]>([]);
   const [application, setApplication] = useState<ApplicationState | null>(null);
+  const [phases, setPhases] = useState<any[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string>("");
   const [formKey, setFormKey] = useState<string>("");
   const [stepIndex, setStepIndex] = useState(0);
@@ -56,7 +59,7 @@ export default function PartnerFormsPage() {
       const { data: existingApp, error: appErr } = await supabase
         .from("student_applications")
         .select(`
-          id, status, answers, partner_id, user_id,
+          id, status, answers, partner_id, user_id, phase_id,
           partner_opportunities:partner_id ( name, external_redirect_config )
         `)
         .eq("id", applicationId)
@@ -76,10 +79,20 @@ export default function PartnerFormsPage() {
         partner_id: existingApp.partner_id,
         partner_name: opp?.name ?? "Candidatura",
         user_id: existingApp.user_id,
+        phase_id: existingApp.phase_id,
         external_redirect: opp?.external_redirect_config as ApplicationState['external_redirect'],
       };
 
       setApplication(appState);
+
+      // Fetch phases regardless, since we need them in both form and submitted states
+      const { data: phasesData } = await supabase
+        .from("opportunity_phases")
+        .select("id, name, sort_order")
+        .eq("opportunity_id", appState.partner_id)
+        .order("sort_order");
+        
+      setPhases(phasesData || []);
 
       if (["SUBMITTED", "APPROVED", "redirected"].includes(appState.status)) {
         setPhase("submitted");
@@ -101,8 +114,8 @@ export default function PartnerFormsPage() {
       ]);
 
       const loadedFields = (fieldsRes.data as PartnerFormField[]) || [];
-      if (stepsRes.data) setSteps(stepsRes.data as PartnerStep[]);
-      if (fieldsRes.data) setFields(loadedFields);
+      setSteps(stepsRes.data as PartnerStep[] || []);
+      setFields(loadedFields);
 
       // Initialize selected profile from ProfileContext or application user_id
       const initialProfileId = activeProfileId ?? existingApp.user_id ?? user!.id;
@@ -465,6 +478,23 @@ export default function PartnerFormsPage() {
                 Ver minhas candidaturas
               </button>
             </motion.div>
+
+            {/* Stepper only if there are phases */}
+            {phases && phases.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="w-full mt-4 border-t border-gray-100 pt-4"
+              >
+                <p className="text-xs font-semibold text-gray-500 mb-2">Próximos passos do processo:</p>
+                <OpportunityPhaseStepper 
+                  phases={phases} 
+                  currentPhaseId={application?.phase_id || null} 
+                  initialStepLabel={isRedirected ? "Estudante Redirecionado" : "Candidatura Enviada"}
+                />
+              </motion.div>
+            )}
           </motion.div>
         </div>
       </AppShell>

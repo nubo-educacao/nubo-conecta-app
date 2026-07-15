@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Plus, ChevronRight, LogIn, Compass } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import ApplicationStepper from "@/components/ApplicationStepper";
+import { OpportunityPhaseStepper } from "@/components/OpportunityPhaseStepper";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/contexts/ProfileContext";
@@ -20,6 +21,9 @@ interface ApplicationCard {
   opportunity_name: string | null;
   institution_name: string | null;
   logo_url: string | null;
+  phase_id: string | null;
+  phase_name: string | null;
+  phases: { id: string; name: string; sort_order: number }[];
 }
 
 type AppStatus = "DRAFT" | "pending" | "SUBMITTED" | "redirected" | "IN_REVIEW" | "APPROVED" | "REJECTED";
@@ -43,7 +47,7 @@ const cardVariants = {
   }),
 };
 
-const SHOW_STEPPER_FOR: AppStatus[] = ["SUBMITTED", "IN_REVIEW", "APPROVED"];
+const SHOW_STEPPER_FOR: AppStatus[] = ["SUBMITTED", "IN_REVIEW", "APPROVED", "redirected"];
 
 
 export default function CandidaturasPage() {
@@ -61,13 +65,15 @@ export default function CandidaturasPage() {
     supabase
       .from("student_applications")
       .select(`
-        id, partner_id, status, created_at, updated_at,
+        id, partner_id, status, created_at, updated_at, phase_id,
+        opportunity_phases:phase_id ( name ),
         partner_opportunities:partner_id (
           name,
           institutions:institution_id (
             name,
             partner_institutions ( logo_url )
-          )
+          ),
+          opportunity_phases (id, name, sort_order)
         )
       `)
       .eq("user_id", profileId)
@@ -79,6 +85,7 @@ export default function CandidaturasPage() {
           const pi = Array.isArray(inst.partner_institutions)
             ? (inst.partner_institutions[0] || {})
             : (inst.partner_institutions || {});
+          const opPhase = (row.opportunity_phases as Record<string, unknown> | null) ?? {};
           return {
             id: row.id as string,
             partner_id: row.partner_id as string,
@@ -88,6 +95,9 @@ export default function CandidaturasPage() {
             opportunity_name: (opp.name as string) ?? null,
             institution_name: (inst.name as string) ?? null,
             logo_url: pi.logo_url ?? null,
+            phase_id: (row.phase_id as string) ?? null,
+            phase_name: (opPhase.name as string) ?? null,
+            phases: Array.isArray(opp.opportunity_phases) ? (opp.opportunity_phases as any) : [],
           };
         });
         setApplications(mapped);
@@ -306,10 +316,15 @@ export default function CandidaturasPage() {
                       {app.institution_name && (
                         <p className="text-[12px] text-[#636e7c] truncate">{app.institution_name}</p>
                       )}
-                      <div className="flex items-center gap-2 mt-1.5">
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${cfg.bgColor} ${cfg.textColor}`}>
                           {cfg.label}
                         </span>
+                        {app.phase_name && status !== "redirected" && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#eaeaff] text-[#635bff]">
+                            Fase: {app.phase_name}
+                          </span>
+                        )}
                         <span className="text-[10px] text-[#707a7e]">Atualizado em {updatedDate}</span>
                       </div>
                     </div>
@@ -320,7 +335,15 @@ export default function CandidaturasPage() {
                   {/* Stepper */}
                   {showStepper && (
                     <div className="px-4 pb-4 pt-1 border-t border-gray-50">
-                      <ApplicationStepper status={status as "DRAFT" | "SUBMITTED" | "IN_REVIEW" | "APPROVED" | "REJECTED"} compact />
+                      {app.phases && app.phases.length > 0 ? (
+                        <OpportunityPhaseStepper 
+                          phases={app.phases} 
+                          currentPhaseId={app.phase_id} 
+                          initialStepLabel={status === "redirected" ? "Estudante Redirecionado" : "Candidatura Enviada"}
+                        />
+                      ) : (
+                        <ApplicationStepper status={status as "DRAFT" | "SUBMITTED" | "IN_REVIEW" | "APPROVED" | "REJECTED"} compact />
+                      )}
                     </div>
                   )}
                 </motion.button>
