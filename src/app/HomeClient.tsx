@@ -23,6 +23,9 @@ interface HomeClientProps {
 interface ApplicationSummary {
   id: string;
   status: string;
+  phase_id: string | null;
+  opportunity_phases: { name: string } | null;
+  partner_opportunities: { name: string } | null;
 }
 
 export default function HomeClient({ sections }: HomeClientProps) {
@@ -36,6 +39,7 @@ export default function HomeClient({ sections }: HomeClientProps) {
 
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
   const [appsLoading, setAppsLoading] = useState(true);
+  const [dismissedPhases, setDismissedPhases] = useState<string[]>([]);
   const welcomeBackSentRef = useRef<string>('');
 
   // Dispatch welcome_back once per authenticated session on Home mount
@@ -86,7 +90,11 @@ export default function HomeClient({ sections }: HomeClientProps) {
     setAppsLoading(true);
     supabase
       .from('student_applications')
-      .select('id, status')
+      .select(`
+        id, status, phase_id,
+        opportunity_phases ( name ),
+        partner_opportunities ( name )
+      `)
       .eq('user_id', user.id)
       .then(({ data }: { data: any[] | null }) => {
         setApplications(data || []);
@@ -94,10 +102,65 @@ export default function HomeClient({ sections }: HomeClientProps) {
       });
   }, [user]);
 
+  // Trigger Claudinha when a phase is updated
+  useEffect(() => {
+    if (!user || applications.length === 0) return;
+
+    try {
+      const storedNotified = localStorage.getItem(`nubo_notified_phases_${user.id}`);
+      const notifiedMap = storedNotified ? JSON.parse(storedNotified) : {};
+      let updated = false;
+
+      applications.forEach(app => {
+        if (app.phase_id && app.status !== 'DRAFT') {
+          const lastNotifiedPhase = notifiedMap[app.id];
+          if (lastNotifiedPhase !== app.phase_id) {
+            // Dispatch intent to Cloudinha
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(
+                new CustomEvent('cloudinha-intent', {
+                  detail: {
+                    intent_type: 'system_intent',
+                    type: 'phase_updated',
+                    metadata: {
+                      opportunity_name: app.partner_opportunities?.name || 'sua oportunidade',
+                      phase_name: app.opportunity_phases?.name || 'nova fase'
+                    }
+                  }
+                })
+              );
+            }
+            notifiedMap[app.id] = app.phase_id;
+            updated = true;
+          }
+        }
+      });
+
+      if (updated) {
+        localStorage.setItem(`nubo_notified_phases_${user.id}`, JSON.stringify(notifiedMap));
+      }
+    } catch (e) {
+      console.warn('[HomeClient] Error handling phase notification:', e);
+    }
+  }, [user, applications]);
+
+  // Load dismissed banners
+  useEffect(() => {
+    if (user) {
+      try {
+        const stored = localStorage.getItem(`nubo_clicked_banners_${user.id}`);
+        if (stored) setDismissedPhases(JSON.parse(stored));
+      } catch (e) {
+        console.warn('Error loading clicked banners', e);
+      }
+    }
+  }, [user]);
+
   // CTA state logic
   let ctaState: CTAState = 'loading';
   let lastDraftId: string | null = null;
   let countInProgress = 0;
+  let phaseDataForCTA: { phaseId: string, opportunityName: string, phaseName: string, onClick: (id: string) => void } | undefined = undefined;
 
   if (!loading && !appsLoading) {
     if (!user) {
@@ -105,13 +168,28 @@ export default function HomeClient({ sections }: HomeClientProps) {
     } else if (!onboardingCompleted) {
       ctaState = 'no-profile';
     } else {
+      const activePhaseApps = applications.filter(a => a.phase_id && a.status !== 'DRAFT' && !dismissedPhases.includes(a.phase_id));
       const drafts = applications.filter(a => a.status === 'DRAFT');
       const submitted = applications.filter(a => a.status !== 'DRAFT');
       
       countInProgress = drafts.length;
       if (drafts.length > 0) lastDraftId = drafts[0].id;
 
-      if (submitted.length > 0) {
+      if (activePhaseApps.length > 0) {
+        ctaState = 'phase-updated';
+        const phaseApp = activePhaseApps[0];
+        phaseDataForCTA = {
+          phaseId: phaseApp.phase_id!,
+          opportunityName: (phaseApp.partner_opportunities as any)?.name || 'sua oportunidade',
+          phaseName: (phaseApp.opportunity_phases as any)?.name || 'nova fase',
+          onClick: (phaseId: string) => {
+            const updated = [...dismissedPhases, phaseId];
+            setDismissedPhases(updated);
+            localStorage.setItem(`nubo_clicked_banners_${user.id}`, JSON.stringify(updated));
+            router.push('/candidaturas');
+          }
+        };
+      } else if (submitted.length > 0) {
         ctaState = 'completed-application';
       } else if (drafts.length > 0) {
         ctaState = 'application-in-progress';
@@ -130,6 +208,7 @@ export default function HomeClient({ sections }: HomeClientProps) {
           ctaState={ctaState}
           lastDraftId={lastDraftId}
           countInProgress={countInProgress}
+          phaseData={phaseDataForCTA}
           onOpenAuth={() => setShowAuthModal(true)}
         />
       ))}
@@ -147,6 +226,7 @@ interface SectionRendererProps {
   ctaState: CTAState;
   lastDraftId: string | null;
   countInProgress: number;
+  phaseData?: { phaseId: string, opportunityName: string, phaseName: string, onClick: (id: string) => void };
   onOpenAuth: () => void;
 }
 
@@ -155,6 +235,7 @@ function SectionRenderer({
   ctaState,
   lastDraftId,
   countInProgress,
+  phaseData,
   onOpenAuth,
 }: SectionRendererProps) {
   const config = section.config as Record<string, unknown>;
@@ -171,6 +252,7 @@ function SectionRenderer({
               state={ctaState}
               lastDraftId={lastDraftId}
               countInProgress={countInProgress}
+              phaseData={phaseData}
               onOpenAuth={onOpenAuth}
             />
           </div>

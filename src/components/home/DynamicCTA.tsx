@@ -16,13 +16,20 @@ export type CTAState =
   | 'no-profile'
   | 'no-applications'
   | 'application-in-progress'
-  | 'completed-application';
+  | 'completed-application'
+  | 'phase-updated';
 
 interface DynamicCTAProps {
   state: CTAState;
   onOpenAuth?: () => void;
   lastDraftId?: string | null;
   countInProgress?: number;
+  phaseData?: {
+    phaseId: string;
+    opportunityName: string;
+    phaseName: string;
+    onClick: (phaseId: string) => void;
+  };
 }
 
 export default function DynamicCTA({
@@ -30,6 +37,7 @@ export default function DynamicCTA({
   onOpenAuth,
   lastDraftId,
   countInProgress = 0,
+  phaseData,
 }: DynamicCTAProps) {
   if (state === 'loading') {
     return (
@@ -41,6 +49,66 @@ export default function DynamicCTA({
 
   // Common styles for premium card experience
   const cardBorderRadius = "rounded-2xl md:rounded-[20px]";
+
+  if (state === 'phase-updated' && phaseData) {
+    return (
+      <div
+        onClick={() => phaseData.onClick(phaseData.phaseId)}
+        className={`w-full ${cardBorderRadius} p-5 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border border-transparent text-left cursor-pointer relative overflow-hidden`}
+        style={{
+          background: 'linear-gradient(135deg, #635bff 0%, #8075ff 100%)',
+          color: 'white',
+          boxShadow: '0 8px 32px rgba(99, 91, 255, 0.15)'
+        }}
+      >
+        <div className="absolute right-[-20px] top-[-20px] w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
+        
+        <div className="flex items-center gap-4 flex-1">
+          {/* Cloudinha Avatar (Hidden on Mobile top right, shown on desktop left) */}
+          <div className="relative hidden md:flex flex-shrink-0 w-[72px] h-[72px] rounded-full bg-white/10 items-center justify-center overflow-hidden border border-white/10 shadow-inner">
+            <img src="/assets/cloudinha-candidaturas.png" alt="Cloudinha" className="w-[60px] h-[60px] object-contain" />
+            <span className="absolute top-1 right-2 w-3 h-3 rounded-full bg-[#25d366] border-2 border-[#635bff] animate-pulse" />
+          </div>
+
+          <div className="flex flex-col gap-0.5 flex-1 pr-12 md:pr-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="text-[10px] md:text-[11px] uppercase font-extrabold tracking-wider bg-white/20 px-2 py-0.5 rounded-full" style={{ fontFamily: 'Montserrat, sans-serif' }}>Atualização</span>
+              <span className="md:hidden w-2 h-2 rounded-full bg-[#25d366] animate-pulse" />
+            </div>
+            
+            {/* Title */}
+            <h3 className="font-bold text-base md:text-xl leading-tight tracking-tight text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Processo Seletivo Ativo!
+            </h3>
+
+            {/* Description */}
+            <p className="text-xs md:text-sm text-white/90 leading-normal mt-1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Você avançou para a fase <strong className="underline">{phaseData.phaseName}</strong> em <strong className="font-semibold">{phaseData.opportunityName}</strong>.
+            </p>
+          </div>
+
+          {/* Cloudinha Avatar (Shown on Mobile top right) */}
+          <div className="relative flex md:hidden absolute top-4 right-4 flex-shrink-0 w-12 h-12 rounded-full bg-white/10 items-center justify-center overflow-hidden border border-white/10">
+            <img src="/assets/cloudinha-candidaturas.png" alt="Cloudinha" className="w-10 h-10 object-contain" />
+          </div>
+        </div>
+
+        {/* Right Side: CTA Button */}
+        <div className="w-full md:w-auto mt-2 md:mt-0 relative z-10">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              phaseData.onClick(phaseData.phaseId);
+            }}
+            className="w-full md:w-auto px-6 py-3 rounded-xl bg-white text-[#635bff] text-sm font-bold shadow-sm transition-all hover:bg-slate-50 active:scale-95 flex items-center justify-center gap-2"
+            style={{ fontFamily: 'Montserrat, sans-serif' }}
+          >
+            Acompanhar Candidatura →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (state === 'visitor') {
     return (
