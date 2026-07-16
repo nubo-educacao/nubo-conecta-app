@@ -23,6 +23,7 @@ import {
   getUserOnboardingData
 } from '@/services/profileService';
 import { generateMatchAsync, getMatchStatus } from '@/services/matchService';
+import IncomeCalculatorField from '@/components/forms/ui-components/IncomeCalculatorField';
 import { fetchAvailableCategories, type AvailableCategory } from '@/lib/availableCategories';
 
 interface MatchOnboardingFormProps {
@@ -448,6 +449,34 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
     const alim = parseFloat(alimony.replace(',', '.')) || 0;
     return count > 0 ? (incomesTotal + benefits + alim) / count : 0;
   }, [useCalculator, familyCount, memberIncomes, socialBenefits, alimony, manualPerCapita]);
+
+  const incomeCalculatorSerializedValue = useMemo(() => {
+    if (!familyCount) return '';
+    return JSON.stringify({
+      family_count: parseInt(familyCount) || null,
+      social_benefits: parseFloat(socialBenefits) || 0,
+      alimony: parseFloat(alimony) || 0,
+      member_incomes: memberIncomes.map(i => parseFloat(i) || 0),
+      per_capita_income: perCapitaIncome || 0
+    });
+  }, [familyCount, socialBenefits, alimony, memberIncomes, perCapitaIncome]);
+
+  const handleIncomeCalculatorChange = (val: string) => {
+    if (errors.income) {
+      setErrors(prev => ({ ...prev, income: false }));
+    }
+    try {
+      const parsed = JSON.parse(val);
+      if (parsed) {
+        setFamilyCount(parsed.family_count?.toString() ?? '');
+        setSocialBenefits(parsed.social_benefits?.toString() ?? '');
+        setAlimony(parsed.alimony?.toString() ?? '');
+        setMemberIncomes(parsed.member_incomes?.map(String) ?? []);
+      }
+    } catch (e) {
+      // fallback
+    }
+  };
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -978,56 +1007,14 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               </div>
             </div>
 
-            <div className="bg-[#F8FAFC] rounded-2xl p-5 border border-gray-100">
-               <h3 className="font-bold text-[#024F86] mb-4 flex items-center justify-between gap-2 uppercase text-[13px]">
-                <div className="flex items-center gap-2"><DollarSign size={16} /> Renda Per Capita</div>
-              </h3>
-
-              <div className="space-y-4 animate-in fade-in duration-300">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <FieldLabel label="Nº de Familiares" icon={Users} required error={errors.income} />
-                    <input type="number" className={`${inputCls} ${errors.income ? 'border-red-500' : ''}`} placeholder="Ex: 1" value={familyCount} onChange={e => { handleFamilyCountChange(e.target.value); if (errors.income) setErrors(prev => ({ ...prev, income: false })); }} onFocus={triggerIncomeIntent} />
-                  </div>
-                  <div>
-                    <FieldLabel label="Benefícios (Bruto)" icon={DollarSign} />
-                    <input type="number" className={inputCls} placeholder="R$ 0,00" value={socialBenefits} onChange={e => setSocialBenefits(e.target.value)} onFocus={triggerIncomeIntent} />
-                  </div>
-                </div>
-                
-                {memberIncomes.length > 0 && (
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-[#636E7C] uppercase">Rendas Individuais</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {memberIncomes.map((inc, i) => (
-                        <input 
-                          key={i} 
-                          type="number" 
-                          placeholder={`Pessoa ${i+1}`}
-                          className="bg-white border rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-[#38B1E4]" 
-                          value={inc}
-                          onChange={e => {
-                            const arr = [...memberIncomes];
-                            arr[i] = e.target.value;
-                            setMemberIncomes(arr);
-                          }}
-                          onFocus={triggerIncomeIntent}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {familyCount && perCapitaIncome !== null && perCapitaIncome > 0 && (
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-[#024F86] to-[#38B1E4] rounded-2xl text-white shadow-lg animate-in slide-in-from-top-2 duration-300">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold opacity-80 uppercase">Renda Per Capita Calculada</span>
-                      <span className="text-[20px] font-black">{formatCurrency(perCapitaIncome || 0)}</span>
-                    </div>
-                    <CheckCircle size={24} className="opacity-40" />
-                  </div>
-                )}
-              </div>
+            <div className="bg-[#F8FAFC] rounded-2xl p-2 border border-gray-100">
+              <IncomeCalculatorField
+                label="Renda Per Capita"
+                required
+                hasError={errors.income}
+                value={incomeCalculatorSerializedValue}
+                onChange={handleIncomeCalculatorChange}
+              />
             </div>
           </div>
         )}

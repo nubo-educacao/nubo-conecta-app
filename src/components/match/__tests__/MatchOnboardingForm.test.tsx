@@ -110,8 +110,8 @@ describe('MatchOnboardingForm — Fluxo de 3 Passos', () => {
 
     // Passo 2 -> Passo 3
     await waitFor(() => expect(screen.getByText(/Desempenho & Renda/i)).toBeInTheDocument());
-    fireEvent.change(screen.getAllByPlaceholderText('0.0')[0], { target: { value: '750' } });
-    fireEvent.change(screen.getByPlaceholderText('Ex: 1'), { target: { value: '3' } });
+    fireEvent.change(screen.getAllByPlaceholderText('0-1000')[0], { target: { value: '750' } });
+    fireEvent.change(screen.getByPlaceholderText('Ex: 3'), { target: { value: '3' } });
     
     fireEvent.click(screen.getByText(/Continuar/i));
 
