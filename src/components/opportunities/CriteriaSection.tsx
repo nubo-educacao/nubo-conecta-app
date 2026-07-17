@@ -12,6 +12,7 @@ interface CriterionField {
   question_text: string;
   criterion_type: 'eligibility' | 'priority';
   criterion_rule: string | null;
+  conditional_rule: string | null;
 }
 
 interface CriteriaSectionProps {
@@ -27,7 +28,7 @@ export default function CriteriaSection({ partnerOpportunityId, legacyCriteria }
     let cancelled = false;
     supabase
       .from('partner_forms')
-      .select('id, field_name, question_text, criterion_type, criterion_rule')
+      .select('id, field_name, question_text, criterion_type, criterion_rule, conditional_rule')
       .eq('partner_id', partnerOpportunityId)
       .eq('is_criterion', true)
       .order('sort_order')
@@ -49,8 +50,9 @@ export default function CriteriaSection({ partnerOpportunityId, legacyCriteria }
     );
   }
 
-  const eligibility = criteria.filter((c) => c.criterion_type !== 'priority');
-  const priority = criteria.filter((c) => c.criterion_type === 'priority');
+  const topLevelCriteria = criteria.filter((c) => !c.conditional_rule);
+  const eligibility = topLevelCriteria.filter((c) => c.criterion_type !== 'priority');
+  const priority = topLevelCriteria.filter((c) => c.criterion_type === 'priority');
 
   return (
     <div className="space-y-6">
