@@ -219,19 +219,46 @@ export default function PartnerFormsPage() {
   // ── Eligibility computation ─────────────────────────────────────────────────
   const computeEligibility = (data: Record<string, unknown>) => {
     const criterionFields = fields.filter((f) => f.is_criterion && f.criterion_rule && f.criterion_type !== 'priority');
+    const evalData = { ...profileData, ...data };
     
     return criterionFields
-      .filter((f) => data[f.field_name] !== undefined && data[f.field_name] !== null)
+      .filter((f) => {
+        if (f.conditional_rule) {
+          try {
+            if (!evaluateJsonLogic(f.conditional_rule, evalData)) return false;
+          } catch {
+            // fallback
+          }
+        }
+        return data[f.field_name] !== undefined && data[f.field_name] !== null;
+      })
       .map((f) => {
         const userAnswer = data[f.field_name];
+        let displayAnswer = String(userAnswer);
+        
+        // Try parsing if it's a string that looks like our object
+        let parsedObj = typeof userAnswer === 'string' && userAnswer.includes('per_capita_income') 
+          ? (() => { try { return JSON.parse(userAnswer); } catch { return null; } })()
+          : (typeof userAnswer === 'object' ? userAnswer : null);
+
+        if (f.ui_component === 'income_calculator' || (parsedObj && typeof parsedObj.per_capita_income === 'number')) {
+          if (parsedObj && typeof parsedObj.per_capita_income === 'number') {
+            displayAnswer = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parsedObj.per_capita_income);
+          }
+        }
+
         let met = false;
         try {
-          met = !!evaluateJsonLogic(f.criterion_rule!, { [f.field_name]: userAnswer });
+          const ruleData = { ...evalData, [f.field_name]: userAnswer };
+          if (parsedObj) {
+            ruleData[f.field_name] = parsedObj;
+          }
+          met = !!evaluateJsonLogic(f.criterion_rule!, ruleData);
         } catch { /* rule evaluation failed — treat as unmet */ }
         return {
           question_text: f.question_text,
           met,
-          user_answer: String(userAnswer),
+          user_answer: displayAnswer,
         };
       });
   };
