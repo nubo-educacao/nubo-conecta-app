@@ -172,12 +172,57 @@ export function evaluateJsonLogic(rule: unknown, data: Record<string, unknown>):
 
     const evalArgs = (args as unknown[]).map((a) => evaluateJsonLogic(a, data));
 
+function extractNumericValue(val: unknown): number | null {
+  if (val == null) return null;
+  if (typeof val === 'number') return isNaN(val) ? null : val;
+
+  if (typeof val === 'object' && val !== null) {
+    if ('per_capita_income' in val) {
+      return extractNumericValue((val as Record<string, unknown>).per_capita_income);
+    }
+    if ('value' in val) {
+      return extractNumericValue((val as Record<string, unknown>).value);
+    }
+  }
+
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed === '') return null;
+
+    if (!isNaN(Number(trimmed))) {
+      return Number(trimmed);
+    }
+
+    if (!/\d/.test(trimmed)) return null;
+
+    let clean = trimmed.replace(/[^\d.,-]/g, '');
+
+    if (clean.includes(',') && clean.indexOf(',') > clean.lastIndexOf('.')) {
+      clean = clean.replace(/\./g, '').replace(',', '.');
+    } else if (clean.includes(',') && !clean.includes('.')) {
+      clean = clean.replace(',', '.');
+    } else if (clean.includes('.') && !clean.includes(',')) {
+      const parts = clean.split('.');
+      if (parts.length > 1 && parts[parts.length - 1].length === 3 && parts[0].length >= 1) {
+        clean = clean.replace(/\./g, '');
+      }
+    } else {
+      clean = clean.replace(/,/g, '');
+    }
+
+    const num = Number(clean);
+    return isNaN(num) ? null : num;
+  }
+
+  return null;
+}
+
     const compare = (a: unknown, b: unknown, opStr: string): boolean => {
         if (a == null || b == null) return false;
-        const numA = Number(a);
-        const numB = Number(b);
-        const valA = isNaN(numA) ? a : numA;
-        const valB = isNaN(numB) ? b : numB;
+        const numA = extractNumericValue(a);
+        const numB = extractNumericValue(b);
+        const valA = numA !== null ? numA : a;
+        const valB = numB !== null ? numB : b;
         switch (opStr) {
             case '>': return (valA as number) > (valB as number);
             case '>=': return (valA as number) >= (valB as number);
