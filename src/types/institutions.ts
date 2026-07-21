@@ -15,6 +15,9 @@ export interface UnifiedInstitution {
   type: InstitutionType;
   website_url?: string | null;
   opp_types?: string[] | null;
+  open_opportunities_count?: number;
+  is_partner?: boolean;
+  has_open_opportunities?: boolean;
   acronym?: string | null;
   academic_organization?: string | null;
   administrative_category?: string | null;

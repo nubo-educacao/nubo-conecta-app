@@ -10,7 +10,7 @@ export interface IHomeSection {
   id: string;
   title: string;
   section_type: 'opportunity_carousel' | 'institution_carousel' | 'match_carousel' | 'dates' | 'hero_search' | 'dynamic_cta';
-  data_source: 'partner_opportunities' | 'recent_opportunities' | 'match_results' | 'institutions' | 'important_dates' | 'static';
+  data_source: 'partner_opportunities' | 'recent_opportunities' | 'match_results' | 'institutions' | 'important_dates' | 'static' | 'featured_opportunities' | 'institutions_with_open_opps';
   display_order: number;
   is_active: boolean;
   target_states: string[] | null;
