@@ -6,17 +6,17 @@ export const dynamic = 'force-dynamic';
 import AppShell from '@/components/layout/AppShell';
 import HomeClient from './HomeClient';
 import { getHomeSections, type IHomeSection } from '@/services/homeSections';
-import { getUnifiedOpportunities } from '@/services/opportunities';
+import { getUnifiedOpportunities, getFeaturedOpportunities } from '@/services/opportunities';
 import { getImportantDates } from '@/services/importantDates';
-import { getPartnerInstitutions } from '@/services/institutions';
+import { getPartnerInstitutions, getInstitutionsWithOpenOpps } from '@/services/institutions';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 import type { IImportantDate } from '@/services/importantDates';
-import type { IPartnerInstitution } from '@/services/institutions';
+import type { UnifiedInstitution } from '@/types/institutions';
 
 // Tipo expandido para seções com dados já populados
 export interface IHomeSectionWithData extends IHomeSection {
   opportunities?: IUnifiedOpportunity[];
-  institutions?: IPartnerInstitution[];
+  institutions?: UnifiedInstitution[]; // era IPartnerInstitution[] — ver Peer Review Sprint 16.0 #1
   dates?: IImportantDate[];
 }
 
@@ -64,40 +64,40 @@ export default async function HomePage() {
   }
 
   // 3. FALLBACK — queries hardcoded (backward compat enquanto migration não rodou)
-  const [recentResult, partnersResult, datesResult, institutionsResult] = await Promise.allSettled([
+  const [recentResult, featuredResult, datesResult, institutionsResult] = await Promise.allSettled([
     getUnifiedOpportunities({ mode: 'explorar', page: 0, limit: 8 }),
-    getUnifiedOpportunities({ mode: 'para-voce', page: 0, limit: 8 }),
+    getFeaturedOpportunities(8),
     getImportantDates(),
-    getPartnerInstitutions(),
+    getInstitutionsWithOpenOpps(12),
   ]);
 
   if (recentResult.status === 'rejected')
     console.error('[Home] ERRO recentes:', recentResult.reason);
-  if (partnersResult.status === 'rejected')
-    console.error('[Home] ERRO para-voce:', partnersResult.reason);
+  if (featuredResult.status === 'rejected')
+    console.error('[Home] ERRO em destaque:', featuredResult.reason);
   if (datesResult.status === 'rejected')
     console.error('[Home] ERRO datas:', datesResult.reason);
   if (institutionsResult.status === 'rejected')
     console.error('[Home] ERRO instituições:', institutionsResult.reason);
 
   let recentOpportunities: IUnifiedOpportunity[] = [];
-  let partnerOpportunities: IUnifiedOpportunity[] = [];
+  let featuredOpportunities: IUnifiedOpportunity[] = [];
   let importantDates: IImportantDate[] = [];
-  let partnerInstitutions: IPartnerInstitution[] = [];
+  let featuredInstitutions: UnifiedInstitution[] = [];
 
   if (recentResult.status === 'fulfilled') recentOpportunities = recentResult.value;
-  if (partnersResult.status === 'fulfilled') partnerOpportunities = partnersResult.value.filter((o) => o.is_partner);
+  if (featuredResult.status === 'fulfilled') featuredOpportunities = featuredResult.value;
   if (datesResult.status === 'fulfilled') importantDates = datesResult.value;
-  if (institutionsResult.status === 'fulfilled') partnerInstitutions = institutionsResult.value;
+  if (institutionsResult.status === 'fulfilled') featuredInstitutions = institutionsResult.value;
 
   // Montar seções do fallback para HomeClient consumir no mesmo formato
   const fallbackSections: IHomeSectionWithData[] = [
     { id: 'fb-hero', title: '', section_type: 'hero_search', data_source: 'static', display_order: 0, is_active: true, target_states: null, target_onboarding_status: null, config: {} },
     { id: 'fb-cta', title: '', section_type: 'dynamic_cta', data_source: 'static', display_order: 1, is_active: true, target_states: null, target_onboarding_status: null, config: {} },
     { id: 'fb-match', title: 'Para Você', section_type: 'match_carousel', data_source: 'match_results', display_order: 2, is_active: true, target_states: null, target_onboarding_status: null, config: { only_authenticated: true } },
-    { id: 'fb-partner', title: 'Oportunidades em Destaque', section_type: 'opportunity_carousel', data_source: 'partner_opportunities', display_order: 3, is_active: true, target_states: null, target_onboarding_status: null, config: { see_all_href: '/oportunidades', desktop_grid_mode: true }, opportunities: partnerOpportunities },
+    { id: 'fb-partner', title: 'Oportunidades em Destaque', section_type: 'opportunity_carousel', data_source: 'featured_opportunities', display_order: 3, is_active: true, target_states: null, target_onboarding_status: null, config: { see_all_href: '/oportunidades', desktop_grid_mode: true }, opportunities: featuredOpportunities },
     { id: 'fb-recent', title: 'Novidades', section_type: 'opportunity_carousel', data_source: 'recent_opportunities', display_order: 4, is_active: true, target_states: null, target_onboarding_status: null, config: { see_all_href: '/oportunidades?tab=explore' }, opportunities: recentOpportunities },
-    { id: 'fb-inst', title: 'Instituições Parceiras', section_type: 'institution_carousel', data_source: 'institutions', display_order: 5, is_active: true, target_states: null, target_onboarding_status: null, config: { see_all_href: '/instituicoes' }, institutions: partnerInstitutions },
+    { id: 'fb-inst', title: 'Instituições em Destaque', section_type: 'institution_carousel', data_source: 'institutions_with_open_opps', display_order: 5, is_active: true, target_states: null, target_onboarding_status: null, config: { see_all_href: '/instituicoes' }, institutions: featuredInstitutions },
     { id: 'fb-dates', title: 'Datas Importantes', section_type: 'dates', data_source: 'important_dates', display_order: 6, is_active: true, target_states: null, target_onboarding_status: null, config: {}, dates: importantDates },
   ];
 
@@ -136,9 +136,17 @@ async function populateSections(sections: IHomeSection[]): Promise<IHomeSectionW
           }
           case 'match_results': {
             const data = await getUnifiedOpportunities({ mode: 'para-voce', page: 0, limit });
-            // Only keep opportunities with a match score if we want strict matches, 
+            // Only keep opportunities with a match score if we want strict matches,
             // or just use the personalized list. 'para-voce' already sorts by score if user is logged in.
             enriched.opportunities = data;
+            break;
+          }
+          case 'featured_opportunities': {
+            enriched.opportunities = await getFeaturedOpportunities(limit);
+            break;
+          }
+          case 'institutions_with_open_opps': {
+            enriched.institutions = await getInstitutionsWithOpenOpps(limit);
             break;
           }
           // 'static' não precisa de data fetch server-side
