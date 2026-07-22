@@ -4,7 +4,8 @@ import React from "react";
 import { DayPicker, DayButtonProps, DayButton } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import { ptBR } from "date-fns/locale";
-import type { IImportantDate } from "@/services/importantDates";
+import type { IImportantDate, DateType } from "@/services/importantDates";
+import { DATE_TYPE_COLORS } from "@/services/importantDates";
 
 interface AppCalendarProps {
   dates: IImportantDate[];
@@ -14,14 +15,6 @@ interface AppCalendarProps {
   onDaySelect: (day: Date | undefined) => void;
 }
 
-// Mapeamento de categorias para cores hexadecimais para o calendário
-const CATEGORY_COLORS: Record<string, string> = {
-  purple: "#9747FF",
-  blue: "#38B1E4",
-  orange: "#FF9900",
-  green: "#16A34A",
-};
-
 export default function AppCalendar({
   dates,
   selectedMonth,
@@ -29,7 +22,7 @@ export default function AppCalendar({
   selectedDay,
   onDaySelect,
 }: AppCalendarProps) {
-  // Build a map of day -> categories for dot rendering
+  // Build a map of day -> types for dot rendering
   const dayTypeMap = new Map<string, Set<string>>();
 
   dates.forEach((d) => {
@@ -45,7 +38,7 @@ export default function AppCalendar({
       if (!dayTypeMap.has(key)) {
         dayTypeMap.set(key, new Set());
       }
-      dayTypeMap.get(key)!.add(d.category);
+      dayTypeMap.get(key)!.add(d.type || d.category);
       current.setDate(current.getDate() + 1);
     }
   });
@@ -168,12 +161,12 @@ export default function AppCalendar({
                     <span>{date.getDate()}</span>
                     {types && types.size > 0 && (
                       <div className="calendar-dots">
-                        {Array.from(types).map((category) => (
+                        {Array.from(types).map((type) => (
                           <div
-                            key={category}
+                            key={type}
                             className="calendar-dot"
                             style={{
-                              backgroundColor: CATEGORY_COLORS[category] || "#999",
+                              backgroundColor: DATE_TYPE_COLORS[type as DateType] || "#999",
                             }}
                           />
                         ))}
