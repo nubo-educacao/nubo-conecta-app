@@ -22,6 +22,7 @@ interface TopBarProps {
 
 export default function TopBar({ title }: TopBarProps) {
   const { user, setShowAuthModal, signOut } = useAuth();
+  const onboardingCompleted = user?.user_metadata?.onboarding_completed as boolean | undefined;
   const { activeProfileId, setActiveProfileId, profiles } = useProfile();
   const pathname = usePathname();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -262,14 +263,16 @@ export default function TopBar({ title }: TopBarProps) {
                 )}
 
                 {/* Adicionar dependente */}
-                <button
-                  onClick={handleAddDependent}
-                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm transition-colors hover:bg-black/5"
-                  style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}
-                >
-                  <UserPlus size={15} />
-                  Adicionar dependente
-                </button>
+                {onboardingCompleted && (
+                  <button
+                    onClick={handleAddDependent}
+                    className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm transition-colors hover:bg-black/5"
+                    style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}
+                  >
+                    <UserPlus size={15} />
+                    Adicionar dependente
+                  </button>
+                )}
 
                 {/* Sair */}
                 <div className="border-t border-black/5">
