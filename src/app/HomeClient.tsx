@@ -199,9 +199,7 @@ export default function HomeClient({ sections }: HomeClientProps) {
       countInProgress = drafts.length;
       if (drafts.length > 0) lastDraftId = drafts[0].id;
 
-      if (drafts.length > 0) {
-        ctaState = draftProgress >= 100 ? 'application-ready-to-submit' : 'application-in-progress';
-      } else if (activePhaseApps.length > 0) {
+      if (activePhaseApps.length > 0) {
         ctaState = 'phase-updated';
         const phaseApp = activePhaseApps[0];
         phaseDataForCTA = {
@@ -215,6 +213,8 @@ export default function HomeClient({ sections }: HomeClientProps) {
             router.push('/candidaturas');
           }
         };
+      } else if (drafts.length > 0) {
+        ctaState = draftProgress >= 100 ? 'application-ready-to-submit' : 'application-in-progress';
       } else if (submitted.length > 0) {
         ctaState = 'completed-application';
       } else {
