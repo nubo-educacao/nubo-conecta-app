@@ -15,7 +15,6 @@ import ImportantDates from '@/components/home/ImportantDates';
 import { supabase } from '@/lib/supabase';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { calculateDraftProgress } from '@/utils/calculateDraftProgress';
-import type { PartnerStep } from '@/components/forms/PartnerFormEngine';
 import type { PartnerFormField } from '@/components/forms/FormFieldRenderer';
 import type { IHomeSectionWithData } from './page';
 
@@ -108,7 +107,7 @@ export default function HomeClient({ sections }: HomeClientProps) {
       });
   }, [user]);
 
-  // Fetch steps + fields for the most recent DRAFT and compute progress
+  // Fetch fields for the most recent DRAFT and compute progress
   useEffect(() => {
     const firstDraft = applications.find(a => a.status === 'DRAFT');
     if (!firstDraft) {
@@ -116,14 +115,14 @@ export default function HomeClient({ sections }: HomeClientProps) {
       return;
     }
 
-    Promise.all([
-      supabase.from('partner_steps').select('*').eq('partner_id', firstDraft.partner_id).order('sort_order'),
-      supabase.from('partner_forms').select('*').eq('partner_id', firstDraft.partner_id).order('sort_order'),
-    ]).then(([stepsRes, fieldsRes]) => {
-      const steps = (stepsRes.data as PartnerStep[]) || [];
-      const fields = (fieldsRes.data as PartnerFormField[]) || [];
-      setDraftProgress(calculateDraftProgress(firstDraft.answers || {}, steps, fields));
-    });
+    supabase
+      .from('partner_forms')
+      .select('*')
+      .eq('partner_id', firstDraft.partner_id)
+      .then(({ data }: { data: any[] | null }) => {
+        const fields = (data as PartnerFormField[]) || [];
+        setDraftProgress(calculateDraftProgress(firstDraft.answers || {}, fields));
+      });
   }, [applications]);
 
   // Trigger Claudinha when a phase is updated
