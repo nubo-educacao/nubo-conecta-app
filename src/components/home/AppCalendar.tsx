@@ -4,8 +4,8 @@ import React from "react";
 import { DayPicker, DayButtonProps, DayButton } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import { ptBR } from "date-fns/locale";
-import type { IImportantDate, DateType } from "@/services/importantDates";
-import { DATE_TYPE_COLORS } from "@/services/importantDates";
+import type { IImportantDate, DateType } from "@/types/importantDates";
+import { DATE_TYPE_COLORS } from "@/types/importantDates";
 
 interface AppCalendarProps {
   dates: IImportantDate[];

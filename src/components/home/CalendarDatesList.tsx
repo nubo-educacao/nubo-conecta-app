@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import type { IImportantDate, DateType } from "@/services/importantDates";
-import { DATE_TYPE_COLORS, DATE_TYPE_LABELS } from "@/services/importantDates";
+import type { IImportantDate, DateType } from "@/types/importantDates";
+import { DATE_TYPE_COLORS, DATE_TYPE_LABELS } from "@/types/importantDates";
 import { format, areIntervalsOverlapping, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
