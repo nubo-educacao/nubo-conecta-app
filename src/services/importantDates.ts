@@ -1,25 +1,20 @@
 // importantDates.ts — Sprint 3.5 (rev. schema fix)
 // Colunas reais no banco: start_date, end_date, type (NÃO date/category/is_urgent).
 // O mapeamento JS converte o schema real para o contrato da UI (IImportantDate).
+//
+// Este módulo importa `next/headers` (server-only). Os tipos e constantes
+// client-safe (DateType, DATE_TYPE_COLORS, DATE_TYPE_LABELS, IImportantDate)
+// vivem em @/types/importantDates e são só reexportados aqui — Client
+// Components devem importar diretamente de @/types/importantDates, nunca
+// deste arquivo, ou o build do Next.js quebra (boundary violation).
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import type { ImportantDateCategory, DateType, IImportantDate } from '@/types/importantDates';
+import { DATE_TYPE_COLORS, DATE_TYPE_LABELS } from '@/types/importantDates';
 
-export type ImportantDateCategory = 'purple' | 'orange' | 'green' | 'blue';
-
-export interface IImportantDate {
-  id: string;
-  title: string;
-  description: string | null;
-  /** Data principal para exibição — mapeada de start_date */
-  date: string;
-  /** Data final do período, se houver */
-  endDate?: string;
-  category: ImportantDateCategory;
-  /** Derivado do campo `type` — true quando type indica urgência/prazo */
-  is_urgent: boolean;
-  created_at: string;
-}
+export type { ImportantDateCategory, DateType, IImportantDate };
+export { DATE_TYPE_COLORS, DATE_TYPE_LABELS };
 
 // Shape real da linha retornada pelo Supabase
 interface ImportantDateRow {
@@ -49,7 +44,7 @@ function mapTypeToCategory(type: string): ImportantDateCategory {
   // Mapeamento específico solicitado pelo Design
   if (normalized.includes('prouni')) return 'purple';
   if (normalized.includes('sisu')) return 'blue';
-  if (['partner', 'parceiro', 'instituicao', 'instituição'].some(k => normalized.includes(k))) return 'orange';
+  if (['partner', 'parceiro', 'instituicao', 'instituição', 'partners'].some(k => normalized.includes(k))) return 'orange';
 
   // Mapeamento semântico
   if (['deadline', 'prazo', 'inscricao', 'inscrição'].some(k => normalized.includes(k))) return 'orange';
@@ -72,6 +67,7 @@ function mapRowToDate(row: ImportantDateRow): IImportantDate {
     description: row.description,
     date:        row.start_date,          // UI usa start_date como data principal
     endDate:     row.end_date || undefined,
+    type:        row.type,
     category:    mapTypeToCategory(row.type),
     is_urgent:   deriveIsUrgent(row.type),
     created_at:  row.created_at,
@@ -95,8 +91,7 @@ export async function getImportantDates(): Promise<IImportantDate[]> {
   const { data, error } = await supabase
     .from('important_dates')
     .select('id, title, description, start_date, end_date, type, created_at')
-    .order('start_date', { ascending: true })
-    .limit(6);
+    .order('start_date', { ascending: true });
 
   if (error) {
     // Fail Loud para debugging — allSettled em page.tsx captura sem obliterar
