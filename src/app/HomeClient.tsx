@@ -14,6 +14,8 @@ import InstitutionCarousel from '@/components/home/InstitutionCarousel';
 import ImportantDates from '@/components/home/ImportantDates';
 import { supabase } from '@/lib/supabase';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { calculateDraftProgress } from '@/utils/calculateDraftProgress';
+import type { PartnerFormField } from '@/components/forms/FormFieldRenderer';
 import type { IHomeSectionWithData } from './page';
 
 interface HomeClientProps {
@@ -24,6 +26,8 @@ interface ApplicationSummary {
   id: string;
   status: string;
   phase_id: string | null;
+  partner_id: string;
+  answers: Record<string, unknown>;
   opportunity_phases: { name: string } | null;
   partner_opportunities: { name: string } | null;
 }
@@ -40,6 +44,7 @@ export default function HomeClient({ sections }: HomeClientProps) {
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
   const [appsLoading, setAppsLoading] = useState(true);
   const [dismissedPhases, setDismissedPhases] = useState<string[]>([]);
+  const [draftProgress, setDraftProgress] = useState<number>(0);
   const welcomeBackSentRef = useRef<string>('');
 
   // Dispatch welcome_back once per authenticated session on Home mount
@@ -91,7 +96,7 @@ export default function HomeClient({ sections }: HomeClientProps) {
     supabase
       .from('student_applications')
       .select(`
-        id, status, phase_id,
+        id, status, phase_id, partner_id, answers,
         opportunity_phases ( name ),
         partner_opportunities ( name )
       `)
@@ -101,6 +106,24 @@ export default function HomeClient({ sections }: HomeClientProps) {
         setAppsLoading(false);
       });
   }, [user]);
+
+  // Fetch fields for the most recent DRAFT and compute progress
+  useEffect(() => {
+    const firstDraft = applications.find(a => a.status === 'DRAFT');
+    if (!firstDraft) {
+      setDraftProgress(0);
+      return;
+    }
+
+    supabase
+      .from('partner_forms')
+      .select('*')
+      .eq('partner_id', firstDraft.partner_id)
+      .then(({ data }: { data: any[] | null }) => {
+        const fields = (data as PartnerFormField[]) || [];
+        setDraftProgress(calculateDraftProgress(firstDraft.answers || {}, fields));
+      });
+  }, [applications]);
 
   // Trigger Claudinha when a phase is updated
   useEffect(() => {
@@ -189,10 +212,10 @@ export default function HomeClient({ sections }: HomeClientProps) {
             router.push('/candidaturas');
           }
         };
+      } else if (drafts.length > 0) {
+        ctaState = draftProgress >= 100 ? 'application-ready-to-submit' : 'application-in-progress';
       } else if (submitted.length > 0) {
         ctaState = 'completed-application';
-      } else if (drafts.length > 0) {
-        ctaState = 'application-in-progress';
       } else {
         ctaState = 'no-applications';
       }
@@ -208,6 +231,7 @@ export default function HomeClient({ sections }: HomeClientProps) {
           ctaState={ctaState}
           lastDraftId={lastDraftId}
           countInProgress={countInProgress}
+          draftProgress={draftProgress}
           phaseData={phaseDataForCTA}
           onOpenAuth={() => setShowAuthModal(true)}
         />
@@ -226,6 +250,7 @@ interface SectionRendererProps {
   ctaState: CTAState;
   lastDraftId: string | null;
   countInProgress: number;
+  draftProgress: number;
   phaseData?: { phaseId: string, opportunityName: string, phaseName: string, onClick: (id: string) => void };
   onOpenAuth: () => void;
 }
@@ -235,6 +260,7 @@ function SectionRenderer({
   ctaState,
   lastDraftId,
   countInProgress,
+  draftProgress,
   phaseData,
   onOpenAuth,
 }: SectionRendererProps) {
@@ -252,6 +278,7 @@ function SectionRenderer({
               state={ctaState}
               lastDraftId={lastDraftId}
               countInProgress={countInProgress}
+              draftProgress={draftProgress}
               phaseData={phaseData}
               onOpenAuth={onOpenAuth}
             />
