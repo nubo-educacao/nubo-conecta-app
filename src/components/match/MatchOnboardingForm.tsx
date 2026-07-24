@@ -185,6 +185,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
   const [education, setEducation] = useState('');
   const [educationYear, setEducationYear] = useState('');
   const [cpf, setCpf] = useState('');
+  const [race, setRace] = useState('');
   const [phone, setPhone] = useState('');
   
   // Address
@@ -353,6 +354,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
           setFullName(data.profile.full_name || '');
           setBirthDate(data.profile.birth_date || '');
           setCpf(data.profile.cpf || '');
+          setRace(data.profile.race || '');
           setEducation(data.profile.education || '');
           setEducationYear(data.profile.education_year || '');
           setOutsideBrazil(data.profile.outside_brazil || false);
@@ -588,6 +590,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         full_name: fullName,
         birth_date: birthDate,
         cpf: cpf || null,
+        race: race || null,
         age: calculateAge(birthDate) || undefined,
         education,
         education_year: educationYear || 'N/A',
@@ -782,6 +785,20 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                   value={cpf}
                   onChange={e => setCpf(e.target.value)}
                 />
+              </div>
+              <div>
+                <FieldLabel label="Raça / Etnia" icon={Hash} htmlFor="race" />
+                <select 
+                  id="race"
+                  className={inputCls} 
+                  value={race}
+                  onChange={e => setRace(e.target.value)}
+                >
+                  <option value="">Selecione...</option>
+                  {['Amarela', 'Branca', 'Indígena', 'Parda', 'Preta', 'Outra', 'Prefiro não informar'].map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
               </div>
               <div className="md:col-span-2">
                 <FieldLabel label="Escolaridade" icon={GraduationCap} required error={errors.education} htmlFor="education" />
