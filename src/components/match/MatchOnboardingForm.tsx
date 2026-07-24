@@ -22,7 +22,7 @@ import {
   markOnboardingComplete,
   getUserOnboardingData
 } from '@/services/profileService';
-import { generateMatchAsync, getMatchStatus } from '@/services/matchService';
+import { generateMatch, generateMatchAsync, getMatchStatus } from '@/services/matchService';
 import IncomeCalculatorField, { IncomeCalculatorValue } from '@/components/forms/ui-components/IncomeCalculatorField';
 import { fetchAvailableCategories, type AvailableCategory } from '@/lib/availableCategories';
 
@@ -674,8 +674,17 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         device_longitude: cachedLng,
       });
 
-      // 5. Generate Match and Complete (Async Flow)
-      await generateMatchAsync();
+      // 5. Generate Match and Complete (Async Flow with Sync RPC Fallback)
+      try {
+        const res = await generateMatchAsync(userId);
+        if (res.jobId === 'sync-fallback') {
+          await supabase.from('user_preferences').update({ match_status: 'ready' }).eq('user_id', userId);
+        }
+      } catch (err) {
+        console.warn('Async match failed, running synchronous calculate_match RPC:', err);
+        await generateMatch(userId);
+        await supabase.from('user_preferences').update({ match_status: 'ready' }).eq('user_id', userId);
+      }
       
       // Polling for completion
       let status = await getMatchStatus(userId);
@@ -686,11 +695,17 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         await new Promise(r => setTimeout(r, 2000));
         status = await getMatchStatus(userId);
         retryCount++;
-        if (status === 'error') throw new Error('O motor de match encontrou um erro. Tente novamente em alguns instantes.');
+        if (status === 'error') {
+          await generateMatch(userId);
+          await supabase.from('user_preferences').update({ match_status: 'ready' }).eq('user_id', userId);
+          status = 'ready';
+          break;
+        }
       }
 
       if (status === 'processing') {
-        throw new Error('O processamento está demorando mais que o esperado. Seus matches aparecerão em breve no catálogo.');
+        await generateMatch(userId);
+        await supabase.from('user_preferences').update({ match_status: 'ready' }).eq('user_id', userId);
       }
 
       await markOnboardingComplete();
