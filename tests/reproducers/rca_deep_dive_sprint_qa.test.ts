@@ -283,7 +283,7 @@ describe('BUG-D: mapping_source retroativo — user_income not populated', () =>
 // ▸ BUG-B/C: Admin student analytics missing data dimensions
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-describe.skip('BUG-B/C: Student analytics data gaps', () => {
+describe('BUG-B/C: Student analytics data gaps', () => {
   /**
    * DIAGNOSTIC: The StudentProfile interface in studentsService.ts only has:
    *   full_name, age, city, education, state, is_nubo_student, whatsapp
@@ -337,56 +337,50 @@ describe.skip('BUG-B/C: Student analytics data gaps', () => {
     expect(interfaceBody).toContain('family_income_per_capita');
   });
 
-  it('StudentProfile interface should include quota_types — currently MISSING', () => {
-    const knownFields = [
-      'full_name', 'age', 'city', 'education', 'state', 'is_nubo_student', 'whatsapp'
-    ];
-    // ❌ FAILS: quota_types is missing
-    expect(knownFields).toContain('quota_types');
+  it('StudentProfile interface should include quota_types', () => {
+    const servicePath = path.resolve(
+      process.cwd(),
+      '../nubo-conecta-admin/src/services/studentsService.ts'
+    );
+    const source = fs.readFileSync(servicePath, 'utf-8');
+    expect(source).toContain('quota_types');
   });
 
-  it('StudentProfile interface should include enem_score — currently MISSING', () => {
-    const knownFields = [
-      'full_name', 'age', 'city', 'education', 'state', 'is_nubo_student', 'whatsapp'
-    ];
-    // ❌ FAILS: enem_score is missing
-    expect(knownFields).toContain('enem_score');
+  it('StudentProfile interface should include enem_score', () => {
+    const servicePath = path.resolve(
+      process.cwd(),
+      '../nubo-conecta-admin/src/services/studentsService.ts'
+    );
+    const source = fs.readFileSync(servicePath, 'utf-8');
+    expect(source).toContain('enem_score');
   });
 
-  it('StudentProfile interface should include applications_count — currently MISSING', () => {
-    const knownFields = [
-      'full_name', 'age', 'city', 'education', 'state', 'is_nubo_student', 'whatsapp'
-    ];
-    // ❌ FAILS: applications_count is missing
-    expect(knownFields).toContain('applications_count');
+  it('StudentProfile interface should include applications_count', () => {
+    const servicePath = path.resolve(
+      process.cwd(),
+      '../nubo-conecta-admin/src/services/studentsService.ts'
+    );
+    const source = fs.readFileSync(servicePath, 'utf-8');
+    expect(source).toContain('applications_count');
   });
 
-  it('StudentProfile interface should include matches_count — currently MISSING', () => {
-    const knownFields = [
-      'full_name', 'age', 'city', 'education', 'state', 'is_nubo_student', 'whatsapp'
-    ];
-    // ❌ FAILS: matches_count is missing
-    expect(knownFields).toContain('matches_count');
+  it('StudentProfile interface should include matches_count', () => {
+    const servicePath = path.resolve(
+      process.cwd(),
+      '../nubo-conecta-admin/src/services/studentsService.ts'
+    );
+    const source = fs.readFileSync(servicePath, 'utf-8');
+    expect(source).toContain('matches_count');
   });
 
   // Verify the applications export has the same gap
-  it('get_student_applications_with_details RPC should include income data — currently MISSING', () => {
+  it('get_student_applications_with_details RPC should include income data', () => {
     const rpcPath = path.resolve(
       process.cwd(),
-      '../nubo-conecta-admin/supabase/migrations/20260722180000_update_rpcs_for_institution_join.sql'
+      '../nubo-conecta-admin/supabase/migrations/20260724183500_update_student_applications_rpc_enrich.sql'
     );
 
-    let source: string;
-    try {
-      source = fs.readFileSync(rpcPath, 'utf-8');
-    } catch {
-      // Skip if file not accessible — the known RPC does not join user_income
-      expect(false).toBe(true); // Force fail — we know the RPC lacks income
-      return;
-    }
-
-    // The RPC only JOINs: user_profiles, auth.users, partner_opportunities, institutions
-    // ❌ FAILS: user_income is not joined
+    const source = fs.readFileSync(rpcPath, 'utf-8');
     expect(source).toContain('user_income');
   });
 });
