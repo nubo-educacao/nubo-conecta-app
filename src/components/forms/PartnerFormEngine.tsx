@@ -8,6 +8,7 @@ import {
     CheckCircle2, XCircle, Send, Plus, Loader2,
 } from 'lucide-react';
 import { evaluateJsonLogic } from '@/utils/jsonLogic';
+import { calculateDraftProgress } from '@/utils/calculateDraftProgress';
 import FormFieldRenderer, { type PartnerFormField } from './FormFieldRenderer';
 
 export interface PartnerStep {
@@ -89,7 +90,14 @@ export default function PartnerFormEngine({
 
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [currentIteration, setCurrentIteration] = useState(0);
-    const [showReview, setShowReview] = useState(false);
+    // If the draft already has every required field filled (e.g. arriving from the
+    // "Pronto para enviar" Home CTA), open straight on the Revisão step instead of
+    // making the user click through every step again just to reach it. Checked
+    // against dbAnswers (not defaultValues, which also merges in a possibly-stale
+    // localStorage draft) — same source of truth the Home CTA's 100% badge uses.
+    const [showReview, setShowReview] = useState(
+        () => fields.length > 0 && calculateDraftProgress(dbAnswers, fields) >= 100
+    );
     const [eligibilityResults, setEligibilityResults] = useState<EligibilityResult[]>([]);
     const [submitting, setSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
@@ -98,6 +106,16 @@ export default function PartnerFormEngine({
     useEffect(() => {
         onStepIndexChange?.(showReview ? -1 : currentStepIndex);
     }, [currentStepIndex, showReview, onStepIndexChange]);
+
+    // Compute eligibility immediately when starting directly on the Revisão step
+    // (see showReview's lazy initializer above) — handleNext normally does this,
+    // but it never runs when we skip straight past the form steps.
+    useEffect(() => {
+        if (showReview && onComputeEligibility) {
+            setEligibilityResults(onComputeEligibility(getValues() as Record<string, unknown>));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Field changes → localStorage only (no network)
     const lsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

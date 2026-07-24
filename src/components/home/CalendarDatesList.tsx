@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
-import type { IImportantDate } from "@/services/importantDates";
-import { format, isSameMonth } from "date-fns";
+import type { IImportantDate, DateType } from "@/types/importantDates";
+import { DATE_TYPE_COLORS, DATE_TYPE_LABELS } from "@/types/importantDates";
+import { format, areIntervalsOverlapping, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface CalendarDatesListProps {
@@ -10,26 +11,19 @@ interface CalendarDatesListProps {
   selectedMonth: Date;
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  purple: "#9747FF",
-  blue: "#38B1E4",
-  orange: "#FF9900",
-  green: "#16A34A",
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  purple: "Urgente",
-  blue: "Sisu",
-  orange: "Prazo",
-  green: "Resultado",
-};
-
 export default function CalendarDatesList({ dates, selectedMonth }: CalendarDatesListProps) {
+  const monthStart = startOfMonth(selectedMonth);
+  const monthEnd = endOfMonth(selectedMonth);
+
   // Filter dates that fall within or overlap the selected month
   const monthDates = dates.filter((d) => {
     const start = new Date(d.date);
     const end = d.endDate ? new Date(d.endDate) : start;
-    return isSameMonth(start, selectedMonth) || isSameMonth(end, selectedMonth);
+    return areIntervalsOverlapping(
+      { start, end },
+      { start: monthStart, end: monthEnd },
+      { inclusive: true }
+    );
   });
 
   const formatDateRange = (startStr: string, endStr?: string | null) => {
@@ -63,8 +57,8 @@ export default function CalendarDatesList({ dates, selectedMonth }: CalendarDate
           </div>
         ) : (
           monthDates.map((date) => {
-            const typeColor = CATEGORY_COLORS[date.category] || "#999";
-            const typeLabel = CATEGORY_LABELS[date.category] || date.category;
+            const typeColor = DATE_TYPE_COLORS[date.type as DateType] || "#999";
+            const typeLabel = DATE_TYPE_LABELS[date.type as DateType] || date.type;
 
             return (
               <div

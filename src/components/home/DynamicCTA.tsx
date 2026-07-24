@@ -16,6 +16,7 @@ export type CTAState =
   | 'no-profile'
   | 'no-applications'
   | 'application-in-progress'
+  | 'application-ready-to-submit'
   | 'completed-application'
   | 'phase-updated';
 
@@ -24,6 +25,7 @@ interface DynamicCTAProps {
   onOpenAuth?: () => void;
   lastDraftId?: string | null;
   countInProgress?: number;
+  draftProgress?: number;
   phaseData?: {
     phaseId: string;
     opportunityName: string;
@@ -37,6 +39,7 @@ export default function DynamicCTA({
   onOpenAuth,
   lastDraftId,
   countInProgress = 0,
+  draftProgress = 0,
   phaseData,
 }: DynamicCTAProps) {
   if (state === 'loading') {
@@ -302,11 +305,11 @@ export default function DynamicCTA({
             {/* Continuous Progress Bar */}
             <div className="w-full max-w-xs flex flex-col gap-1 mt-1">
               <div className="w-full h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
-                <div className="h-full bg-[#0284C7] rounded-full" style={{ width: '65%' }} />
+                <div className="h-full bg-[#0284C7] rounded-full" style={{ width: `${draftProgress}%` }} />
               </div>
               <span className="text-[10px] md:text-xs text-[#0369A1] font-medium" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                <span className="block md:hidden">65% concluído</span>
-                <span className="hidden md:block">65% concluído · Falta pouco!</span>
+                <span className="block md:hidden">{draftProgress}% concluído</span>
+                <span className="hidden md:block">{draftProgress}% concluído · Falta pouco!</span>
               </span>
             </div>
           </div>
@@ -315,6 +318,51 @@ export default function DynamicCTA({
         {/* Chevron right */}
         <div className="flex-shrink-0 text-[#0369A1]">
           <ChevronRight size={24} />
+        </div>
+      </Link>
+    );
+  }
+
+  if (state === 'application-ready-to-submit') {
+    const href = lastDraftId ? `/partner-forms/${lastDraftId}` : '/candidaturas';
+    return (
+      <Link
+        href={href}
+        className={`w-full ${cardBorderRadius} p-5 md:p-6 flex items-center justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border border-[#BBF7D0] text-left cursor-pointer`}
+        style={{
+          background: '#F0FDF4',
+          boxShadow: '0 8px 24px rgba(34, 197, 94, 0.06)'
+        }}
+      >
+        <div className="flex items-center gap-4 flex-1">
+          <div className="relative flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-full bg-green-50 border border-green-100 flex items-center justify-center overflow-hidden">
+            <img src="/assets/cloudinha-candidaturas.png" alt="Cloudinha" className="w-12 h-12 md:w-14 md:h-14 object-contain" />
+            <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-[#22C55E] border-2 border-white flex items-center justify-center text-white text-[8px] font-bold">✓</span>
+          </div>
+
+          <div className="flex flex-col gap-1.5 flex-1">
+            <span className="px-2 py-0.5 rounded-md bg-[#22C55E] text-white text-[9px] font-bold tracking-wider w-fit uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Pronto para enviar!
+            </span>
+
+            <h3 className="font-bold text-base md:text-lg leading-tight tracking-tight text-[#15803D]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Candidatura completa
+            </h3>
+
+            <p className="text-xs md:text-sm text-[#16A34A]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <span className="block md:hidden">Envie sua candidatura agora</span>
+              <span className="hidden md:block">Tudo preenchido — envie sua candidatura agora</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex-shrink-0">
+          <button
+            className="px-4 py-2 rounded-xl bg-[#22C55E] text-white text-sm font-bold shadow-sm transition-all hover:bg-[#16A34A] active:scale-95 whitespace-nowrap"
+            style={{ fontFamily: 'Montserrat, sans-serif' }}
+          >
+            Finalizar candidatura →
+          </button>
         </div>
       </Link>
     );
