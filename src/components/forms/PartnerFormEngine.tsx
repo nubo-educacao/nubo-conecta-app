@@ -92,9 +92,11 @@ export default function PartnerFormEngine({
     const [currentIteration, setCurrentIteration] = useState(0);
     // If the draft already has every required field filled (e.g. arriving from the
     // "Pronto para enviar" Home CTA), open straight on the Revisão step instead of
-    // making the user click through every step again just to reach it.
+    // making the user click through every step again just to reach it. Checked
+    // against dbAnswers (not defaultValues, which also merges in a possibly-stale
+    // localStorage draft) — same source of truth the Home CTA's 100% badge uses.
     const [showReview, setShowReview] = useState(
-        () => fields.length > 0 && calculateDraftProgress(defaultValues, fields) >= 100
+        () => fields.length > 0 && calculateDraftProgress(dbAnswers, fields) >= 100
     );
     const [eligibilityResults, setEligibilityResults] = useState<EligibilityResult[]>([]);
     const [submitting, setSubmitting] = useState(false);
