@@ -26,6 +26,7 @@ interface ApplicationSummary {
   id: string;
   status: string;
   phase_id: string | null;
+  dismissed_phase_id: string | null;
   partner_id: string;
   answers: Record<string, unknown>;
   opportunity_phases: { name: string } | null;
@@ -43,7 +44,6 @@ export default function HomeClient({ sections }: HomeClientProps) {
 
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
   const [appsLoading, setAppsLoading] = useState(true);
-  const [dismissedPhases, setDismissedPhases] = useState<string[]>([]);
   const [draftProgress, setDraftProgress] = useState<number>(0);
   const welcomeBackSentRef = useRef<string>('');
 
@@ -96,7 +96,7 @@ export default function HomeClient({ sections }: HomeClientProps) {
     supabase
       .from('student_applications')
       .select(`
-        id, status, phase_id, partner_id, answers,
+        id, status, phase_id, dismissed_phase_id, partner_id, answers,
         opportunity_phases ( name ),
         partner_opportunities ( name )
       `)
@@ -167,18 +167,6 @@ export default function HomeClient({ sections }: HomeClientProps) {
     }
   }, [user, applications]);
 
-  // Load dismissed banners
-  useEffect(() => {
-    if (user) {
-      try {
-        const stored = localStorage.getItem(`nubo_clicked_banners_${user.id}`);
-        if (stored) setDismissedPhases(JSON.parse(stored));
-      } catch (e) {
-        console.warn('Error loading clicked banners', e);
-      }
-    }
-  }, [user]);
-
   // CTA state logic
   let ctaState: CTAState = 'loading';
   let lastDraftId: string | null = null;
@@ -191,10 +179,10 @@ export default function HomeClient({ sections }: HomeClientProps) {
     } else if (!onboardingCompleted) {
       ctaState = 'no-profile';
     } else {
-      const activePhaseApps = applications.filter(a => a.phase_id && a.status !== 'DRAFT' && !dismissedPhases.includes(a.phase_id));
+      const activePhaseApps = applications.filter(a => a.phase_id && a.status !== 'DRAFT' && a.phase_id !== a.dismissed_phase_id);
       const drafts = applications.filter(a => a.status === 'DRAFT');
       const submitted = applications.filter(a => a.status !== 'DRAFT');
-      
+
       countInProgress = drafts.length;
       if (drafts.length > 0) lastDraftId = drafts[0].id;
 
@@ -206,9 +194,18 @@ export default function HomeClient({ sections }: HomeClientProps) {
           opportunityName: (phaseApp.partner_opportunities as any)?.name || 'sua oportunidade',
           phaseName: (phaseApp.opportunity_phases as any)?.name || 'nova fase',
           onClick: (phaseId: string) => {
-            const updated = [...dismissedPhases, phaseId];
-            setDismissedPhases(updated);
-            localStorage.setItem(`nubo_clicked_banners_${user.id}`, JSON.stringify(updated));
+            const appId = phaseApp.id;
+            // Persisted in student_applications.dismissed_phase_id (not localStorage) so the
+            // banner stays dismissed for this account on any device — re-appears automatically
+            // if the application later moves to a different phase (phase_id !== dismissed_phase_id).
+            setApplications(prev => prev.map(a => (a.id === appId ? { ...a, dismissed_phase_id: phaseId } : a)));
+            supabase
+              .from('student_applications')
+              .update({ dismissed_phase_id: phaseId })
+              .eq('id', appId)
+              .then(({ error }: { error: any }) => {
+                if (error) console.warn('[HomeClient] Failed to persist phase dismissal:', error);
+              });
             router.push('/candidaturas');
           }
         };
