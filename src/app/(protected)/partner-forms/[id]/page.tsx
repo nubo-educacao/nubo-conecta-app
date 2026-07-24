@@ -13,6 +13,8 @@ import { useProfile } from "@/contexts/ProfileContext";
 import { evaluateJsonLogic } from "@/utils/jsonLogic";
 import { trackAndRedirect } from "@/services/redirectService";
 import { OpportunityPhaseStepper } from "@/components/OpportunityPhaseStepper";
+import { generateMatch } from "@/services/matchService";
+import OpportunityCarousel from "@/components/home/OpportunityCarousel";
 
 interface ApplicationState {
   id: string;
@@ -25,7 +27,7 @@ interface ApplicationState {
   phase_id?: string | null;
 }
 
-type PagePhase = "loading" | "form" | "submitted" | "error";
+type PagePhase = "loading" | "form" | "submitting" | "submitted" | "error";
 
 interface UserProfile {
   id: string;
@@ -48,6 +50,27 @@ export default function PartnerFormsPage() {
   const [formKey, setFormKey] = useState<string>("");
   const [stepIndex, setStepIndex] = useState(0);
   const [profileData, setProfileData] = useState<Record<string, any>>({});
+  const [betterOpportunities, setBetterOpportunities] = useState<any[]>([]);
+  const [loadingPhrase, setLoadingPhrase] = useState("Estamos preenchendo sua aplicação...");
+
+  useEffect(() => {
+    if (phase !== "submitting") return;
+
+    const phrases = [
+      "Estamos preenchendo sua aplicação...",
+      "Calculando seus critérios de elegibilidade...",
+      "Estamos calculando seu match..."
+    ];
+    let idx = 0;
+    setLoadingPhrase(phrases[0]);
+
+    const interval = setInterval(() => {
+      idx = (idx + 1) % phrases.length;
+      setLoadingPhrase(phrases[idx]);
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [phase]);
 
   const localStorageKey = `nubo_draft_${application?.partner_id}_${formKey}`;
 
@@ -269,6 +292,8 @@ export default function PartnerFormsPage() {
   const handleSubmitForm = async (data: Record<string, unknown>) => {
     if (!application) return { success: false };
 
+    setPhase("submitting");
+
     const finalStatus = isRedirect ? 'redirected' : 'SUBMITTED';
     const eligibilityResults = computeEligibility(data);
 
@@ -287,6 +312,7 @@ export default function PartnerFormsPage() {
 
       if (error || !result?.success) {
         if (redirectWindow) redirectWindow.close();
+        setPhase("form");
         return { success: false };
       }
 
@@ -303,28 +329,53 @@ export default function PartnerFormsPage() {
 
       // 1. Build profile updates from field mappings
       const profileUpdates: Record<string, any> = {};
-
       const userPrefUpdates: Record<string, any> = {};
+      const userIncomeUpdates: Record<string, any> = {};
+      const userEnemUpdates: Record<string, any> = {};
+      const authUserUpdates: Record<string, any> = {};
 
       fields.forEach(field => {
         const userAnswer = data[field.field_name];
         if (userAnswer === undefined || userAnswer === null) return;
 
+        let val = userAnswer;
+        if (typeof userAnswer === 'string') {
+          try {
+            const parsed = JSON.parse(userAnswer);
+            if (parsed && typeof parsed === 'object') {
+              val = parsed;
+            }
+          } catch {}
+        }
+
         // Map to user_profiles columns
         if (field.mapping_source?.startsWith("user_profiles.")) {
           const column = field.mapping_source.split(".")[1];
-          profileUpdates[column] = userAnswer;
+          profileUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
         }
         // Map to user_preferences json key
         else if (field.mapping_source?.startsWith("user_preferences.")) {
           const jsonKey = field.mapping_source.split(".")[1];
-          userPrefUpdates[jsonKey] = userAnswer;
+          userPrefUpdates[jsonKey] = (val && typeof val === 'object' && jsonKey in val) ? (val as any)[jsonKey] : val;
+        }
+        // Map to user_income columns
+        else if (field.mapping_source?.startsWith("user_income.")) {
+          const column = field.mapping_source.split(".")[1];
+          userIncomeUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
+        }
+        // Map to user_enem_scores columns
+        else if (field.mapping_source?.startsWith("user_enem_scores.")) {
+          const column = field.mapping_source.split(".")[1];
+          userEnemUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
+        }
+        // Map to auth.users columns
+        else if (field.mapping_source?.startsWith("auth.users.")) {
+          const column = field.mapping_source.split(".")[1];
+          authUserUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
         }
       });
 
-      // 2. Upsert user_profiles — upsert (not update) so the mapping still
-      // works when the profile row doesn't exist yet. A plain UPDATE on a
-      // missing row affects 0 rows silently and the full_name/mapping is lost.
+      // 2. Upsert user_profiles
       if (Object.keys(profileUpdates).length > 0) {
         const { error: profileError } = await supabase
           .from("user_profiles")
@@ -360,6 +411,82 @@ export default function PartnerFormsPage() {
         }
       }
 
+      // 4. Upsert user_income
+      if (Object.keys(userIncomeUpdates).length > 0) {
+        const { error: incomeError } = await supabase
+          .from("user_income")
+          .upsert({ user_id: userId, ...userIncomeUpdates }, { onConflict: "user_id" });
+
+        if (incomeError) {
+          console.error("Failed to upsert user income:", incomeError);
+        }
+      }
+
+      // 5. Upsert user_enem_scores
+      if (Object.keys(userEnemUpdates).length > 0) {
+        const year = userEnemUpdates.year || new Date().getFullYear();
+        const { error: enemError } = await supabase
+          .from("user_enem_scores")
+          .upsert({ user_id: userId, year, ...userEnemUpdates }, { onConflict: "user_id,year" });
+
+        if (enemError) {
+          console.error("Failed to upsert user ENEM scores:", enemError);
+        }
+      }
+
+      // 6. Update auth user if email or phone is mapped
+      if (Object.keys(authUserUpdates).length > 0) {
+        const updatePayload: Record<string, any> = {};
+        if (authUserUpdates.email) updatePayload.email = authUserUpdates.email;
+        if (authUserUpdates.phone) updatePayload.phone = authUserUpdates.phone;
+
+        if (Object.keys(updatePayload).length > 0) {
+          const { error: authError } = await supabase.auth.updateUser(updatePayload);
+          if (authError) {
+            console.error("Failed to update auth user info:", authError);
+          }
+        }
+      }
+
+      // 7. Call generateMatch to run the match calculation
+      let matches: any[] = [];
+      try {
+        matches = await generateMatch(userId);
+      } catch (matchErr) {
+        console.error("Failed to generate match:", matchErr);
+      }
+
+      // 8. Fetch better opportunities (score > current score)
+      if (matches.length > 0) {
+        const currentMatch = matches.find(m => m.unified_opportunity_id === application.partner_id);
+        const currentScore = currentMatch?.match_score ?? 0;
+
+        const betterMatches = matches.filter(m => m.unified_opportunity_id !== application.partner_id && m.match_score > currentScore);
+
+        if (betterMatches.length > 0) {
+          const ids = betterMatches.map(m => m.unified_opportunity_id);
+          const { data: opps } = await supabase
+            .from('v_unified_opportunities')
+            .select('*')
+            .in('unified_id', ids);
+
+          if (opps) {
+            const sortedOpps = opps
+              .map(opp => {
+                const match = betterMatches.find(m => m.unified_opportunity_id === opp.unified_id);
+                return {
+                  ...opp,
+                  match_score: match?.match_score ?? 0
+                };
+              })
+              .filter(opp => opp.status === 'opened' || opp.status === 'incoming')
+              .sort((a, b) => b.match_score - a.match_score);
+
+            setBetterOpportunities(sortedOpps);
+          }
+        }
+      }
+
       if (isRedirect && application.external_redirect?.url) {
         try {
           const { url } = await trackAndRedirect(
@@ -380,6 +507,7 @@ export default function PartnerFormsPage() {
       }
     } catch (err) {
       if (redirectWindow) redirectWindow.close();
+      setPhase("form");
       return { success: false };
     }
 
@@ -413,6 +541,17 @@ export default function PartnerFormsPage() {
     );
   }
 
+  if (phase === "submitting") {
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center py-24 gap-4">
+          <Loader2 size={32} className="animate-spin text-[#38B1E4]" />
+          <p className="text-sm font-semibold text-gray-600 animate-pulse">{loadingPhrase}</p>
+        </div>
+      </AppShell>
+    );
+  }
+
   if (phase === "error") {
     return (
       <AppShell>
@@ -431,12 +570,12 @@ export default function PartnerFormsPage() {
 
     return (
       <AppShell title={isRedirected ? "Redirecionamento" : "Candidatura enviada"}>
-        <div className="flex flex-col items-center justify-center py-16 md:py-24 px-4 sm:px-6">
+        <div className="flex flex-col items-center justify-center py-16 md:py-24 px-4 sm:px-6 max-w-4xl mx-auto w-full gap-8">
           <motion.div
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="w-full max-w-md bg-white rounded-3xl p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/50 flex flex-col items-center text-center relative overflow-hidden"
+            className="w-full max-w-md bg-white rounded-3xl p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/50 flex flex-col items-center text-center relative overflow-hidden mx-auto"
           >
             {/* Top accent line */}
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#024F86] to-[#38B1E4]" />
@@ -523,6 +662,19 @@ export default function PartnerFormsPage() {
               </motion.div>
             )}
           </motion.div>
+
+          {/* MatchResult / MatchCarousel */}
+          {betterOpportunities.length > 0 && (
+            <div className="w-full mt-4 max-w-2xl mx-auto">
+              <OpportunityCarousel
+                title="Melhores opções para você"
+                opportunities={betterOpportunities}
+              />
+              <p className="text-[10px] text-center text-[#3A424E]/50 mt-1.5 font-medium">
+                Matches mais prováveis
+              </p>
+            </div>
+          )}
         </div>
       </AppShell>
     );
