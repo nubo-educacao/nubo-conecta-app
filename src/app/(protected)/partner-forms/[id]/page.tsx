@@ -472,15 +472,15 @@ export default function PartnerFormsPage() {
 
           if (opps) {
             const sortedOpps = opps
-              .map(opp => {
+              .map((opp: any) => {
                 const match = betterMatches.find(m => m.unified_opportunity_id === opp.unified_id);
                 return {
                   ...opp,
                   match_score: match?.match_score ?? 0
                 };
               })
-              .filter(opp => opp.status === 'opened' || opp.status === 'incoming')
-              .sort((a, b) => b.match_score - a.match_score);
+              .filter((opp: any) => opp.status === 'opened' || opp.status === 'incoming')
+              .sort((a: any, b: any) => b.match_score - a.match_score);
 
             setBetterOpportunities(sortedOpps);
           }
