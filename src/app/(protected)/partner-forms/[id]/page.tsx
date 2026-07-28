@@ -22,11 +22,11 @@ function mapRowToUnifiedOpportunity(row: any): IUnifiedOpportunity {
 
   let score: number | undefined = undefined;
   if (row.match_score !== undefined && row.match_score !== null && !isNaN(Number(row.match_score))) {
-    const parsed = Math.round(Number(row.match_score));
-    score = parsed > 0 ? parsed : (row.is_partner ? 77 : 83);
-  } else {
-    score = row.is_partner ? 77 : 83;
+    score = Math.round(Number(row.match_score));
   }
+
+  const minCutoff = row.min_cutoff_score_current ?? row.min_cutoff_score_prev;
+  const maxCutoff = row.max_cutoff_score_current ?? row.max_cutoff_score_prev ?? minCutoff;
 
   return {
     id: row.unified_id || row.id,
@@ -47,9 +47,9 @@ function mapRowToUnifiedOpportunity(row: any): IUnifiedOpportunity {
     match_score: score,
     external_redirect: row.external_redirect_config || row.external_redirect,
     institution_cover_url: row.institution_cover_url,
-    min_cutoff_score_current: row.min_cutoff_score_current ?? row.min_cutoff_score_prev,
+    min_cutoff_score_current: minCutoff,
     min_cutoff_score_prev: row.min_cutoff_score_prev,
-    max_cutoff_score_current: row.max_cutoff_score_current ?? row.max_cutoff_score_prev,
+    max_cutoff_score_current: maxCutoff,
     max_cutoff_score_prev: row.max_cutoff_score_prev,
     nu_media_minima_enem_current: row.nu_media_minima_enem_current ?? row.nu_media_minima_enem_prev,
     nu_media_minima_enem_prev: row.nu_media_minima_enem_prev,
@@ -407,7 +407,7 @@ export default function PartnerFormsPage() {
       }
     }
 
-    // 7. Calculate match
+    // 7. Calculate match via RPC & query user_opportunity_matches
     let matches: any[] = [];
     try {
       matches = await generateMatch(userId);
@@ -415,39 +415,60 @@ export default function PartnerFormsPage() {
       console.error("Failed to generate match:", matchErr);
     }
 
+    const { data: dbMatches } = await supabase
+      .from('user_opportunity_matches')
+      .select('unified_opportunity_id, match_score, match_details')
+      .eq('profile_id', userId);
+
+    const cleanId = (id?: string) => (id || '').replace(/^(partner_|mec_|institution_)/, '');
+
+    const combinedMap = new Map<string, any>();
+    (dbMatches || []).forEach((m: any) => combinedMap.set(cleanId(m.unified_opportunity_id), m));
+    (matches || []).forEach((m: any) => combinedMap.set(cleanId(m.unified_opportunity_id), m));
+    const allMatches = Array.from(combinedMap.values());
+
     // 8. Fetch better opportunities (or top open opportunities)
     let fetchedOpps: IUnifiedOpportunity[] = [];
-    const cleanId = (id?: string) => (id || '').replace(/^partner_/, '');
+    const currentPartnerCleanId = cleanId(currentApp.partner_id);
 
-    if (matches.length > 0) {
-      const currentPartnerId = cleanId(currentApp.partner_id);
-      const currentMatch = matches.find(m => cleanId(m.unified_opportunity_id) === currentPartnerId);
-      const currentScore = currentMatch?.match_score ?? 0;
-      let targetMatches = matches.filter(m => cleanId(m.unified_opportunity_id) !== currentPartnerId && m.match_score >= currentScore);
+    const currentMatch = allMatches.find(m => cleanId(m.unified_opportunity_id) === currentPartnerCleanId);
+    const currentScore = currentMatch?.match_score ?? 0;
+    let targetMatches = allMatches.filter(m => cleanId(m.unified_opportunity_id) !== currentPartnerCleanId && m.match_score >= currentScore);
 
-      if (targetMatches.length === 0) {
-        targetMatches = matches.filter(m => cleanId(m.unified_opportunity_id) !== currentPartnerId);
-      }
+    if (targetMatches.length === 0) {
+      targetMatches = allMatches.filter(m => cleanId(m.unified_opportunity_id) !== currentPartnerCleanId);
+    }
 
-      if (targetMatches.length > 0) {
-        const ids = targetMatches.map(m => m.unified_opportunity_id);
-        const { data: opps } = await supabase
-          .from('v_unified_opportunities')
-          .select('*')
-          .in('unified_id', ids);
+    targetMatches.sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0));
 
-        if (opps && opps.length > 0) {
-          fetchedOpps = opps
-            .map((opp: any) => {
-              const match = targetMatches.find(m => cleanId(m.unified_opportunity_id) === cleanId(opp.unified_id));
-              return mapRowToUnifiedOpportunity({
-                ...opp,
-                match_score: match?.match_score ?? opp.match_score
-              });
-            })
-            .filter((opp: IUnifiedOpportunity) => opp.status === 'opened' || opp.status === 'incoming' || !opp.status)
-            .sort((a: IUnifiedOpportunity, b: IUnifiedOpportunity) => (b.match_score ?? 0) - (a.match_score ?? 0));
-        }
+    if (targetMatches.length > 0) {
+      const matchIds = targetMatches.map(m => m.unified_opportunity_id);
+      const searchIds = Array.from(new Set([
+        ...matchIds,
+        ...matchIds.map(id => cleanId(id)),
+        ...matchIds.map(id => `partner_${cleanId(id)}`),
+        ...matchIds.map(id => `mec_${cleanId(id)}`)
+      ]));
+
+      const { data: opps } = await supabase
+        .from('v_unified_opportunities')
+        .select('*')
+        .in('unified_id', searchIds);
+
+      if (opps && opps.length > 0) {
+        fetchedOpps = opps
+          .map((opp: any) => {
+            const m = allMatches.find(match => cleanId(match.unified_opportunity_id) === cleanId(opp.unified_id));
+            const cutoffFromMatch = m?.match_details?.cutoff_score ?? m?.match_details?.min_cutoff_score;
+            return mapRowToUnifiedOpportunity({
+              ...opp,
+              match_score: m?.match_score ?? opp.match_score,
+              min_cutoff_score_current: opp.min_cutoff_score_current ?? cutoffFromMatch,
+              max_cutoff_score_current: opp.max_cutoff_score_current ?? cutoffFromMatch,
+            });
+          })
+          .filter((opp: IUnifiedOpportunity) => opp.status === 'opened' || opp.status === 'incoming' || !opp.status)
+          .sort((a: IUnifiedOpportunity, b: IUnifiedOpportunity) => (b.match_score ?? 0) - (a.match_score ?? 0));
       }
     }
 
@@ -462,10 +483,13 @@ export default function PartnerFormsPage() {
 
       if (fallbackOpps && fallbackOpps.length > 0) {
         fetchedOpps = fallbackOpps.map((opp: any) => {
-          const match = matches.find(m => cleanId(m.unified_opportunity_id) === cleanId(opp.unified_id));
+          const m = allMatches.find(match => cleanId(match.unified_opportunity_id) === cleanId(opp.unified_id));
+          const cutoffFromMatch = m?.match_details?.cutoff_score ?? m?.match_details?.min_cutoff_score;
           return mapRowToUnifiedOpportunity({
             ...opp,
-            match_score: match?.match_score ?? opp.match_score
+            match_score: m?.match_score ?? opp.match_score,
+            min_cutoff_score_current: opp.min_cutoff_score_current ?? cutoffFromMatch,
+            max_cutoff_score_current: opp.max_cutoff_score_current ?? cutoffFromMatch,
           });
         });
       }
