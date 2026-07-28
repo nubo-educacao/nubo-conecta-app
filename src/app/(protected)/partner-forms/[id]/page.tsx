@@ -15,6 +15,31 @@ import { trackAndRedirect } from "@/services/redirectService";
 import { OpportunityPhaseStepper } from "@/components/OpportunityPhaseStepper";
 import { generateMatch } from "@/services/matchService";
 import OpportunityCarousel from "@/components/home/OpportunityCarousel";
+import type { IUnifiedOpportunity, OpportunityCategory, OpportunitySourceType } from "@/types/opportunities";
+
+function mapRowToUnifiedOpportunity(row: any): IUnifiedOpportunity {
+  const cat = row.category as OpportunityCategory;
+  return {
+    id: row.unified_id || row.id,
+    title: row.title || 'Oportunidade',
+    institution_name: row.provider_name || row.institution_name || 'Instituição Parceira',
+    is_partner: row.is_partner !== undefined ? row.is_partner : true,
+    type: (row.type as OpportunitySourceType) || 'partner',
+    opportunity_type: row.opportunity_type || row.type || 'programa de bolsa',
+    category: cat || 'grants_scholarships',
+    category_label: row.category_label || 'Bolsas e Gratuidades',
+    location: row.location || 'Brasil',
+    education_level: row.education_level || 'Ensino Médio',
+    badges: Array.isArray(row.badges) ? row.badges : [],
+    created_at: row.created_at || new Date().toISOString(),
+    status: row.status || 'opened',
+    starts_at: row.starts_at,
+    ends_at: row.ends_at,
+    match_score: row.match_score !== undefined ? Math.round(row.match_score) : 85,
+    external_redirect: row.external_redirect_config || row.external_redirect,
+    institution_cover_url: row.institution_cover_url,
+  };
+}
 
 interface ApplicationState {
   id: string;
@@ -372,13 +397,15 @@ export default function PartnerFormsPage() {
     }
 
     // 8. Fetch better opportunities (or top open opportunities)
+    let fetchedOpps: IUnifiedOpportunity[] = [];
     if (matches.length > 0) {
-      const currentMatch = matches.find(m => m.unified_opportunity_id === currentApp.partner_id);
+      const currentPartnerId = currentApp.partner_id;
+      const currentMatch = matches.find(m => m.unified_opportunity_id === currentPartnerId || m.unified_opportunity_id === `partner_${currentPartnerId}`);
       const currentScore = currentMatch?.match_score ?? 0;
-      let targetMatches = matches.filter(m => m.unified_opportunity_id !== currentApp.partner_id && m.match_score > currentScore);
+      let targetMatches = matches.filter(m => m.unified_opportunity_id !== currentPartnerId && m.unified_opportunity_id !== `partner_${currentPartnerId}` && m.match_score >= currentScore);
 
       if (targetMatches.length === 0) {
-        targetMatches = matches.filter(m => m.unified_opportunity_id !== currentApp.partner_id);
+        targetMatches = matches.filter(m => m.unified_opportunity_id !== currentPartnerId && m.unified_opportunity_id !== `partner_${currentPartnerId}`);
       }
 
       if (targetMatches.length > 0) {
@@ -388,19 +415,36 @@ export default function PartnerFormsPage() {
           .select('*')
           .in('unified_id', ids);
 
-        if (opps) {
-          const sortedOpps = opps
+        if (opps && opps.length > 0) {
+          fetchedOpps = opps
             .map((opp: any) => {
-              const match = targetMatches.find(m => m.unified_opportunity_id === opp.unified_id);
-              return { ...opp, match_score: match?.match_score ?? 0 };
+              const match = targetMatches.find(m => m.unified_opportunity_id === opp.unified_id || m.unified_opportunity_id === opp.unified_id?.replace('partner_', ''));
+              return mapRowToUnifiedOpportunity({
+                ...opp,
+                match_score: match?.match_score ?? opp.match_score
+              });
             })
-            .filter((opp: any) => opp.status === 'opened' || opp.status === 'incoming')
-            .sort((a: any, b: any) => b.match_score - a.match_score);
-
-          setBetterOpportunities(sortedOpps);
+            .filter((opp: IUnifiedOpportunity) => opp.status === 'opened' || opp.status === 'incoming' || !opp.status)
+            .sort((a: IUnifiedOpportunity, b: IUnifiedOpportunity) => (b.match_score ?? 0) - (a.match_score ?? 0));
         }
       }
     }
+
+    // Fallback: If no matches returned, fetch top active opportunities from v_unified_opportunities
+    if (fetchedOpps.length === 0) {
+      const { data: fallbackOpps } = await supabase
+        .from('v_unified_opportunities')
+        .select('*')
+        .neq('unified_id', currentApp.partner_id)
+        .neq('unified_id', `partner_${currentApp.partner_id}`)
+        .limit(6);
+
+      if (fallbackOpps && fallbackOpps.length > 0) {
+        fetchedOpps = fallbackOpps.map(mapRowToUnifiedOpportunity);
+      }
+    }
+
+    setBetterOpportunities(fetchedOpps);
   };
 
   const handlePrepareReview = async (data: Record<string, unknown>) => {
@@ -513,9 +557,50 @@ export default function PartnerFormsPage() {
   if (phase === "submitting") {
     return (
       <AppShell>
-        <div className="flex flex-col items-center justify-center py-24 gap-4">
-          <Loader2 size={32} className="animate-spin text-[#38B1E4]" />
-          <p className="text-sm font-semibold text-gray-600 animate-pulse">{loadingPhrase}</p>
+        <div className="flex flex-col items-center justify-center min-h-[65vh] py-16 px-4 text-center">
+          <motion.div
+            initial={{ scale: 0.85, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.4 }}
+            className="relative flex items-center justify-center mb-8"
+          >
+            {/* Ambient Glow */}
+            <div className="absolute w-40 h-40 bg-gradient-to-tr from-[#38B1E4]/30 to-[#024F86]/20 rounded-full blur-3xl animate-pulse" />
+            
+            {/* Spinning Arc */}
+            <div className="w-32 h-32 rounded-full border-4 border-t-[#38B1E4] border-r-[#024F86] border-b-transparent border-l-transparent animate-spin" />
+
+            {/* Cloudinha Avatar Box */}
+            <motion.div
+              animate={{ y: [-5, 5, -5] }}
+              transition={{ repeat: Infinity, duration: 2.6, ease: "easeInOut" }}
+              className="absolute w-20 h-20 rounded-2xl bg-white/90 p-2 backdrop-blur-md border border-white/80 shadow-2xl flex items-center justify-center overflow-hidden"
+            >
+              <img
+                src="/assets/cloudinha-candidaturas.png"
+                alt="Cloudinha"
+                className="w-full h-full object-contain"
+              />
+            </motion.div>
+          </motion.div>
+
+          <AnimatePresence mode="wait">
+            <motion.h3
+              key={loadingPhrase}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3 }}
+              className="text-lg md:text-xl font-black text-[#024F86] tracking-tight mb-2"
+              style={{ fontFamily: "Montserrat, sans-serif" }}
+            >
+              {loadingPhrase}
+            </motion.h3>
+          </AnimatePresence>
+
+          <p className="text-xs text-[#3A424E]/70 max-w-sm leading-relaxed font-medium">
+            Estamos processando suas respostas e calculando sua compatibilidade em tempo real.
+          </p>
         </div>
       </AppShell>
     );
