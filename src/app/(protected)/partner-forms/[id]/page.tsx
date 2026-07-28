@@ -368,7 +368,17 @@ export default function PartnerFormsPage() {
         userPrefUpdates[jsonKey] = (val && typeof val === 'object' && jsonKey in val) ? (val as any)[jsonKey] : val;
       } else if (field.mapping_source?.startsWith("user_income.")) {
         const column = field.mapping_source.split(".")[1];
-        userIncomeUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
+        if (val && typeof val === 'object') {
+          // income_calculator returns full object — spread all known DB columns
+          const incomeObj = val as any;
+          if (incomeObj.per_capita_income !== undefined) userIncomeUpdates["per_capita_income"] = incomeObj.per_capita_income;
+          if (incomeObj.family_count !== undefined) userIncomeUpdates["family_count"] = incomeObj.family_count;
+          if (incomeObj.social_benefits !== undefined) userIncomeUpdates["social_benefits"] = incomeObj.social_benefits;
+          if (incomeObj.alimony !== undefined) userIncomeUpdates["alimony"] = incomeObj.alimony;
+          if (incomeObj.member_incomes !== undefined) userIncomeUpdates["member_incomes"] = incomeObj.member_incomes;
+        } else {
+          userIncomeUpdates[column] = val;
+        }
       } else if (field.mapping_source?.startsWith("user_enem_scores.")) {
         const column = field.mapping_source.split(".")[1];
         userEnemUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
@@ -388,9 +398,22 @@ export default function PartnerFormsPage() {
       const mergedPrefs = { ...(existingPrefs?.preferences ?? {}), ...userPrefUpdates };
       await supabase.from("user_preferences").upsert({ user_id: userId, preferences: mergedPrefs });
     }
-    // 4. Upsert user_income
+    // 4. Update user_income — use UPDATE (not upsert) to avoid id NOT NULL constraint issue.
+    // If income_calculator returns the full object, spread all known numeric columns.
     if (Object.keys(userIncomeUpdates).length > 0) {
-      await supabase.from("user_income").upsert({ user_id: userId, ...userIncomeUpdates }, { onConflict: "user_id" });
+      // Attempt UPDATE first (works if row exists)
+      const { error: incomeUpdateErr, data: incomeUpdateData } = await supabase
+        .from("user_income")
+        .update({ ...userIncomeUpdates, updated_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .select("id");
+
+      // If no row existed, INSERT (row count = 0)
+      if (!incomeUpdateErr && (!incomeUpdateData || incomeUpdateData.length === 0)) {
+        await supabase.from("user_income").insert({ user_id: userId, ...userIncomeUpdates });
+      } else if (incomeUpdateErr) {
+        console.error("[income] update failed:", incomeUpdateErr);
+      }
     }
     // 5. Upsert user_enem_scores
     if (Object.keys(userEnemUpdates).length > 0) {
