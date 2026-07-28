@@ -399,19 +399,7 @@ export default function PartnerFormEngine({
                     </div>
                 )}
 
-                {betterOpportunities && betterOpportunities.length > 0 && (
-                    <div className="w-full mt-4 pt-4 border-t border-gray-100/80 mb-4">
-                        <OpportunityCarousel
-                            title="Melhores opções para você"
-                            opportunities={betterOpportunities}
-                        />
-                        <p className="text-[10px] text-center text-[#3A424E]/50 mt-1 font-medium">
-                            Talvez essas oportunidades se encaixem melhor no seu perfil
-                        </p>
-                    </div>
-                )}
-
-                <div className="flex gap-2 pt-4 border-t border-gray-100 mt-auto">
+                <div className="flex gap-2 pt-4 border-t border-gray-100 mb-6">
                     {!isSubmitted && (
                         <button
                             onClick={handlePrev}
@@ -435,6 +423,18 @@ export default function PartnerFormEngine({
                         }
                     </button>
                 </div>
+
+                {betterOpportunities && betterOpportunities.length > 0 && (
+                    <div className="w-full pt-4 border-t border-gray-100/80 -mx-4 md:-mx-6 px-4 md:px-6 mb-2">
+                        <OpportunityCarousel
+                            title="Melhores opções para você"
+                            opportunities={betterOpportunities}
+                        />
+                        <p className="text-[10px] text-center text-[#3A424E]/50 mt-2 font-medium">
+                            Talvez essas oportunidades se encaixem melhor no seu perfil
+                        </p>
+                    </div>
+                )}
             </div>
         );
     }

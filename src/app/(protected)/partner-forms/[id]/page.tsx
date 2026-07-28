@@ -35,9 +35,17 @@ function mapRowToUnifiedOpportunity(row: any): IUnifiedOpportunity {
     status: row.status || 'opened',
     starts_at: row.starts_at,
     ends_at: row.ends_at,
-    match_score: row.match_score !== undefined ? Math.round(row.match_score) : 85,
+    match_score: row.match_score !== undefined && row.match_score !== null ? Math.round(row.match_score) : undefined,
     external_redirect: row.external_redirect_config || row.external_redirect,
     institution_cover_url: row.institution_cover_url,
+    min_cutoff_score_current: row.min_cutoff_score_current,
+    min_cutoff_score_prev: row.min_cutoff_score_prev,
+    max_cutoff_score_current: row.max_cutoff_score_current,
+    max_cutoff_score_prev: row.max_cutoff_score_prev,
+    nu_media_minima_enem_current: row.nu_media_minima_enem_current,
+    nu_media_minima_enem_prev: row.nu_media_minima_enem_prev,
+    vagas_ociosas_current: row.vagas_ociosas_current,
+    vagas_ociosas_prev: row.vagas_ociosas_prev,
   };
 }
 
@@ -400,14 +408,16 @@ export default function PartnerFormsPage() {
 
     // 8. Fetch better opportunities (or top open opportunities)
     let fetchedOpps: IUnifiedOpportunity[] = [];
+    const cleanId = (id?: string) => (id || '').replace(/^partner_/, '');
+
     if (matches.length > 0) {
-      const currentPartnerId = currentApp.partner_id;
-      const currentMatch = matches.find(m => m.unified_opportunity_id === currentPartnerId || m.unified_opportunity_id === `partner_${currentPartnerId}`);
+      const currentPartnerId = cleanId(currentApp.partner_id);
+      const currentMatch = matches.find(m => cleanId(m.unified_opportunity_id) === currentPartnerId);
       const currentScore = currentMatch?.match_score ?? 0;
-      let targetMatches = matches.filter(m => m.unified_opportunity_id !== currentPartnerId && m.unified_opportunity_id !== `partner_${currentPartnerId}` && m.match_score >= currentScore);
+      let targetMatches = matches.filter(m => cleanId(m.unified_opportunity_id) !== currentPartnerId && m.match_score >= currentScore);
 
       if (targetMatches.length === 0) {
-        targetMatches = matches.filter(m => m.unified_opportunity_id !== currentPartnerId && m.unified_opportunity_id !== `partner_${currentPartnerId}`);
+        targetMatches = matches.filter(m => cleanId(m.unified_opportunity_id) !== currentPartnerId);
       }
 
       if (targetMatches.length > 0) {
@@ -420,7 +430,7 @@ export default function PartnerFormsPage() {
         if (opps && opps.length > 0) {
           fetchedOpps = opps
             .map((opp: any) => {
-              const match = targetMatches.find(m => m.unified_opportunity_id === opp.unified_id || m.unified_opportunity_id === opp.unified_id?.replace('partner_', ''));
+              const match = targetMatches.find(m => cleanId(m.unified_opportunity_id) === cleanId(opp.unified_id));
               return mapRowToUnifiedOpportunity({
                 ...opp,
                 match_score: match?.match_score ?? opp.match_score
@@ -442,7 +452,13 @@ export default function PartnerFormsPage() {
         .limit(6);
 
       if (fallbackOpps && fallbackOpps.length > 0) {
-        fetchedOpps = fallbackOpps.map(mapRowToUnifiedOpportunity);
+        fetchedOpps = fallbackOpps.map((opp: any) => {
+          const match = matches.find(m => cleanId(m.unified_opportunity_id) === cleanId(opp.unified_id));
+          return mapRowToUnifiedOpportunity({
+            ...opp,
+            match_score: match?.match_score ?? opp.match_score
+          });
+        });
       }
     }
 
