@@ -463,9 +463,10 @@ export default function PartnerFormsPage() {
     }
 
     targetMatches.sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0));
+    const topMatches = targetMatches.slice(0, 15);
 
-    if (targetMatches.length > 0) {
-      const matchIds = targetMatches.map(m => m.unified_opportunity_id);
+    if (topMatches.length > 0) {
+      const matchIds = topMatches.map(m => m.unified_opportunity_id);
       const searchIds = Array.from(new Set([
         ...matchIds,
         ...matchIds.map(id => cleanId(id)),
@@ -523,9 +524,6 @@ export default function PartnerFormsPage() {
 
   const handlePrepareReview = async (data: Record<string, unknown>) => {
     if (!application) return;
-    const prepKey = `${application.id}_${selectedProfileId}`;
-    if (preparedAppsRef.current.has(prepKey)) return;
-    preparedAppsRef.current.add(prepKey);
 
     setPreparingReview(true);
     try {
