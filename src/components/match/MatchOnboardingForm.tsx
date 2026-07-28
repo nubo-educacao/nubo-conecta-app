@@ -44,6 +44,13 @@ const EDUCATION_OPTIONS = [
 
 const SHIFTS_OPTIONS = ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EAD'];
 
+const SCHOOL_TYPE_OPTIONS = [
+  'Escola pública',
+  'Escola particular com bolsa 100%',
+  'Escola particular com bolsa parcial',
+  'Escola particular sem bolsa',
+];
+
 // Fallback estático caso o fetch de categorias disponíveis falhe
 const STATIC_PROGRAM_OPTIONS = [
   { label: 'Sisu', value: 'sisu' },
@@ -74,6 +81,14 @@ const SALARIO_MINIMO = 1518.00;
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+const formatCPF = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+};
 
 // Normaliza rótulos EAD legados ('Curso a distância', 'EaD') para o vocabulário do form
 // ('EAD'). Sem isso, um valor legado salvo no banco fica INVISÍVEL nos checkboxes (nenhum
@@ -184,6 +199,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
   const [birthDate, setBirthDate] = useState('');
   const [education, setEducation] = useState('');
   const [educationYear, setEducationYear] = useState('');
+  const [schoolType, setSchoolType] = useState('');
   const [cpf, setCpf] = useState('');
   const [race, setRace] = useState('');
   const [phone, setPhone] = useState('');
@@ -353,8 +369,9 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         if (data.profile) {
           setFullName(data.profile.full_name || '');
           setBirthDate(data.profile.birth_date || '');
-          setCpf(data.profile.cpf || '');
+          setCpf(data.profile.cpf ? formatCPF(data.profile.cpf) : '');
           setRace(data.profile.race || '');
+          setSchoolType(data.profile.school_type || '');
           setEducation(data.profile.education || '');
           setEducationYear(data.profile.education_year || '');
           setOutsideBrazil(data.profile.outside_brazil || false);
@@ -499,6 +516,11 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         const label = education === 'Ensino Superior Incompleto' ? 'Semestre' : 'Ano Escolar';
         errorDetails.push({ field: label, error_message: `Selecione o ${label} atual.` });
       }
+      const requiresSchoolType = education && education !== 'Ensino Fundamental';
+      if (requiresSchoolType && !schoolType) {
+        errs.schoolType = true;
+        errorDetails.push({ field: 'Tipo de Escola', error_message: 'Selecione o tipo de escola onde faz/fez o Ensino Médio.' });
+      }
       if (!outsideBrazil) {
         if (zipCode.length < 8) {
           errs.zipCode = true;
@@ -591,6 +613,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         birth_date: birthDate,
         cpf: cpf || null,
         race: race || null,
+        school_type: education !== 'Ensino Fundamental' ? (schoolType || null) : null,
         age: calculateAge(birthDate) || undefined,
         education,
         education_year: educationYear || 'N/A',
@@ -770,8 +793,9 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               <p className="text-[#636E7C] text-[14px] mt-1">Conte-nos um pouco sobre você para começarmos.</p>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="md:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Linha 1: Nome Completo (100% largura) */}
+              <div className="md:col-span-3">
                 <FieldLabel label="Nome Completo" icon={User} required error={errors.fullName} htmlFor="fullName" />
                 <input 
                   id="fullName"
@@ -781,7 +805,9 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                   onChange={e => setFullName(e.target.value)}
                 />
               </div>
-              <div>
+
+              {/* Linha 2: Data de Nascimento | CPF (com máscara) | Raça / Etnia (com ícone Users) */}
+              <div className="md:col-span-1">
                 <FieldLabel label="Data de Nascimento" icon={Calendar} required error={errors.birthDate} htmlFor="birthDate" />
                 <input 
                   id="birthDate"
@@ -791,18 +817,19 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                   onChange={e => setBirthDate(e.target.value)}
                 />
               </div>
-              <div>
+              <div className="md:col-span-1">
                 <FieldLabel label="CPF (Opcional)" icon={Hash} htmlFor="cpf" />
                 <input 
                   id="cpf"
                   className={inputCls} 
                   placeholder="000.000.000-00"
                   value={cpf}
-                  onChange={e => setCpf(e.target.value)}
+                  maxLength={14}
+                  onChange={e => setCpf(formatCPF(e.target.value))}
                 />
               </div>
-              <div>
-                <FieldLabel label="Raça / Etnia" icon={Hash} htmlFor="race" />
+              <div className="md:col-span-1">
+                <FieldLabel label="Raça / Etnia" icon={Users} htmlFor="race" />
                 <select 
                   id="race"
                   className={inputCls} 
@@ -815,28 +842,41 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                   ))}
                 </select>
               </div>
-              <div className="md:col-span-2">
+
+              {/* Linha 3: Escolaridade + Ano/Semestre */}
+              <div className={(education === 'Ensino Fundamental' || education === 'Ensino Médio Incompleto' || education === 'Ensino Superior Incompleto') ? "md:col-span-2" : "md:col-span-3"}>
                 <FieldLabel label="Escolaridade" icon={GraduationCap} required error={errors.education} htmlFor="education" />
-                <select id="education" className={inputCls} value={education} onChange={e => { setEducation(e.target.value); setEducationYear(''); }}>
+                <select id="education" className={inputCls} value={education} onChange={e => { setEducation(e.target.value); setEducationYear(''); if (e.target.value === 'Ensino Fundamental') setSchoolType(''); }}>
                   <option value="">Selecione...</option>
                   {EDUCATION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               </div>
               {(education === 'Ensino Fundamental' || education === 'Ensino Médio Incompleto') && (
-                <div className="md:col-span-2">
+                <div className="md:col-span-1">
                   <FieldLabel label="Ano Escolar" icon={GraduationCap} required error={errors.educationYear} htmlFor="educationYear" />
                   <select id="educationYear" className={inputCls} value={educationYear} onChange={e => setEducationYear(e.target.value)}>
-                    <option value="">Selecione o ano...</option>
+                    <option value="">Selecione...</option>
                     {['1º Ano','2º Ano','3º Ano','4º Ano','5º Ano','6º Ano','7º Ano','8º Ano','9º Ano'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
                   </select>
                 </div>
               )}
               {education === 'Ensino Superior Incompleto' && (
-                <div className="md:col-span-2">
+                <div className="md:col-span-1">
                   <FieldLabel label="Semestre" icon={GraduationCap} required error={errors.educationYear} htmlFor="educationYear" />
                   <select id="educationYear" className={inputCls} value={educationYear} onChange={e => setEducationYear(e.target.value)}>
-                    <option value="">Selecione o semestre...</option>
+                    <option value="">Selecione...</option>
                     {['1º Semestre','2º Semestre','3º Semestre','4º Semestre','5º Semestre','6º Semestre','7º Semestre','8º Semestre','9º Semestre','10º Semestre'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Linha 4: Tipo de Escola (exibido para todos exceto Ensino Fundamental) */}
+              {education && education !== 'Ensino Fundamental' && (
+                <div className="md:col-span-3">
+                  <FieldLabel label="Você faz/fez o Ensino Médio em que tipo de escola?" icon={Building} required error={errors.schoolType} htmlFor="schoolType" />
+                  <select id="schoolType" className={inputCls} value={schoolType} onChange={e => setSchoolType(e.target.value)}>
+                    <option value="">Selecione...</option>
+                    {SCHOOL_TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                   </select>
                 </div>
               )}

@@ -27,6 +27,7 @@ export interface UserProfileData {
   onboarding_completed?: boolean;
   cpf?: string | null;
   race?: string | null;
+  school_type?: string | null;
 }
 
 export interface UserIncomeData {
