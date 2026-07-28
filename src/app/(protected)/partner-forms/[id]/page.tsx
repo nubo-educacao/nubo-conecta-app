@@ -462,7 +462,7 @@ export default function PartnerFormsPage() {
       targetMatches = allMatches.filter(m => cleanId(m.unified_opportunity_id) !== currentPartnerCleanId);
     }
 
-    targetMatches.sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0));
+    targetMatches.sort((a, b) => (Number(b.match_score) || 0) - (Number(a.match_score) || 0));
     const topMatches = targetMatches.slice(0, 15);
 
     if (topMatches.length > 0) {
@@ -480,19 +480,20 @@ export default function PartnerFormsPage() {
         .in('unified_id', searchIds);
 
       if (opps && opps.length > 0) {
-        fetchedOpps = opps
-          .map((opp: any) => {
-            const m = allMatches.find(match => cleanId(match.unified_opportunity_id) === cleanId(opp.unified_id));
+        fetchedOpps = topMatches
+          .map((m: any) => {
+            const opp = opps.find((o: any) => cleanId(o.unified_id) === cleanId(m.unified_opportunity_id));
+            if (!opp) return null;
             const cutoffFromMatch = m?.match_details?.cutoff_score ?? m?.match_details?.min_cutoff_score;
             return mapRowToUnifiedOpportunity({
               ...opp,
-              match_score: m?.match_score ?? opp.match_score,
+              match_score: m.match_score,
               min_cutoff_score_current: opp.min_cutoff_score_current ?? cutoffFromMatch,
               max_cutoff_score_current: opp.max_cutoff_score_current ?? cutoffFromMatch,
             });
           })
-          .filter((opp: IUnifiedOpportunity) => opp.status === 'opened' || opp.status === 'incoming' || !opp.status)
-          .sort((a: IUnifiedOpportunity, b: IUnifiedOpportunity) => (b.match_score ?? 0) - (a.match_score ?? 0));
+          .filter((opp): opp is IUnifiedOpportunity => opp !== null)
+          .filter((opp: IUnifiedOpportunity) => opp.status === 'opened' || opp.status === 'incoming' || !opp.status);
       }
     }
 
@@ -787,15 +788,17 @@ export default function PartnerFormsPage() {
   return (
     <AppShell title={application?.partner_name ?? "Candidatura"}>
       <div className="h-full flex flex-col">
-        <button
-          onClick={() => router.push("/candidaturas")}
-          className="flex items-center gap-1 text-xs text-[#3A424E]/60 px-4 pt-4 mb-2 hover:text-[#024F86] transition-colors"
-        >
-          <ArrowLeft size={14} /> Minhas candidaturas
-        </button>
+        {!preparingReview && (
+          <button
+            onClick={() => router.push("/candidaturas")}
+            className="flex items-center gap-1 text-xs text-[#3A424E]/60 px-4 pt-4 mb-2 hover:text-[#024F86] transition-colors"
+          >
+            <ArrowLeft size={14} /> Minhas candidaturas
+          </button>
+        )}
 
         {/* ── Titularidade ── */}
-        {stepIndex === 0 && profiles.length > 0 && (
+        {!preparingReview && stepIndex === 0 && profiles.length > 0 && (
           <div className="px-4 pt-2 pb-4">
             <p className="text-[11px] text-[#707A7E] font-bold uppercase mb-2">Candidatura para</p>
             <div className="flex gap-3">
