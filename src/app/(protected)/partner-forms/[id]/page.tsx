@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ArrowLeft, CheckCircle2, User, Users, ExternalLink } from "lucide-react";
@@ -77,9 +77,8 @@ export default function PartnerFormsPage() {
   const [profileData, setProfileData] = useState<Record<string, any>>({});
   const [betterOpportunities, setBetterOpportunities] = useState<any[]>([]);
   const [loadingPhrase, setLoadingPhrase] = useState("Estamos preenchendo sua aplicação...");
-  // preparingReview: background match + profile save triggered from PartnerFormEngine mount
-  // Uses a separate flag so we don't unmount/remount PartnerFormEngine (which caused the infinite loop)
   const [preparingReview, setPreparingReview] = useState(false);
+  const preparedAppsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (phase !== "submitting") return;
@@ -452,9 +451,10 @@ export default function PartnerFormsPage() {
 
   const handlePrepareReview = async (data: Record<string, unknown>) => {
     if (!application) return;
-    // Use a separate loading state instead of setPhase("submitting").
-    // setPhase("submitting") unmounts PartnerFormEngine → on setPhase("form")
-    // it remounts → mount useEffect fires again → infinite loop of requests.
+    const prepKey = `${application.id}_${selectedProfileId}`;
+    if (preparedAppsRef.current.has(prepKey)) return;
+    preparedAppsRef.current.add(prepKey);
+
     setPreparingReview(true);
     try {
       await persistMappingSourceAndCalculateMatch(data, application, fields);
@@ -560,38 +560,27 @@ export default function PartnerFormsPage() {
     );
   }
 
-  // Spinner JSX (reused for both submitting phase and preparingReview overlay)
+  // Spinner JSX without extra motion animations (only the spinning arc)
   const CloudinhaSpinner = (
     <div className="flex flex-col items-center justify-center min-h-[65vh] py-16 px-4 text-center">
       <div className="relative flex items-center justify-center mb-8">
         {/* Spinning Arc */}
         <div className="w-32 h-32 rounded-full border-4 border-t-[#38B1E4] border-r-[#024F86] border-b-transparent border-l-transparent animate-spin" />
         {/* Cloudinha Avatar Box */}
-        <motion.div
-          animate={{ y: [-5, 5, -5] }}
-          transition={{ repeat: Infinity, duration: 2.6, ease: "easeInOut" }}
-          className="absolute w-20 h-20 rounded-2xl bg-white/90 p-2 backdrop-blur-md border border-white/80 shadow-2xl flex items-center justify-center overflow-hidden"
-        >
+        <div className="absolute w-20 h-20 rounded-2xl bg-white p-2 border border-gray-100 shadow-md flex items-center justify-center overflow-hidden">
           <img
             src="/assets/cloudinha-candidaturas.png"
             alt="Cloudinha"
             className="w-full h-full object-contain"
           />
-        </motion.div>
+        </div>
       </div>
-      <AnimatePresence mode="wait">
-        <motion.h3
-          key={loadingPhrase}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.3 }}
-          className="text-lg md:text-xl font-black text-[#024F86] tracking-tight mb-2"
-          style={{ fontFamily: "Montserrat, sans-serif" }}
-        >
-          {loadingPhrase}
-        </motion.h3>
-      </AnimatePresence>
+      <h3
+        className="text-lg md:text-xl font-black text-[#024F86] tracking-tight mb-2"
+        style={{ fontFamily: "Montserrat, sans-serif" }}
+      >
+        {loadingPhrase}
+      </h3>
       <p className="text-xs text-[#3A424E]/70 max-w-sm leading-relaxed font-medium">
         Estamos processando suas respostas e calculando sua compatibilidade em tempo real.
       </p>
@@ -799,26 +788,29 @@ export default function PartnerFormsPage() {
         )}
 
         <div className="flex-1 px-4 pb-4">
-          {preparingReview ? CloudinhaSpinner : application && (
-            <PartnerFormEngine
-              key={formKey}
-              partnerName={application.partner_name}
-              applicationId={application.id}
-              opportunityId={application.partner_id}
-              steps={steps}
-              fields={fields}
-              defaultValues={defaultValues}
-              dbAnswers={application.answers}
-              localStorageKey={localStorageKey}
-              onSaveDraft={handleSaveDraft}
-              onPrepareReview={handlePrepareReview}
-              onSubmitForm={handleSubmitForm}
-              onComputeEligibility={fields.some(f => f.is_criterion) ? computeEligibility : undefined}
-              isRedirectFlow={isRedirect}
-              onStepIndexChange={setStepIndex}
-              userContextData={profileData}
-              betterOpportunities={betterOpportunities}
-            />
+          {preparingReview && CloudinhaSpinner}
+          {application && (
+            <div className={preparingReview ? "hidden" : "block"}>
+              <PartnerFormEngine
+                key={formKey}
+                partnerName={application.partner_name}
+                applicationId={application.id}
+                opportunityId={application.partner_id}
+                steps={steps}
+                fields={fields}
+                defaultValues={defaultValues}
+                dbAnswers={application.answers}
+                localStorageKey={localStorageKey}
+                onSaveDraft={handleSaveDraft}
+                onPrepareReview={handlePrepareReview}
+                onSubmitForm={handleSubmitForm}
+                onComputeEligibility={fields.some(f => f.is_criterion) ? computeEligibility : undefined}
+                isRedirectFlow={isRedirect}
+                onStepIndexChange={setStepIndex}
+                userContextData={profileData}
+                betterOpportunities={betterOpportunities}
+              />
+            </div>
           )}
         </div>
       </div>
