@@ -599,16 +599,6 @@ export default function PartnerFormsPage() {
     }
   })();
 
-  if (phase === "loading") {
-    return (
-      <AppShell>
-        <div className="flex items-center justify-center py-24">
-          <Loader2 size={32} className="animate-spin text-[#38B1E4]" />
-        </div>
-      </AppShell>
-    );
-  }
-
   // Spinner JSX without extra motion animations (only the spinning arc)
   const CloudinhaSpinner = (
     <div className="flex flex-col items-center justify-center min-h-[65vh] py-16 px-4 text-center">
@@ -635,6 +625,10 @@ export default function PartnerFormsPage() {
       </p>
     </div>
   );
+
+  if (phase === "loading") {
+    return <AppShell>{CloudinhaSpinner}</AppShell>;
+  }
 
   if (phase === "submitting") {
     return <AppShell>{CloudinhaSpinner}</AppShell>;
