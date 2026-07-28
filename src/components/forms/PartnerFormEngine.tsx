@@ -10,6 +10,7 @@ import {
 import { evaluateJsonLogic } from '@/utils/jsonLogic';
 import { calculateDraftProgress } from '@/utils/calculateDraftProgress';
 import FormFieldRenderer, { type PartnerFormField } from './FormFieldRenderer';
+import OpportunityCarousel from '@/components/home/OpportunityCarousel';
 
 export interface PartnerStep {
     id: string;
@@ -38,6 +39,7 @@ interface FormEngineProps {
     dbAnswers?: Record<string, unknown>;
     localStorageKey: string;
     onSaveDraft: (data: Record<string, unknown>) => Promise<void>;
+    onPrepareReview?: (data: Record<string, unknown>) => Promise<void>;
     onSubmitForm: (data: Record<string, unknown>) => Promise<{ success: boolean; eligibilityResults?: EligibilityResult[] }>;
     onComputeEligibility?: (data: Record<string, unknown>) => EligibilityResult[];
     onStepChange?: (stepName: string) => void;
@@ -47,6 +49,7 @@ interface FormEngineProps {
     onStepIndexChange?: (index: number) => void;
     opportunityId?: string;
     userContextData?: Record<string, unknown>;
+    betterOpportunities?: any[];
 }
 
 const sendSystemIntent = (
@@ -70,6 +73,7 @@ export default function PartnerFormEngine({
     dbAnswers = {},
     localStorageKey,
     onSaveDraft,
+    onPrepareReview,
     onSubmitForm,
     onComputeEligibility,
     onStepChange,
@@ -78,6 +82,7 @@ export default function PartnerFormEngine({
     onStepIndexChange,
     opportunityId,
     userContextData = {},
+    betterOpportunities = [],
 }: FormEngineProps) {
     const methods = useForm({ defaultValues, mode: 'onSubmit' });
     const { handleSubmit, control, trigger, getValues } = methods;
@@ -274,6 +279,9 @@ export default function PartnerFormEngine({
             if (onComputeEligibility) {
                 setEligibilityResults(onComputeEligibility(getValues() as Record<string, unknown>));
             }
+            if (onPrepareReview) {
+                await onPrepareReview(getValues() as Record<string, unknown>);
+            }
             setShowReview(true);
         } else {
             const nextIndex = currentStepIndex + 1;
@@ -378,6 +386,18 @@ export default function PartnerFormEngine({
                     <div className="flex-1 flex items-center flex-col justify-center text-center">
                         <p className="text-sm text-[#024F86] mb-2 font-medium">Tudo pronto para enviar!</p>
                         <p className="text-xs text-gray-500">Suas respostas serão registradas e seu match será atualizado.</p>
+                    </div>
+                )}
+
+                {betterOpportunities && betterOpportunities.length > 0 && (
+                    <div className="w-full mt-4 pt-4 border-t border-gray-100/80 mb-4">
+                        <OpportunityCarousel
+                            title="Melhores opções para você"
+                            opportunities={betterOpportunities}
+                        />
+                        <p className="text-[10px] text-center text-[#3A424E]/50 mt-1 font-medium">
+                            Talvez essas oportunidades se encaixem melhor no seu perfil
+                        </p>
                     </div>
                 )}
 

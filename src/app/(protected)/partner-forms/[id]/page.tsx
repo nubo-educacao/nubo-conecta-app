@@ -287,6 +287,130 @@ export default function PartnerFormsPage() {
   };
 
   // ── Final submit ───────────────────────────────────────────────────────────
+  // ── Prepare Review (mapping source, match calculation, better opps) ────────
+  const persistMappingSourceAndCalculateMatch = async (
+    data: Record<string, unknown>,
+    currentApp: ApplicationState,
+    loadedFields: PartnerFormField[]
+  ) => {
+    const userId = selectedProfileId || currentApp.user_id || user!.id;
+
+    // 1. Build profile updates from field mappings
+    const profileUpdates: Record<string, any> = {};
+    const userPrefUpdates: Record<string, any> = {};
+    const userIncomeUpdates: Record<string, any> = {};
+    const userEnemUpdates: Record<string, any> = {};
+    const authUserUpdates: Record<string, any> = {};
+
+    loadedFields.forEach(field => {
+      const userAnswer = data[field.field_name];
+      if (userAnswer === undefined || userAnswer === null) return;
+
+      let val = userAnswer;
+      if (typeof userAnswer === 'string') {
+        try {
+          const parsed = JSON.parse(userAnswer);
+          if (parsed && typeof parsed === 'object') {
+            val = parsed;
+          }
+        } catch {}
+      }
+
+      if (field.mapping_source?.startsWith("user_profiles.")) {
+        const column = field.mapping_source.split(".")[1];
+        profileUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
+      } else if (field.mapping_source?.startsWith("user_preferences.")) {
+        const jsonKey = field.mapping_source.split(".")[1];
+        userPrefUpdates[jsonKey] = (val && typeof val === 'object' && jsonKey in val) ? (val as any)[jsonKey] : val;
+      } else if (field.mapping_source?.startsWith("user_income.")) {
+        const column = field.mapping_source.split(".")[1];
+        userIncomeUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
+      } else if (field.mapping_source?.startsWith("user_enem_scores.")) {
+        const column = field.mapping_source.split(".")[1];
+        userEnemUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
+      } else if (field.mapping_source?.startsWith("auth.users.")) {
+        const column = field.mapping_source.split(".")[1];
+        authUserUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
+      }
+    });
+
+    // 2. Upsert user_profiles
+    if (Object.keys(profileUpdates).length > 0) {
+      await supabase.from("user_profiles").upsert({ id: userId, ...profileUpdates }, { onConflict: "id" });
+    }
+    // 3. Upsert user_preferences
+    if (Object.keys(userPrefUpdates).length > 0) {
+      const { data: existingPrefs } = await supabase.from("user_preferences").select("preferences").eq("user_id", userId).maybeSingle();
+      const mergedPrefs = { ...(existingPrefs?.preferences ?? {}), ...userPrefUpdates };
+      await supabase.from("user_preferences").upsert({ user_id: userId, preferences: mergedPrefs });
+    }
+    // 4. Upsert user_income
+    if (Object.keys(userIncomeUpdates).length > 0) {
+      await supabase.from("user_income").upsert({ user_id: userId, ...userIncomeUpdates }, { onConflict: "user_id" });
+    }
+    // 5. Upsert user_enem_scores
+    if (Object.keys(userEnemUpdates).length > 0) {
+      const year = userEnemUpdates.year || new Date().getFullYear();
+      await supabase.from("user_enem_scores").upsert({ user_id: userId, year, ...userEnemUpdates }, { onConflict: "user_id,year" });
+    }
+    // 6. Update auth user
+    if (Object.keys(authUserUpdates).length > 0) {
+      const updatePayload: Record<string, any> = {};
+      if (authUserUpdates.email) updatePayload.email = authUserUpdates.email;
+      if (authUserUpdates.phone) updatePayload.phone = authUserUpdates.phone;
+      if (Object.keys(updatePayload).length > 0) {
+        await supabase.auth.updateUser(updatePayload);
+      }
+    }
+
+    // 7. Calculate match
+    let matches: any[] = [];
+    try {
+      matches = await generateMatch(userId);
+    } catch (matchErr) {
+      console.error("Failed to generate match:", matchErr);
+    }
+
+    // 8. Fetch better opportunities
+    if (matches.length > 0) {
+      const currentMatch = matches.find(m => m.unified_opportunity_id === currentApp.partner_id);
+      const currentScore = currentMatch?.match_score ?? 0;
+      const betterMatches = matches.filter(m => m.unified_opportunity_id !== currentApp.partner_id && m.match_score > currentScore);
+
+      if (betterMatches.length > 0) {
+        const ids = betterMatches.map(m => m.unified_opportunity_id);
+        const { data: opps } = await supabase
+          .from('v_unified_opportunities')
+          .select('*')
+          .in('unified_id', ids);
+
+        if (opps) {
+          const sortedOpps = opps
+            .map((opp: any) => {
+              const match = betterMatches.find(m => m.unified_opportunity_id === opp.unified_id);
+              return { ...opp, match_score: match?.match_score ?? 0 };
+            })
+            .filter((opp: any) => opp.status === 'opened' || opp.status === 'incoming')
+            .sort((a: any, b: any) => b.match_score - a.match_score);
+
+          setBetterOpportunities(sortedOpps);
+        }
+      }
+    }
+  };
+
+  const handlePrepareReview = async (data: Record<string, unknown>) => {
+    if (!application) return;
+    setPhase("submitting");
+    try {
+      await persistMappingSourceAndCalculateMatch(data, application, fields);
+    } catch (err) {
+      console.error("Failed to prepare review:", err);
+    } finally {
+      setPhase("form");
+    }
+  };
+
   const isRedirect = !!application?.external_redirect?.enabled;
 
   const handleSubmitForm = async (data: Record<string, unknown>) => {
@@ -316,9 +440,6 @@ export default function PartnerFormsPage() {
         return { success: false };
       }
 
-      // Save eligibility results and map data to user profile
-      const userId = selectedProfileId || user!.id;
-
       // Save eligibility results directly to student_applications
       if (eligibilityResults && eligibilityResults.length > 0) {
         await supabase
@@ -327,168 +448,12 @@ export default function PartnerFormsPage() {
           .eq("id", application.id);
       }
 
-      // 1. Build profile updates from field mappings
-      const profileUpdates: Record<string, any> = {};
-      const userPrefUpdates: Record<string, any> = {};
-      const userIncomeUpdates: Record<string, any> = {};
-      const userEnemUpdates: Record<string, any> = {};
-      const authUserUpdates: Record<string, any> = {};
-
-      fields.forEach(field => {
-        const userAnswer = data[field.field_name];
-        if (userAnswer === undefined || userAnswer === null) return;
-
-        let val = userAnswer;
-        if (typeof userAnswer === 'string') {
-          try {
-            const parsed = JSON.parse(userAnswer);
-            if (parsed && typeof parsed === 'object') {
-              val = parsed;
-            }
-          } catch {}
-        }
-
-        // Map to user_profiles columns
-        if (field.mapping_source?.startsWith("user_profiles.")) {
-          const column = field.mapping_source.split(".")[1];
-          profileUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
-        }
-        // Map to user_preferences json key
-        else if (field.mapping_source?.startsWith("user_preferences.")) {
-          const jsonKey = field.mapping_source.split(".")[1];
-          userPrefUpdates[jsonKey] = (val && typeof val === 'object' && jsonKey in val) ? (val as any)[jsonKey] : val;
-        }
-        // Map to user_income columns
-        else if (field.mapping_source?.startsWith("user_income.")) {
-          const column = field.mapping_source.split(".")[1];
-          userIncomeUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
-        }
-        // Map to user_enem_scores columns
-        else if (field.mapping_source?.startsWith("user_enem_scores.")) {
-          const column = field.mapping_source.split(".")[1];
-          userEnemUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
-        }
-        // Map to auth.users columns
-        else if (field.mapping_source?.startsWith("auth.users.")) {
-          const column = field.mapping_source.split(".")[1];
-          authUserUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
-        }
-      });
-
-      // 2. Upsert user_profiles
-      if (Object.keys(profileUpdates).length > 0) {
-        const { error: profileError } = await supabase
-          .from("user_profiles")
-          .upsert({ id: userId, ...profileUpdates }, { onConflict: "id" });
-
-        if (profileError) {
-          console.error("Failed to upsert user profile:", profileError);
-        }
-      }
-
-      // 3. Update user_preferences (upsert json)
-      if (Object.keys(userPrefUpdates).length > 0) {
-        const { data: existingPrefs } = await supabase
-          .from("user_preferences")
-          .select("preferences")
-          .eq("user_id", userId)
-          .maybeSingle();
-
-        const mergedPrefs = {
-          ...(existingPrefs?.preferences ?? {}),
-          ...userPrefUpdates
-        };
-
-        const { error: prefError } = await supabase
-          .from("user_preferences")
-          .upsert({
-            user_id: userId,
-            preferences: mergedPrefs
-          });
-
-        if (prefError) {
-          console.error("Failed to update user preferences:", prefError);
-        }
-      }
-
-      // 4. Upsert user_income
-      if (Object.keys(userIncomeUpdates).length > 0) {
-        const { error: incomeError } = await supabase
-          .from("user_income")
-          .upsert({ user_id: userId, ...userIncomeUpdates }, { onConflict: "user_id" });
-
-        if (incomeError) {
-          console.error("Failed to upsert user income:", incomeError);
-        }
-      }
-
-      // 5. Upsert user_enem_scores
-      if (Object.keys(userEnemUpdates).length > 0) {
-        const year = userEnemUpdates.year || new Date().getFullYear();
-        const { error: enemError } = await supabase
-          .from("user_enem_scores")
-          .upsert({ user_id: userId, year, ...userEnemUpdates }, { onConflict: "user_id,year" });
-
-        if (enemError) {
-          console.error("Failed to upsert user ENEM scores:", enemError);
-        }
-      }
-
-      // 6. Update auth user if email or phone is mapped
-      if (Object.keys(authUserUpdates).length > 0) {
-        const updatePayload: Record<string, any> = {};
-        if (authUserUpdates.email) updatePayload.email = authUserUpdates.email;
-        if (authUserUpdates.phone) updatePayload.phone = authUserUpdates.phone;
-
-        if (Object.keys(updatePayload).length > 0) {
-          const { error: authError } = await supabase.auth.updateUser(updatePayload);
-          if (authError) {
-            console.error("Failed to update auth user info:", authError);
-          }
-        }
-      }
-
-      // 7. Call generateMatch to run the match calculation
-      let matches: any[] = [];
-      try {
-        matches = await generateMatch(userId);
-      } catch (matchErr) {
-        console.error("Failed to generate match:", matchErr);
-      }
-
-      // 8. Fetch better opportunities (score > current score)
-      if (matches.length > 0) {
-        const currentMatch = matches.find(m => m.unified_opportunity_id === application.partner_id);
-        const currentScore = currentMatch?.match_score ?? 0;
-
-        const betterMatches = matches.filter(m => m.unified_opportunity_id !== application.partner_id && m.match_score > currentScore);
-
-        if (betterMatches.length > 0) {
-          const ids = betterMatches.map(m => m.unified_opportunity_id);
-          const { data: opps } = await supabase
-            .from('v_unified_opportunities')
-            .select('*')
-            .in('unified_id', ids);
-
-          if (opps) {
-            const sortedOpps = opps
-              .map((opp: any) => {
-                const match = betterMatches.find(m => m.unified_opportunity_id === opp.unified_id);
-                return {
-                  ...opp,
-                  match_score: match?.match_score ?? 0
-                };
-              })
-              .filter((opp: any) => opp.status === 'opened' || opp.status === 'incoming')
-              .sort((a: any, b: any) => b.match_score - a.match_score);
-
-            setBetterOpportunities(sortedOpps);
-          }
-        }
-      }
+      // Perform mapping source persistence and match generation if not already run
+      await persistMappingSourceAndCalculateMatch(data, application, fields);
 
       if (isRedirect && application.external_redirect?.url) {
         try {
+          const userId = selectedProfileId || application.user_id || user!.id;
           const { url } = await trackAndRedirect(
             userId,
             application.partner_id,
@@ -761,11 +726,13 @@ export default function PartnerFormsPage() {
               dbAnswers={application.answers}
               localStorageKey={localStorageKey}
               onSaveDraft={handleSaveDraft}
+              onPrepareReview={handlePrepareReview}
               onSubmitForm={handleSubmitForm}
               onComputeEligibility={fields.some(f => f.is_criterion) ? computeEligibility : undefined}
               isRedirectFlow={isRedirect}
               onStepIndexChange={setStepIndex}
               userContextData={profileData}
+              betterOpportunities={betterOpportunities}
             />
           )}
         </div>
