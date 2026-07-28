@@ -1,41 +1,21 @@
 // importantDates.ts — Sprint 3.5 (rev. schema fix)
 // Colunas reais no banco: start_date, end_date, type (NÃO date/category/is_urgent).
 // O mapeamento JS converte o schema real para o contrato da UI (IImportantDate).
+//
+// Este módulo importa `next/headers` (server-only). Os tipos e constantes
+// client-safe (DateType, DATE_TYPE_COLORS, DATE_TYPE_LABELS, IImportantDate)
+// vivem em @/types/importantDates e são só reexportados aqui — Client
+// Components devem importar diretamente de @/types/importantDates, nunca
+// deste arquivo, ou o build do Next.js quebra (boundary violation).
 
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
+import type { ImportantDateCategory, DateType, IImportantDate } from '@/types/importantDates';
+import { DATE_TYPE_COLORS, DATE_TYPE_LABELS } from '@/types/importantDates';
 
-export type ImportantDateCategory = 'purple' | 'orange' | 'green' | 'blue';
-
-export type DateType = "prouni" | "sisu" | "partners" | "general";
-
-export const DATE_TYPE_COLORS: Record<DateType, string> = {
-  prouni: "#9747FF",
-  sisu: "#024F86",
-  partners: "#FF9900",
-  general: "#38B1E4",
-};
-
-export const DATE_TYPE_LABELS: Record<DateType, string> = {
-  prouni: "ProUni",
-  sisu: "Sisu",
-  partners: "Parceiros",
-  general: "Geral",
-};
-
-export interface IImportantDate {
-  id: string;
-  title: string;
-  description: string | null;
-  /** Data principal para exibição — mapeada de start_date */
-  date: string;
-  /** Data final do período, se houver */
-  endDate?: string;
-  type: string;
-  category: ImportantDateCategory;
-  /** Derivado do campo `type` — true quando type indica urgência/prazo */
-  is_urgent: boolean;
-  created_at: string;
-}
+export type { ImportantDateCategory, DateType, IImportantDate };
+export { DATE_TYPE_COLORS, DATE_TYPE_LABELS };
 
 // Shape real da linha retornada pelo Supabase
 interface ImportantDateRow {

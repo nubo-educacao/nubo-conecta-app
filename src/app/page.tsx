@@ -30,9 +30,8 @@ export default async function HomePage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
+        getAll: () => cookieStore.getAll(),
+        setAll: () => {},
       },
     }
   );
@@ -52,10 +51,11 @@ export default async function HomePage() {
 
   // 1. Buscar seções do CMS
   const sections = await getHomeSections(userState);
+  const isAuthenticated = !!user;
 
   // 2. Se CMS tem seções, buscar dados para cada uma
   if (sections.length > 0) {
-    const sectionsWithData = await populateSections(sections);
+    const sectionsWithData = await populateSections(sections, isAuthenticated);
     return (
       <AppShell>
         <HomeClient sections={sectionsWithData} />
@@ -109,7 +109,10 @@ export default async function HomePage() {
 }
 
 // ─── Helper: popular seções com dados ────────────────────────────────────────
-async function populateSections(sections: IHomeSection[]): Promise<IHomeSectionWithData[]> {
+async function populateSections(
+  sections: IHomeSection[],
+  isAuthenticated: boolean,
+): Promise<IHomeSectionWithData[]> {
   return Promise.all(
     sections.map(async (section): Promise<IHomeSectionWithData> => {
       const limit = (section.config as { limit?: number }).limit ?? 8;
@@ -135,9 +138,11 @@ async function populateSections(sections: IHomeSection[]): Promise<IHomeSectionW
             break;
           }
           case 'match_results': {
+            // config.only_authenticated: seção só faz sentido para usuário logado —
+            // getUnifiedOpportunities({mode:'para-voce'}) cai para resultado genérico
+            // (não personalizado) quando anônimo, então não dá pra confiar só no length.
+            if (!isAuthenticated) break;
             const data = await getUnifiedOpportunities({ mode: 'para-voce', page: 0, limit });
-            // Only keep opportunities with a match score if we want strict matches,
-            // or just use the personalized list. 'para-voce' already sorts by score if user is logged in.
             enriched.opportunities = data;
             break;
           }
