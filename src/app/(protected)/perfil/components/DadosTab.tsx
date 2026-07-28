@@ -495,6 +495,25 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
               )}
             </FieldRow>
           )}
+          {escolaridade.education && escolaridade.education !== 'Ensino Fundamental' && (
+            <div className="col-span-1 sm:col-span-2">
+              <FieldRow label="Tipo de escola (Ensino Médio)" value={escolaridade.school_type} editing={editingEsc} name="school_type" onChange={(n, v) => setEscolaridade((p) => ({ ...p, [n]: v }))}>
+                {editingEsc && (
+                  <select
+                    value={escolaridade.school_type}
+                    onChange={(e) => setEscolaridade((p) => ({ ...p, school_type: e.target.value }))}
+                    className={inputCls}
+                    style={inputStyle}
+                  >
+                    <option value="">Selecione...</option>
+                    {['Escola pública', 'Escola particular com bolsa 100%', 'Escola particular com bolsa parcial', 'Escola particular sem bolsa'].map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                )}
+              </FieldRow>
+            </div>
+          )}
         </div>
       </Accordion>
 

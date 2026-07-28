@@ -793,9 +793,9 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               <p className="text-[#636E7C] text-[14px] mt-1">Conte-nos um pouco sobre você para começarmos.</p>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Linha 1: Nome Completo (100% largura) */}
-              <div className="md:col-span-3">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+              {/* Linha 1: Nome Completo (2/3) | CPF (1/3) */}
+              <div className="md:col-span-4">
                 <FieldLabel label="Nome Completo" icon={User} required error={errors.fullName} htmlFor="fullName" />
                 <input 
                   id="fullName"
@@ -805,19 +805,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                   onChange={e => setFullName(e.target.value)}
                 />
               </div>
-
-              {/* Linha 2: Data de Nascimento | CPF (com máscara) | Raça / Etnia (com ícone Users) */}
-              <div className="md:col-span-1">
-                <FieldLabel label="Data de Nascimento" icon={Calendar} required error={errors.birthDate} htmlFor="birthDate" />
-                <input 
-                  id="birthDate"
-                  type="date" 
-                  className={inputCls} 
-                  value={birthDate}
-                  onChange={e => setBirthDate(e.target.value)}
-                />
-              </div>
-              <div className="md:col-span-1">
+              <div className="md:col-span-2">
                 <FieldLabel label="CPF (Opcional)" icon={Hash} htmlFor="cpf" />
                 <input 
                   id="cpf"
@@ -828,7 +816,19 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                   onChange={e => setCpf(formatCPF(e.target.value))}
                 />
               </div>
-              <div className="md:col-span-1">
+
+              {/* Linha 2: Data de Nascimento (1/2) | Raça / Etnia (1/2) */}
+              <div className="md:col-span-3">
+                <FieldLabel label="Data de Nascimento" icon={Calendar} required error={errors.birthDate} htmlFor="birthDate" />
+                <input 
+                  id="birthDate"
+                  type="date" 
+                  className={inputCls} 
+                  value={birthDate}
+                  onChange={e => setBirthDate(e.target.value)}
+                />
+              </div>
+              <div className="md:col-span-3">
                 <FieldLabel label="Raça / Etnia" icon={Users} htmlFor="race" />
                 <select 
                   id="race"
@@ -844,7 +844,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               </div>
 
               {/* Linha 3: Escolaridade + Ano/Semestre */}
-              <div className={(education === 'Ensino Fundamental' || education === 'Ensino Médio Incompleto' || education === 'Ensino Superior Incompleto') ? "md:col-span-2" : "md:col-span-3"}>
+              <div className={(education === 'Ensino Fundamental' || education === 'Ensino Médio Incompleto' || education === 'Ensino Superior Incompleto') ? "md:col-span-4" : "md:col-span-6"}>
                 <FieldLabel label="Escolaridade" icon={GraduationCap} required error={errors.education} htmlFor="education" />
                 <select id="education" className={inputCls} value={education} onChange={e => { setEducation(e.target.value); setEducationYear(''); if (e.target.value === 'Ensino Fundamental') setSchoolType(''); }}>
                   <option value="">Selecione...</option>
@@ -852,7 +852,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                 </select>
               </div>
               {(education === 'Ensino Fundamental' || education === 'Ensino Médio Incompleto') && (
-                <div className="md:col-span-1">
+                <div className="md:col-span-2">
                   <FieldLabel label="Ano Escolar" icon={GraduationCap} required error={errors.educationYear} htmlFor="educationYear" />
                   <select id="educationYear" className={inputCls} value={educationYear} onChange={e => setEducationYear(e.target.value)}>
                     <option value="">Selecione...</option>
@@ -861,7 +861,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                 </div>
               )}
               {education === 'Ensino Superior Incompleto' && (
-                <div className="md:col-span-1">
+                <div className="md:col-span-2">
                   <FieldLabel label="Semestre" icon={GraduationCap} required error={errors.educationYear} htmlFor="educationYear" />
                   <select id="educationYear" className={inputCls} value={educationYear} onChange={e => setEducationYear(e.target.value)}>
                     <option value="">Selecione...</option>
@@ -872,7 +872,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
 
               {/* Linha 4: Tipo de Escola (exibido para todos exceto Ensino Fundamental) */}
               {education && education !== 'Ensino Fundamental' && (
-                <div className="md:col-span-3">
+                <div className="md:col-span-6">
                   <FieldLabel label="Você faz/fez o Ensino Médio em que tipo de escola?" icon={Building} required error={errors.schoolType} htmlFor="schoolType" />
                   <select id="schoolType" className={inputCls} value={schoolType} onChange={e => setSchoolType(e.target.value)}>
                     <option value="">Selecione...</option>
