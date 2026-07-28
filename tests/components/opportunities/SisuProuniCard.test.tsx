@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import SisuProuniCard from '../SisuProuniCard';
+import SisuProuniCard from '@/components/opportunities/SisuProuniCard';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import * as jestDomMatchers from '@testing-library/jest-dom/matchers';
 import { expect as vitestExpect } from 'vitest';

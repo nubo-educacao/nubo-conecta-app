@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { getCookie } from '../cookies';
+import { getCookie } from '@/utils/cookies';
 
 describe('cookies util', () => {
   const originalDocument = global.document;

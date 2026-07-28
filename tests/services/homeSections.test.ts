@@ -9,9 +9,9 @@ const mockWithMethods = {
 };
 
 vi.mock('@/lib/supabase', () => ({
-  createClient: () => ({
+  supabase: {
     from: vi.fn(() => mockWithMethods),
-  }),
+  },
 }));
 
 describe('getHomeSections', () => {

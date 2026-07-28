@@ -23,7 +23,7 @@ vi.mock('@supabase/ssr', () => ({
 }));
 
 // Import AFTER mocks are set up
-import { trackAndRedirect } from '../redirectService';
+import { trackAndRedirect } from '@/services/redirectService';
 
 describe('trackAndRedirect', () => {
   beforeEach(() => {

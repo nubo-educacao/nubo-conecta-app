@@ -27,6 +27,10 @@ vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ user: null, setShowAuthModal: vi.fn() }),
 }));
 
+vi.mock('@/contexts/ProfileContext', () => ({
+  useProfile: () => ({ profile: null, profiles: [], activeProfileId: null }),
+}));
+
 vi.mock('next/link', () => ({
   default: ({
     href,
@@ -47,7 +51,7 @@ vi.mock('next/link', () => ({
 
 // ─── Import DEPOIS dos mocks ──────────────────────────────────────────────────
 
-import TopBar from '../TopBar';
+import TopBar from '@/components/navigation/TopBar';
 
 // ─── Suite ───────────────────────────────────────────────────────────────────
 

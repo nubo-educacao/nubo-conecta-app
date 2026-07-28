@@ -9,7 +9,7 @@ import type {
   IUnifiedOpportunity,
   OpportunitySourceType,
   OpportunityCategory,
-} from '../opportunities';
+} from '@/types/opportunities';
 
 describe('IUnifiedOpportunity type contract', () => {
   it('accepts a fully populated MEC opportunity', () => {

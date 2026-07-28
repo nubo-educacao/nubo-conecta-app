@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import MatchOnboardingForm from '../MatchOnboardingForm';
+import MatchOnboardingForm from '@/components/match/MatchOnboardingForm';
 import * as profileService from '@/services/profileService';
 import * as matchService from '@/services/matchService';
 

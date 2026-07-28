@@ -14,7 +14,7 @@ import { expect as vitestExpect } from 'vitest';
 import * as jestDomMatchers from '@testing-library/jest-dom/matchers';
 vitestExpect.extend(jestDomMatchers);
 
-import FilterModal from '../FilterModal';
+import FilterModal from '@/app/(app)/oportunidades/FilterModal';
 
 describe('FilterModal', () => {
   const onClose = vi.fn();

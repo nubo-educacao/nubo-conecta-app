@@ -30,7 +30,7 @@ vi.mock('@/components/opportunities/OpportunityCard', () => ({
   ),
 }));
 
-vi.mock('../FilterModal', () => ({
+vi.mock('@/app/(app)/oportunidades/FilterModal', () => ({
   default: ({ open, onClose }: { open: boolean; onClose: () => void }) =>
     open ? (
       <div role="dialog" aria-label="Filtros avançados">
@@ -40,7 +40,7 @@ vi.mock('../FilterModal', () => ({
 }));
 
 // ─── Import DEPOIS dos mocks ──────────────────────────────────────────────────
-import ExploreClient from '../ExploreClient';
+import ExploreClient from '@/app/(app)/oportunidades/ExploreClient';
 import type { IUnifiedOpportunity, ExploreFilters } from '@/types/opportunities';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────

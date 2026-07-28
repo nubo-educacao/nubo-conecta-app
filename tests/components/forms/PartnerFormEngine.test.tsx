@@ -4,8 +4,8 @@ import * as jestDomMatchers from '@testing-library/jest-dom/matchers';
 import { expect as vitestExpect } from 'vitest';
 vitestExpect.extend(jestDomMatchers);
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import PartnerFormEngine, { type PartnerStep } from '../PartnerFormEngine';
-import { type PartnerFormField } from '../FormFieldRenderer';
+import PartnerFormEngine, { type PartnerStep } from '@/components/forms/PartnerFormEngine';
+import { type PartnerFormField } from '@/components/forms/FormFieldRenderer';
 
 // Mock evaluateJsonLogic
 vi.mock('@/utils/jsonLogic', () => ({
@@ -13,7 +13,7 @@ vi.mock('@/utils/jsonLogic', () => ({
 }));
 
 // Mock FormFieldRenderer to avoid react-hook-form registration complexity
-vi.mock('../FormFieldRenderer', () => ({
+vi.mock('@/components/forms/FormFieldRenderer', () => ({
   default: ({ field }: { field: PartnerFormField }) => (
     <div data-testid={`field-${field.field_name}`}>{field.question_text}</div>
   ),

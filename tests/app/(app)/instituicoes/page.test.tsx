@@ -28,7 +28,7 @@ vi.mock('@/components/layout/AppShell', () => ({
 
 // Spy InstitutionsClient para verificar props recebidas
 let capturedInstitutions: any[] = [];
-vi.mock('../InstitutionsClient', () => ({
+vi.mock('@/app/(app)/instituicoes/InstitutionsClient', () => ({
   default: ({ institutions }: { institutions: any[] }) => {
     capturedInstitutions = institutions;
     return (
@@ -41,11 +41,21 @@ vi.mock('../InstitutionsClient', () => ({
   },
 }));
 
+const createFluentMock = (finalValue: any) => {
+  const builder: any = {};
+  builder.select = vi.fn().mockReturnValue(builder);
+  builder.order = vi.fn().mockReturnValue(builder);
+  builder.not = vi.fn().mockReturnValue(builder);
+  builder.or = vi.fn().mockReturnValue(builder);
+  builder.eq = vi.fn().mockReturnValue(builder);
+  builder.ilike = vi.fn().mockReturnValue(builder);
+  builder.range = vi.fn().mockImplementation((...args) => mockRange(...args));
+  return builder;
+};
+
 const mockRange = vi.fn();
-const mockOrder2 = vi.fn().mockReturnValue({ range: mockRange });
-const mockOrder1 = vi.fn().mockReturnValue({ order: mockOrder2 });
-const mockSelect = vi.fn().mockReturnValue({ order: mockOrder1 });
-const mockFrom   = vi.fn().mockReturnValue({ select: mockSelect });
+const mockBuilder = createFluentMock(mockRange);
+const mockFrom = vi.fn().mockReturnValue(mockBuilder);
 
 vi.mock('@supabase/ssr', () => ({
   createServerClient: vi.fn(() => ({ from: mockFrom })),
@@ -53,7 +63,7 @@ vi.mock('@supabase/ssr', () => ({
 
 // ─── Import DEPOIS dos mocks ──────────────────────────────────────────────────
 
-import InstitutionsPage from '../page';
+import InstitutionsPage from '@/app/(app)/instituicoes/page';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 

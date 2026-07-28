@@ -108,19 +108,24 @@ export default function PartnerFormEngine({
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [savingDraft, setSavingDraft] = useState(false);
 
+    // Prevent calling onPrepareReview more than once. Without this guard, phase
+    // "submitting" unmounts PartnerFormEngine and when phase goes back to "form"
+    // it remounts — re-triggering the mount useEffect and causing an infinite loop.
+    const prepareReviewCalledRef = useRef(false);
+
     useEffect(() => {
         onStepIndexChange?.(showReview ? -1 : currentStepIndex);
     }, [currentStepIndex, showReview, onStepIndexChange]);
 
-    // Compute eligibility immediately when starting directly on the Revisão step
-    // (see showReview's lazy initializer above) — handleNext normally does this,
-    // but it never runs when we skip straight past the form steps.
+    // Compute eligibility immediately when starting directly on the Revisão step.
+    // Also trigger onPrepareReview once (match calc + profile persistence).
     useEffect(() => {
         if (showReview) {
             if (onComputeEligibility) {
                 setEligibilityResults(onComputeEligibility(getValues() as Record<string, unknown>));
             }
-            if (onPrepareReview) {
+            if (onPrepareReview && !prepareReviewCalledRef.current) {
+                prepareReviewCalledRef.current = true;
                 onPrepareReview(getValues() as Record<string, unknown>).catch(console.error);
             }
         }

@@ -17,6 +17,18 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+}));
+
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({ user: null, setShowAuthModal: vi.fn() }),
+}));
+
+vi.mock('@/contexts/FavoritesContext', () => ({
+  useFavorites: () => ({ isFavorite: () => false, toggleFavorite: vi.fn() }),
+}));
+
 import InstitutionCard from '@/components/InstitutionCard';
 import type { UnifiedInstitution } from '@/types/institutions';
 

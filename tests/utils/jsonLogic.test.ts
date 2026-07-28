@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateJsonLogic } from '../jsonLogic';
+import { evaluateJsonLogic } from '@/utils/jsonLogic';
 
 describe('evaluateJsonLogic - Renda & Numeric Parsing', () => {
   it('deve avaliar corretamente quando a renda é um objeto com per_capita_income', () => {

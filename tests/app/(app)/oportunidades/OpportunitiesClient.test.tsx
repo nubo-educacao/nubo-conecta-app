@@ -19,6 +19,7 @@ const mockReplace = vi.fn();
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
+  useSearchParams: () => new URLSearchParams('tab=explore'),
 }));
 
 vi.mock('@/components/opportunities/OpportunityCard', () => ({
@@ -34,7 +35,7 @@ vi.mock('@/contexts/AuthContext', () => ({
   }),
 }));
 
-vi.mock('../ExploreClient', () => ({
+vi.mock('@/app/(app)/oportunidades/ExploreClient', () => ({
   default: () => <div data-testid="explore-client" />,
 }));
 
@@ -48,7 +49,7 @@ vi.mock('@/contexts/AuthContext', () => ({
 }));
 
 // ─── Import DEPOIS dos mocks ──────────────────────────────────────────────────
-import OpportunitiesClient from '../OpportunitiesClient';
+import OpportunitiesClient from '@/app/(app)/oportunidades/OpportunitiesClient';
 import type { IUnifiedOpportunity, ExploreFilters } from '@/types/opportunities';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
