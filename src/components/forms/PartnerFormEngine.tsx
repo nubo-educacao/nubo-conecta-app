@@ -116,8 +116,13 @@ export default function PartnerFormEngine({
     // (see showReview's lazy initializer above) — handleNext normally does this,
     // but it never runs when we skip straight past the form steps.
     useEffect(() => {
-        if (showReview && onComputeEligibility) {
-            setEligibilityResults(onComputeEligibility(getValues() as Record<string, unknown>));
+        if (showReview) {
+            if (onComputeEligibility) {
+                setEligibilityResults(onComputeEligibility(getValues() as Record<string, unknown>));
+            }
+            if (onPrepareReview) {
+                onPrepareReview(getValues() as Record<string, unknown>).catch(console.error);
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);

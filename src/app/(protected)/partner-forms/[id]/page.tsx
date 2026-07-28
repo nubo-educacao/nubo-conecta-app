@@ -371,14 +371,18 @@ export default function PartnerFormsPage() {
       console.error("Failed to generate match:", matchErr);
     }
 
-    // 8. Fetch better opportunities
+    // 8. Fetch better opportunities (or top open opportunities)
     if (matches.length > 0) {
       const currentMatch = matches.find(m => m.unified_opportunity_id === currentApp.partner_id);
       const currentScore = currentMatch?.match_score ?? 0;
-      const betterMatches = matches.filter(m => m.unified_opportunity_id !== currentApp.partner_id && m.match_score > currentScore);
+      let targetMatches = matches.filter(m => m.unified_opportunity_id !== currentApp.partner_id && m.match_score > currentScore);
 
-      if (betterMatches.length > 0) {
-        const ids = betterMatches.map(m => m.unified_opportunity_id);
+      if (targetMatches.length === 0) {
+        targetMatches = matches.filter(m => m.unified_opportunity_id !== currentApp.partner_id);
+      }
+
+      if (targetMatches.length > 0) {
+        const ids = targetMatches.map(m => m.unified_opportunity_id);
         const { data: opps } = await supabase
           .from('v_unified_opportunities')
           .select('*')
@@ -387,7 +391,7 @@ export default function PartnerFormsPage() {
         if (opps) {
           const sortedOpps = opps
             .map((opp: any) => {
-              const match = betterMatches.find(m => m.unified_opportunity_id === opp.unified_id);
+              const match = targetMatches.find(m => m.unified_opportunity_id === opp.unified_id);
               return { ...opp, match_score: match?.match_score ?? 0 };
             })
             .filter((opp: any) => opp.status === 'opened' || opp.status === 'incoming')
