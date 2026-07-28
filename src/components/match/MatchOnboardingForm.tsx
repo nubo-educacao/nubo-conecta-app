@@ -22,7 +22,7 @@ import {
   markOnboardingComplete,
   getUserOnboardingData
 } from '@/services/profileService';
-import { generateMatchAsync, getMatchStatus } from '@/services/matchService';
+import { generateMatch, generateMatchAsync, getMatchStatus } from '@/services/matchService';
 import IncomeCalculatorField, { IncomeCalculatorValue } from '@/components/forms/ui-components/IncomeCalculatorField';
 import { fetchAvailableCategories, type AvailableCategory } from '@/lib/availableCategories';
 
@@ -185,6 +185,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
   const [education, setEducation] = useState('');
   const [educationYear, setEducationYear] = useState('');
   const [cpf, setCpf] = useState('');
+  const [race, setRace] = useState('');
   const [phone, setPhone] = useState('');
   
   // Address
@@ -353,6 +354,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
           setFullName(data.profile.full_name || '');
           setBirthDate(data.profile.birth_date || '');
           setCpf(data.profile.cpf || '');
+          setRace(data.profile.race || '');
           setEducation(data.profile.education || '');
           setEducationYear(data.profile.education_year || '');
           setOutsideBrazil(data.profile.outside_brazil || false);
@@ -588,6 +590,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         full_name: fullName,
         birth_date: birthDate,
         cpf: cpf || null,
+        race: race || null,
         age: calculateAge(birthDate) || undefined,
         education,
         education_year: educationYear || 'N/A',
@@ -671,8 +674,17 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         device_longitude: cachedLng,
       });
 
-      // 5. Generate Match and Complete (Async Flow)
-      await generateMatchAsync();
+      // 5. Generate Match and Complete (Async Flow with Sync RPC Fallback)
+      try {
+        const res = await generateMatchAsync(userId);
+        if (res.jobId === 'sync-fallback') {
+          await supabase.from('user_preferences').update({ match_status: 'ready' }).eq('user_id', userId);
+        }
+      } catch (err) {
+        console.warn('Async match failed, running synchronous calculate_match RPC:', err);
+        await generateMatch(userId);
+        await supabase.from('user_preferences').update({ match_status: 'ready' }).eq('user_id', userId);
+      }
       
       // Polling for completion
       let status = await getMatchStatus(userId);
@@ -683,11 +695,17 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         await new Promise(r => setTimeout(r, 2000));
         status = await getMatchStatus(userId);
         retryCount++;
-        if (status === 'error') throw new Error('O motor de match encontrou um erro. Tente novamente em alguns instantes.');
+        if (status === 'error') {
+          await generateMatch(userId);
+          await supabase.from('user_preferences').update({ match_status: 'ready' }).eq('user_id', userId);
+          status = 'ready';
+          break;
+        }
       }
 
       if (status === 'processing') {
-        throw new Error('O processamento está demorando mais que o esperado. Seus matches aparecerão em breve no catálogo.');
+        await generateMatch(userId);
+        await supabase.from('user_preferences').update({ match_status: 'ready' }).eq('user_id', userId);
       }
 
       await markOnboardingComplete();
@@ -782,6 +800,20 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                   value={cpf}
                   onChange={e => setCpf(e.target.value)}
                 />
+              </div>
+              <div>
+                <FieldLabel label="Raça / Etnia" icon={Hash} htmlFor="race" />
+                <select 
+                  id="race"
+                  className={inputCls} 
+                  value={race}
+                  onChange={e => setRace(e.target.value)}
+                >
+                  <option value="">Selecione...</option>
+                  {['Amarela', 'Branca', 'Indígena', 'Parda', 'Preta', 'Outra', 'Prefiro não informar'].map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
               </div>
               <div className="md:col-span-2">
                 <FieldLabel label="Escolaridade" icon={GraduationCap} required error={errors.education} htmlFor="education" />

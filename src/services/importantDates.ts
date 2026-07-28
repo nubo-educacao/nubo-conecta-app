@@ -10,6 +10,7 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { supabase } from '@/lib/supabase';
 import type { ImportantDateCategory, DateType, IImportantDate } from '@/types/importantDates';
 import { DATE_TYPE_COLORS, DATE_TYPE_LABELS } from '@/types/importantDates';
 
@@ -75,19 +76,6 @@ function mapRowToDate(row: ImportantDateRow): IImportantDate {
 }
 
 export async function getImportantDates(): Promise<IImportantDate[]> {
-  const cookieStore = await cookies();
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => {}, // read-only em Server Component
-      },
-    },
-  );
-
   const { data, error } = await supabase
     .from('important_dates')
     .select('id, title, description, start_date, end_date, type, created_at')

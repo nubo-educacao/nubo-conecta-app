@@ -175,6 +175,7 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
     full_name: String(data?.profile?.full_name ?? ""),
     birth_date: String(data?.profile?.birth_date ?? ""),
     cpf: String(data?.profile?.cpf ?? ""),
+    race: String(data?.profile?.race ?? ""),
     phone: String(user?.phone ?? ""),
   });
 
@@ -318,6 +319,8 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
           <FieldRow label="Data de nascimento" value={editingPessoais ? pessoais.birth_date : formatDateBR(pessoais.birth_date)} editing={editingPessoais} name="birth_date" type="date" onChange={(n, v) => setPessoais((p) => ({ ...p, [n]: v }))} />
 
           <FieldRow label="CPF" value={pessoais.cpf} editing={editingPessoais} name="cpf" onChange={(n, v) => setPessoais((p) => ({ ...p, [n]: v }))} />
+
+          <FieldRow label="Raça/Etnia" value={pessoais.race} editing={editingPessoais} name="race" onChange={(n, v) => setPessoais((p) => ({ ...p, [n]: v }))} />
 
           <div className="mb-3">
             <label className="block text-xs font-semibold mb-1 uppercase tracking-wider" style={labelStyle}>

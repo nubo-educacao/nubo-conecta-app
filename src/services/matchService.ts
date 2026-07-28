@@ -42,16 +42,21 @@ export async function generateMatch(profileId: string): Promise<MatchResult[]> {
   return (data as MatchResult[]) ?? [];
 }
 
-/**
- * Calls the calculate-match Edge Function which triggers async processing.
- */
-export async function generateMatchAsync(): Promise<{ jobId: string }> {
-  const { data, error } = await supabase.functions.invoke('calculate-match', {
-    method: 'POST',
-  });
+export async function generateMatchAsync(profileId?: string): Promise<{ jobId: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke('calculate-match', {
+      body: profileId ? { profileId } : undefined,
+    });
 
-  if (error) throw new Error(`generateMatchAsync failed: ${error.message}`);
-  return data;
+    if (error) throw error;
+    return data ?? { jobId: 'async-started' };
+  } catch (err) {
+    console.warn('generateMatchAsync Edge Function failed, falling back to direct calculate_match RPC:', err);
+    if (profileId) {
+      await generateMatch(profileId);
+    }
+    return { jobId: 'sync-fallback' };
+  }
 }
 
 /**
