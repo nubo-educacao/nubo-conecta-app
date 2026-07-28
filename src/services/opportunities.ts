@@ -382,8 +382,14 @@ export async function getUnifiedOpportunities(
       .order('distance_km', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
   } else {
-    // search_opportunities ou view direta — sem distance_km, ordena por recência
-    query = query.order('created_at', { ascending: false });
+    // search_opportunities ou view direta — sem distance_km
+    if (mode === 'para-voce') {
+      query = query
+        .order('is_partner', { ascending: false })
+        .order('created_at', { ascending: false });
+    } else {
+      query = query.order('created_at', { ascending: false });
+    }
   }
 
 

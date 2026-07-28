@@ -117,6 +117,7 @@ async function populateSections(sections: IHomeSection[]): Promise<IHomeSectionW
 
       try {
         switch (section.data_source) {
+          case 'featured_opportunities':
           case 'partner_opportunities': {
             const data = await getUnifiedOpportunities({ mode: 'para-voce', page: 0, limit });
             enriched.opportunities = data.filter((o) => o.is_partner);
@@ -126,6 +127,7 @@ async function populateSections(sections: IHomeSection[]): Promise<IHomeSectionW
             enriched.opportunities = await getUnifiedOpportunities({ mode: 'explorar', page: 0, limit });
             break;
           }
+          case 'institutions_with_open_opps':
           case 'institutions': {
             enriched.institutions = await getPartnerInstitutions();
             break;

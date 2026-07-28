@@ -28,23 +28,19 @@ vi.mock('@/components/opportunities/OpportunityCard', () => ({
 }));
 
 // ExploreClient stub — verificamos apenas que ele é montado na aba "explore"
+let mockUser: any = {
+  id: 'user-test-id',
+  user_metadata: { onboarding_completed: true },
+};
+
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({
-    user: { id: 'user-test-id', user_metadata: { onboarding_completed: true } },
+    user: mockUser,
   }),
 }));
 
 vi.mock('../ExploreClient', () => ({
   default: () => <div data-testid="explore-client" />,
-}));
-
-vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: () => ({
-    user: {
-      id: 'user-test-id',
-      user_metadata: { onboarding_completed: true },
-    },
-  }),
 }));
 
 // ─── Import DEPOIS dos mocks ──────────────────────────────────────────────────
@@ -219,5 +215,55 @@ describe('OpportunitiesClient', () => {
       />,
     );
     expect(screen.queryByText('Seus Matches')).toBeNull();
+  });
+
+  // ── Auth states ────────────────────────────────────────────────────────────
+
+  it('exibe "Refazer Match" quando o usuário está autenticado', () => {
+    mockUser = { id: 'user-test-id', user_metadata: { onboarding_completed: true } };
+    render(
+      <OpportunitiesClient
+        opportunities={[makeOpp()]}
+        activeTab="para-voce"
+        filters={emptyFilters}
+      />,
+    );
+    expect(screen.queryByText('Refazer Match')).not.toBeNull();
+  });
+
+  it('NÃO exibe "Refazer Match" quando o usuário não está autenticado', () => {
+    mockUser = null;
+    render(
+      <OpportunitiesClient
+        opportunities={[makeOpp()]}
+        activeTab="para-voce"
+        filters={emptyFilters}
+      />,
+    );
+    expect(screen.queryByText('Refazer Match')).toBeNull();
+  });
+
+  it('exibe "Ajustar Preferências" no empty state quando o usuário está autenticado', () => {
+    mockUser = { id: 'user-test-id', user_metadata: { onboarding_completed: true } };
+    render(
+      <OpportunitiesClient
+        opportunities={[]}
+        activeTab="para-voce"
+        filters={emptyFilters}
+      />,
+    );
+    expect(screen.queryByText('Ajustar Preferências')).not.toBeNull();
+  });
+
+  it('NÃO exibe "Ajustar Preferências" no empty state quando o usuário não está autenticado', () => {
+    mockUser = null;
+    render(
+      <OpportunitiesClient
+        opportunities={[]}
+        activeTab="para-voce"
+        filters={emptyFilters}
+      />,
+    );
+    expect(screen.queryByText('Ajustar Preferências')).toBeNull();
   });
 });
