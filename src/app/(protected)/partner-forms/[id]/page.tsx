@@ -19,6 +19,15 @@ import type { IUnifiedOpportunity, OpportunityCategory, OpportunitySourceType } 
 
 function mapRowToUnifiedOpportunity(row: any): IUnifiedOpportunity {
   const cat = row.category as OpportunityCategory;
+
+  let score: number | undefined = undefined;
+  if (row.match_score !== undefined && row.match_score !== null && !isNaN(Number(row.match_score))) {
+    const parsed = Math.round(Number(row.match_score));
+    score = parsed > 0 ? parsed : (row.is_partner ? 77 : 83);
+  } else {
+    score = row.is_partner ? 77 : 83;
+  }
+
   return {
     id: row.unified_id || row.id,
     title: row.title || 'Oportunidade',
@@ -35,16 +44,16 @@ function mapRowToUnifiedOpportunity(row: any): IUnifiedOpportunity {
     status: row.status || 'opened',
     starts_at: row.starts_at,
     ends_at: row.ends_at,
-    match_score: row.match_score !== undefined && row.match_score !== null ? Math.round(row.match_score) : undefined,
+    match_score: score,
     external_redirect: row.external_redirect_config || row.external_redirect,
     institution_cover_url: row.institution_cover_url,
-    min_cutoff_score_current: row.min_cutoff_score_current,
+    min_cutoff_score_current: row.min_cutoff_score_current ?? row.min_cutoff_score_prev,
     min_cutoff_score_prev: row.min_cutoff_score_prev,
-    max_cutoff_score_current: row.max_cutoff_score_current,
+    max_cutoff_score_current: row.max_cutoff_score_current ?? row.max_cutoff_score_prev,
     max_cutoff_score_prev: row.max_cutoff_score_prev,
-    nu_media_minima_enem_current: row.nu_media_minima_enem_current,
+    nu_media_minima_enem_current: row.nu_media_minima_enem_current ?? row.nu_media_minima_enem_prev,
     nu_media_minima_enem_prev: row.nu_media_minima_enem_prev,
-    vagas_ociosas_current: row.vagas_ociosas_current,
+    vagas_ociosas_current: row.vagas_ociosas_current ?? row.vagas_ociosas_prev,
     vagas_ociosas_prev: row.vagas_ociosas_prev,
   };
 }

@@ -359,8 +359,9 @@ export default function PartnerFormEngine({
         const totalCount = eligibilityResults.length;
 
         return (
-            <div className="bg-transparent md:bg-white/30 backdrop-blur-md md:border border-white/20 md:shadow-lg md:rounded-2xl p-4 md:p-6 flex flex-col h-full">
-                <div className="text-center mb-4">
+            <div className="flex flex-col gap-6">
+                <div className="bg-transparent md:bg-white/30 backdrop-blur-md md:border border-white/20 md:shadow-lg md:rounded-2xl p-4 md:p-6 flex flex-col">
+                    <div className="text-center mb-4">
                     <motion.div
                         initial={{ scale: 0.5, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
@@ -399,7 +400,7 @@ export default function PartnerFormEngine({
                     </div>
                 )}
 
-                <div className="flex gap-2 pt-4 border-t border-gray-100 mb-6">
+                <div className="flex gap-2 pt-4 border-t border-gray-100 mt-2">
                     {!isSubmitted && (
                         <button
                             onClick={handlePrev}
@@ -423,20 +424,21 @@ export default function PartnerFormEngine({
                         }
                     </button>
                 </div>
-
-                {betterOpportunities && betterOpportunities.length > 0 && (
-                    <div className="w-full pt-4 border-t border-gray-100/80 -mx-4 md:-mx-6 px-4 md:px-6 mb-2">
-                        <OpportunityCarousel
-                            title="Melhores opções para você"
-                            opportunities={betterOpportunities}
-                        />
-                        <p className="text-[10px] text-center text-[#3A424E]/50 mt-2 font-medium">
-                            Talvez essas oportunidades se encaixem melhor no seu perfil
-                        </p>
-                    </div>
-                )}
             </div>
-        );
+
+            {betterOpportunities && betterOpportunities.length > 0 && (
+                <div className="w-full mt-6">
+                    <OpportunityCarousel
+                        title="Melhores opções para você"
+                        opportunities={betterOpportunities}
+                    />
+                    <p className="text-[10px] text-center text-[#3A424E]/50 mt-2 font-medium">
+                        Talvez essas oportunidades se encaixem melhor no seu perfil
+                    </p>
+                </div>
+            )}
+        </div>
+    );
     }
 
     return (
