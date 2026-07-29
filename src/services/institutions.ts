@@ -52,6 +52,47 @@ export async function getPartnerInstitutions(): Promise<IPartnerInstitution[]> {
   }));
 }
 
+/**
+ * Fetches institutions for the "Instituições em Destaque" Home carousel.
+ * Unified list (partner + MEC), prioritized in 4 tiers:
+ * 1. Partners with open opportunities
+ * 2. MEC with open opportunities
+ * 3. Partners without open opportunities (closed/incoming only)
+ * 4. MEC without open opportunities (closed/incoming only)
+ * Uses has_open_opportunities/is_partner — real boolean columns on
+ * v_unified_institutions (DB-level, ADR-0024) so PostgREST can order
+ * natively without expression ORDER BY.
+ */
+export async function getInstitutionsWithOpenOpps(limit = 12): Promise<UnifiedInstitution[]> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: () => {},
+      },
+    },
+  );
+
+  const { data, error } = await supabase
+    .from('v_unified_institutions')
+    .select('id, name, location, logo_url, cover_url, brand_color, description, type, is_partner, opp_types, open_opportunities_count, has_open_opportunities')
+    .not('opp_types', 'is', null)
+    .order('has_open_opportunities', { ascending: false })
+    .order('is_partner', { ascending: false })
+    .order('open_opportunities_count', { ascending: false, nullsFirst: false })
+    .order('name', { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`getInstitutionsWithOpenOpps failed: ${error.message}`);
+  }
+
+  return (data ?? []) as UnifiedInstitution[];
+}
+
 // ─── Unified Institutions (Sprint 8.0) ───────────────────────────────────────
 
 export interface InstitutionsFilters {

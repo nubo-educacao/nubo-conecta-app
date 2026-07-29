@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint --fix",
     "test": "vitest run",
+    "test:reproducers": "vitest run tests/reproducers",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },

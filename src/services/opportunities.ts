@@ -219,6 +219,59 @@ export async function getAvailableCategories(): Promise<string[]> {
   return available;
 }
 
+/**
+ * Fetches featured opportunities for the Home carousel.
+ * Prioritizes: opened first → partners → most recent.
+ * Visible to all users (logged in or not).
+ */
+export async function getFeaturedOpportunities(limit = 8): Promise<IUnifiedOpportunity[]> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: () => {},
+      },
+      global: {
+        fetch: (url: RequestInfo | URL, init?: RequestInit) => fetch(url, { ...init, cache: 'no-store' }),
+      },
+    },
+  );
+
+  // PostgREST não suporta ORDER BY (expression) DESC nativamente.
+  // Usamos duas queries parciais: primeiro opened, depois o restante.
+  const { data: openedData } = await supabase
+    .from('v_unified_opportunities')
+    .select('*')
+    .eq('status', 'opened')
+    .order('is_partner', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  const openedIds = (openedData ?? []).map((r: any) => r.unified_id);
+  const remaining = limit - openedIds.length;
+
+  let restData: any[] = [];
+  if (remaining > 0) {
+    const query = supabase
+      .from('v_unified_opportunities')
+      .select('*')
+      .neq('status', 'opened')
+      .order('is_partner', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(remaining);
+
+    const { data } = await query;
+    restData = data ?? [];
+  }
+
+  const allRows = [...(openedData ?? []), ...restData] as UnifiedOpportunityRow[];
+  const mapped = allRows.map(mapRowToOpportunity);
+  return enrichMecOpportunities(mapped, supabase);
+}
+
 export async function getUnifiedOpportunities(
   options: GetUnifiedOpportunitiesOptions,
 ): Promise<IUnifiedOpportunity[]> {

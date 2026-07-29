@@ -46,6 +46,15 @@ const formatDateBR = (dateStr: string) => {
   return `${d}/${m}/${y}`;
 };
 
+const formatCPF = (value: string) => {
+  if (!value) return '';
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+};
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function Accordion({
@@ -175,6 +184,7 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
     full_name: String(data?.profile?.full_name ?? ""),
     birth_date: String(data?.profile?.birth_date ?? ""),
     cpf: String(data?.profile?.cpf ?? ""),
+    race: String(data?.profile?.race ?? ""),
     phone: String(user?.phone ?? ""),
   });
 
@@ -199,6 +209,7 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
   const [escolaridade, setEscolaridade] = useState({
     education: String(data?.profile?.education ?? ""),
     education_year: String(data?.profile?.education_year ?? ""),
+    school_type: String(data?.profile?.school_type ?? ""),
   });
 
   // ── Renda ──────────────────────────────────────────────────────────────────
@@ -317,7 +328,35 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
 
           <FieldRow label="Data de nascimento" value={editingPessoais ? pessoais.birth_date : formatDateBR(pessoais.birth_date)} editing={editingPessoais} name="birth_date" type="date" onChange={(n, v) => setPessoais((p) => ({ ...p, [n]: v }))} />
 
-          <FieldRow label="CPF" value={pessoais.cpf} editing={editingPessoais} name="cpf" onChange={(n, v) => setPessoais((p) => ({ ...p, [n]: v }))} />
+          <FieldRow label="CPF" value={editingPessoais ? pessoais.cpf : formatCPF(pessoais.cpf)} editing={editingPessoais} name="cpf" onChange={(n, v) => setPessoais((p) => ({ ...p, cpf: formatCPF(v) }))}>
+            {editingPessoais && (
+              <input
+                type="text"
+                value={pessoais.cpf}
+                maxLength={14}
+                onChange={(e) => setPessoais((p) => ({ ...p, cpf: formatCPF(e.target.value) }))}
+                className={inputCls}
+                style={inputStyle}
+                placeholder="000.000.000-00"
+              />
+            )}
+          </FieldRow>
+
+          <FieldRow label="Raça/Etnia" value={pessoais.race} editing={editingPessoais} name="race" onChange={(n, v) => setPessoais((p) => ({ ...p, [n]: v }))}>
+            {editingPessoais && (
+              <select
+                value={pessoais.race}
+                onChange={(e) => setPessoais((p) => ({ ...p, race: e.target.value }))}
+                className={inputCls}
+                style={inputStyle}
+              >
+                <option value="">Selecione...</option>
+                {['Amarela', 'Branca', 'Indígena', 'Parda', 'Preta', 'Outra', 'Prefiro não informar'].map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            )}
+          </FieldRow>
 
           <div className="mb-3">
             <label className="block text-xs font-semibold mb-1 uppercase tracking-wider" style={labelStyle}>
@@ -455,6 +494,25 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
                 </select>
               )}
             </FieldRow>
+          )}
+          {escolaridade.education && escolaridade.education !== 'Ensino Fundamental' && (
+            <div className="col-span-1 sm:col-span-2">
+              <FieldRow label="Tipo de escola (Ensino Médio)" value={escolaridade.school_type} editing={editingEsc} name="school_type" onChange={(n, v) => setEscolaridade((p) => ({ ...p, [n]: v }))}>
+                {editingEsc && (
+                  <select
+                    value={escolaridade.school_type}
+                    onChange={(e) => setEscolaridade((p) => ({ ...p, school_type: e.target.value }))}
+                    className={inputCls}
+                    style={inputStyle}
+                  >
+                    <option value="">Selecione...</option>
+                    {['Escola pública', 'Escola particular com bolsa 100%', 'Escola particular com bolsa parcial', 'Escola particular sem bolsa'].map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                )}
+              </FieldRow>
+            </div>
           )}
         </div>
       </Accordion>

@@ -8,7 +8,9 @@ import {
     CheckCircle2, XCircle, Send, Plus, Loader2,
 } from 'lucide-react';
 import { evaluateJsonLogic } from '@/utils/jsonLogic';
+import { calculateDraftProgress } from '@/utils/calculateDraftProgress';
 import FormFieldRenderer, { type PartnerFormField } from './FormFieldRenderer';
+import OpportunityCarousel from '@/components/home/OpportunityCarousel';
 
 export interface PartnerStep {
     id: string;
@@ -37,6 +39,7 @@ interface FormEngineProps {
     dbAnswers?: Record<string, unknown>;
     localStorageKey: string;
     onSaveDraft: (data: Record<string, unknown>) => Promise<void>;
+    onPrepareReview?: (data: Record<string, unknown>) => Promise<void>;
     onSubmitForm: (data: Record<string, unknown>) => Promise<{ success: boolean; eligibilityResults?: EligibilityResult[] }>;
     onComputeEligibility?: (data: Record<string, unknown>) => EligibilityResult[];
     onStepChange?: (stepName: string) => void;
@@ -46,6 +49,7 @@ interface FormEngineProps {
     onStepIndexChange?: (index: number) => void;
     opportunityId?: string;
     userContextData?: Record<string, unknown>;
+    betterOpportunities?: any[];
 }
 
 const sendSystemIntent = (
@@ -69,6 +73,7 @@ export default function PartnerFormEngine({
     dbAnswers = {},
     localStorageKey,
     onSaveDraft,
+    onPrepareReview,
     onSubmitForm,
     onComputeEligibility,
     onStepChange,
@@ -77,6 +82,7 @@ export default function PartnerFormEngine({
     onStepIndexChange,
     opportunityId,
     userContextData = {},
+    betterOpportunities = [],
 }: FormEngineProps) {
     const methods = useForm({ defaultValues, mode: 'onSubmit' });
     const { handleSubmit, control, trigger, getValues } = methods;
@@ -89,15 +95,42 @@ export default function PartnerFormEngine({
 
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [currentIteration, setCurrentIteration] = useState(0);
-    const [showReview, setShowReview] = useState(false);
+    // If the draft already has every required field filled (e.g. arriving from the
+    // "Pronto para enviar" Home CTA), open straight on the Revisão step instead of
+    // making the user click through every step again just to reach it. Checked
+    // against dbAnswers (not defaultValues, which also merges in a possibly-stale
+    // localStorage draft) — same source of truth the Home CTA's 100% badge uses.
+    const [showReview, setShowReview] = useState(
+        () => fields.length > 0 && calculateDraftProgress(dbAnswers, fields) >= 100
+    );
     const [eligibilityResults, setEligibilityResults] = useState<EligibilityResult[]>([]);
     const [submitting, setSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [savingDraft, setSavingDraft] = useState(false);
 
+    // Prevent calling onPrepareReview more than once. Without this guard, phase
+    // "submitting" unmounts PartnerFormEngine and when phase goes back to "form"
+    // it remounts — re-triggering the mount useEffect and causing an infinite loop.
+    const prepareReviewCalledRef = useRef(false);
+
     useEffect(() => {
         onStepIndexChange?.(showReview ? -1 : currentStepIndex);
     }, [currentStepIndex, showReview, onStepIndexChange]);
+
+    // Compute eligibility immediately when starting directly on the Revisão step.
+    // Also trigger onPrepareReview once (match calc + profile persistence).
+    useEffect(() => {
+        if (showReview) {
+            if (onComputeEligibility) {
+                setEligibilityResults(onComputeEligibility(getValues() as Record<string, unknown>));
+            }
+            if (onPrepareReview && !prepareReviewCalledRef.current) {
+                prepareReviewCalledRef.current = true;
+                onPrepareReview(getValues() as Record<string, unknown>).catch(console.error);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Field changes → localStorage only (no network)
     const lsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -256,6 +289,9 @@ export default function PartnerFormEngine({
             if (onComputeEligibility) {
                 setEligibilityResults(onComputeEligibility(getValues() as Record<string, unknown>));
             }
+            if (onPrepareReview) {
+                await onPrepareReview(getValues() as Record<string, unknown>);
+            }
             setShowReview(true);
         } else {
             const nextIndex = currentStepIndex + 1;
@@ -323,8 +359,9 @@ export default function PartnerFormEngine({
         const totalCount = eligibilityResults.length;
 
         return (
-            <div className="bg-transparent md:bg-white/30 backdrop-blur-md md:border border-white/20 md:shadow-lg md:rounded-2xl p-4 md:p-6 flex flex-col h-full">
-                <div className="text-center mb-4">
+            <div className="flex flex-col gap-6">
+                <div className="bg-transparent md:bg-white/30 backdrop-blur-md md:border border-white/20 md:shadow-lg md:rounded-2xl p-4 md:p-6 flex flex-col">
+                    <div className="text-center mb-4">
                     <motion.div
                         initial={{ scale: 0.5, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
@@ -363,7 +400,7 @@ export default function PartnerFormEngine({
                     </div>
                 )}
 
-                <div className="flex gap-2 pt-4 border-t border-gray-100 mt-auto">
+                <div className="flex gap-2 pt-4 border-t border-gray-100 mt-2">
                     {!isSubmitted && (
                         <button
                             onClick={handlePrev}
@@ -388,7 +425,20 @@ export default function PartnerFormEngine({
                     </button>
                 </div>
             </div>
-        );
+
+            {betterOpportunities && betterOpportunities.length > 0 && (
+                <div className="w-full mt-6">
+                    <OpportunityCarousel
+                        title="Melhores opções para você"
+                        opportunities={betterOpportunities}
+                    />
+                    <p className="text-[10px] text-center text-[#3A424E]/50 mt-2 font-medium">
+                        Talvez essas oportunidades se encaixem melhor no seu perfil
+                    </p>
+                </div>
+            )}
+        </div>
+    );
     }
 
     return (

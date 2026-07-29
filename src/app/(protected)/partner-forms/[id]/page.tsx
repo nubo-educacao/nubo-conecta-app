@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ArrowLeft, CheckCircle2, User, Users, ExternalLink } from "lucide-react";
@@ -12,6 +12,51 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/contexts/ProfileContext";
 import { evaluateJsonLogic } from "@/utils/jsonLogic";
 import { trackAndRedirect } from "@/services/redirectService";
+import { OpportunityPhaseStepper } from "@/components/OpportunityPhaseStepper";
+import { generateMatch } from "@/services/matchService";
+import OpportunityCarousel from "@/components/home/OpportunityCarousel";
+import type { IUnifiedOpportunity, OpportunityCategory, OpportunitySourceType } from "@/types/opportunities";
+
+function mapRowToUnifiedOpportunity(row: any): IUnifiedOpportunity {
+  const cat = row.category as OpportunityCategory;
+
+  let score: number | undefined = undefined;
+  if (row.match_score !== undefined && row.match_score !== null && !isNaN(Number(row.match_score))) {
+    score = Math.round(Number(row.match_score));
+  }
+
+  const minCutoff = row.min_cutoff_score_current ?? row.min_cutoff_score_prev;
+  const maxCutoff = row.max_cutoff_score_current ?? row.max_cutoff_score_prev ?? minCutoff;
+
+  return {
+    id: row.unified_id || row.id,
+    title: row.title || 'Oportunidade',
+    institution_name: row.provider_name || row.institution_name || 'Instituição Parceira',
+    is_partner: row.is_partner !== undefined ? row.is_partner : true,
+    type: (row.type as OpportunitySourceType) || 'partner',
+    opportunity_type: row.opportunity_type || row.type || 'programa de bolsa',
+    category: cat || 'grants_scholarships',
+    category_label: row.category_label || 'Bolsas e Gratuidades',
+    location: row.location || 'Brasil',
+    education_level: row.education_level || 'Ensino Médio',
+    badges: Array.isArray(row.badges) ? row.badges : [],
+    created_at: row.created_at || new Date().toISOString(),
+    status: row.status || 'opened',
+    starts_at: row.starts_at,
+    ends_at: row.ends_at,
+    match_score: score,
+    external_redirect: row.external_redirect_config || row.external_redirect,
+    institution_cover_url: row.institution_cover_url,
+    min_cutoff_score_current: minCutoff,
+    min_cutoff_score_prev: row.min_cutoff_score_prev,
+    max_cutoff_score_current: maxCutoff,
+    max_cutoff_score_prev: row.max_cutoff_score_prev,
+    nu_media_minima_enem_current: row.nu_media_minima_enem_current ?? row.nu_media_minima_enem_prev,
+    nu_media_minima_enem_prev: row.nu_media_minima_enem_prev,
+    vagas_ociosas_current: row.vagas_ociosas_current ?? row.vagas_ociosas_prev,
+    vagas_ociosas_prev: row.vagas_ociosas_prev,
+  };
+}
 
 interface ApplicationState {
   id: string;
@@ -21,9 +66,10 @@ interface ApplicationState {
   partner_name: string;
   user_id?: string;
   external_redirect?: { enabled: boolean; url?: string };
+  phase_id?: string | null;
 }
 
-type PagePhase = "loading" | "form" | "submitted" | "error";
+type PagePhase = "loading" | "form" | "submitting" | "submitted" | "error";
 
 interface UserProfile {
   id: string;
@@ -41,10 +87,34 @@ export default function PartnerFormsPage() {
   const [steps, setSteps] = useState<PartnerStep[]>([]);
   const [fields, setFields] = useState<PartnerFormField[]>([]);
   const [application, setApplication] = useState<ApplicationState | null>(null);
+  const [phases, setPhases] = useState<any[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string>("");
   const [formKey, setFormKey] = useState<string>("");
   const [stepIndex, setStepIndex] = useState(0);
   const [profileData, setProfileData] = useState<Record<string, any>>({});
+  const [betterOpportunities, setBetterOpportunities] = useState<any[]>([]);
+  const [loadingPhrase, setLoadingPhrase] = useState("Estamos preenchendo sua aplicação...");
+  const [preparingReview, setPreparingReview] = useState(false);
+  const preparedAppsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (phase !== "submitting") return;
+
+    const phrases = [
+      "Estamos preenchendo sua aplicação...",
+      "Calculando seus critérios de elegibilidade...",
+      "Estamos calculando seu match..."
+    ];
+    let idx = 0;
+    setLoadingPhrase(phrases[0]);
+
+    const interval = setInterval(() => {
+      idx = (idx + 1) % phrases.length;
+      setLoadingPhrase(phrases[idx]);
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [phase]);
 
   const localStorageKey = `nubo_draft_${application?.partner_id}_${formKey}`;
 
@@ -56,7 +126,7 @@ export default function PartnerFormsPage() {
       const { data: existingApp, error: appErr } = await supabase
         .from("student_applications")
         .select(`
-          id, status, answers, partner_id, user_id,
+          id, status, answers, partner_id, user_id, phase_id,
           partner_opportunities:partner_id ( name, external_redirect_config )
         `)
         .eq("id", applicationId)
@@ -76,10 +146,20 @@ export default function PartnerFormsPage() {
         partner_id: existingApp.partner_id,
         partner_name: opp?.name ?? "Candidatura",
         user_id: existingApp.user_id,
+        phase_id: existingApp.phase_id,
         external_redirect: opp?.external_redirect_config as ApplicationState['external_redirect'],
       };
 
       setApplication(appState);
+
+      // Fetch phases regardless, since we need them in both form and submitted states
+      const { data: phasesData } = await supabase
+        .from("opportunity_phases")
+        .select("id, name, sort_order")
+        .eq("opportunity_id", appState.partner_id)
+        .order("sort_order");
+        
+      setPhases(phasesData || []);
 
       if (["SUBMITTED", "APPROVED", "redirected"].includes(appState.status)) {
         setPhase("submitted");
@@ -101,8 +181,8 @@ export default function PartnerFormsPage() {
       ]);
 
       const loadedFields = (fieldsRes.data as PartnerFormField[]) || [];
-      if (stepsRes.data) setSteps(stepsRes.data as PartnerStep[]);
-      if (fieldsRes.data) setFields(loadedFields);
+      setSteps(stepsRes.data as PartnerStep[] || []);
+      setFields(loadedFields);
 
       // Initialize selected profile from ProfileContext or application user_id
       const initialProfileId = activeProfileId ?? existingApp.user_id ?? user!.id;
@@ -206,28 +286,240 @@ export default function PartnerFormsPage() {
   // ── Eligibility computation ─────────────────────────────────────────────────
   const computeEligibility = (data: Record<string, unknown>) => {
     const criterionFields = fields.filter((f) => f.is_criterion && f.criterion_rule && f.criterion_type !== 'priority');
+    const evalData = { ...profileData, ...data };
     
     return criterionFields
-      .filter((f) => data[f.field_name] !== undefined && data[f.field_name] !== null)
+      .filter((f) => {
+        if (f.conditional_rule) {
+          try {
+            if (!evaluateJsonLogic(f.conditional_rule, evalData)) return false;
+          } catch {
+            // fallback
+          }
+        }
+        return data[f.field_name] !== undefined && data[f.field_name] !== null;
+      })
       .map((f) => {
         const userAnswer = data[f.field_name];
+        let displayAnswer = String(userAnswer);
+        
+        // Try parsing if it's a string that looks like our object
+        let parsedObj = typeof userAnswer === 'string' && userAnswer.includes('per_capita_income') 
+          ? (() => { try { return JSON.parse(userAnswer); } catch { return null; } })()
+          : (typeof userAnswer === 'object' ? userAnswer : null);
+
+        if (f.ui_component === 'income_calculator' || (parsedObj && typeof parsedObj.per_capita_income === 'number')) {
+          if (parsedObj && typeof parsedObj.per_capita_income === 'number') {
+            displayAnswer = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parsedObj.per_capita_income);
+          }
+        }
+
         let met = false;
         try {
-          met = !!evaluateJsonLogic(f.criterion_rule!, { [f.field_name]: userAnswer });
+          const ruleData = { ...evalData, [f.field_name]: userAnswer };
+          if (parsedObj) {
+            ruleData[f.field_name] = parsedObj;
+          }
+          met = !!evaluateJsonLogic(f.criterion_rule!, ruleData);
         } catch { /* rule evaluation failed — treat as unmet */ }
         return {
           question_text: f.question_text,
           met,
-          user_answer: String(userAnswer),
+          user_answer: displayAnswer,
         };
       });
   };
 
   // ── Final submit ───────────────────────────────────────────────────────────
+  // ── Prepare Review (mapping source, match calculation, better opps) ────────
+  const persistMappingSourceAndCalculateMatch = async (
+    data: Record<string, unknown>,
+    currentApp: ApplicationState,
+    loadedFields: PartnerFormField[]
+  ) => {
+    const userId = selectedProfileId || currentApp.user_id || user!.id;
+
+    // 1. Build profile updates from field mappings
+    const profileUpdates: Record<string, any> = {};
+    const userPrefUpdates: Record<string, any> = {};
+    const userIncomeUpdates: Record<string, any> = {};
+    const userEnemUpdates: Record<string, any> = {};
+    const authUserUpdates: Record<string, any> = {};
+
+    loadedFields.forEach(field => {
+      const userAnswer = data[field.field_name];
+      if (userAnswer === undefined || userAnswer === null) return;
+
+      let val = userAnswer;
+      if (typeof userAnswer === 'string') {
+        try {
+          const parsed = JSON.parse(userAnswer);
+          if (parsed && typeof parsed === 'object') {
+            val = parsed;
+          }
+        } catch {}
+      }
+
+      if (field.mapping_source?.startsWith("user_profiles.")) {
+        const column = field.mapping_source.split(".")[1];
+        profileUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
+      } else if (field.mapping_source?.startsWith("user_preferences.")) {
+        const jsonKey = field.mapping_source.split(".")[1];
+        userPrefUpdates[jsonKey] = (val && typeof val === 'object' && jsonKey in val) ? (val as any)[jsonKey] : val;
+      } else if (field.mapping_source?.startsWith("user_income.")) {
+        const column = field.mapping_source.split(".")[1];
+        userIncomeUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
+      } else if (field.mapping_source?.startsWith("user_enem_scores.")) {
+        const column = field.mapping_source.split(".")[1];
+        userEnemUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
+      } else if (field.mapping_source?.startsWith("auth.users.")) {
+        const column = field.mapping_source.split(".")[1];
+        authUserUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
+      }
+    });
+
+    // 2. Upsert user_profiles
+    if (Object.keys(profileUpdates).length > 0) {
+      await supabase.from("user_profiles").upsert({ id: userId, ...profileUpdates }, { onConflict: "id" });
+    }
+    // 3. Upsert user_preferences
+    if (Object.keys(userPrefUpdates).length > 0) {
+      const { data: existingPrefs } = await supabase.from("user_preferences").select("preferences").eq("user_id", userId).maybeSingle();
+      const mergedPrefs = { ...(existingPrefs?.preferences ?? {}), ...userPrefUpdates };
+      await supabase.from("user_preferences").upsert({ user_id: userId, preferences: mergedPrefs });
+    }
+    // 4. Upsert user_income
+    if (Object.keys(userIncomeUpdates).length > 0) {
+      await supabase.from("user_income").upsert({ user_id: userId, ...userIncomeUpdates }, { onConflict: "user_id" });
+    }
+    // 5. Upsert user_enem_scores
+    if (Object.keys(userEnemUpdates).length > 0) {
+      const year = userEnemUpdates.year || new Date().getFullYear();
+      await supabase.from("user_enem_scores").upsert({ user_id: userId, year, ...userEnemUpdates }, { onConflict: "user_id,year" });
+    }
+    // 6. Update auth user
+    if (Object.keys(authUserUpdates).length > 0) {
+      const updatePayload: Record<string, any> = {};
+      if (authUserUpdates.email) updatePayload.email = authUserUpdates.email;
+      if (authUserUpdates.phone) updatePayload.phone = authUserUpdates.phone;
+      if (Object.keys(updatePayload).length > 0) {
+        await supabase.auth.updateUser(updatePayload);
+      }
+    }
+
+    // 7. Calculate match via RPC & query user_opportunity_matches
+    let matches: any[] = [];
+    try {
+      matches = await generateMatch(userId);
+    } catch (matchErr) {
+      console.error("Failed to generate match:", matchErr);
+    }
+
+    const { data: dbMatches } = await supabase
+      .from('user_opportunity_matches')
+      .select('unified_opportunity_id, match_score, match_details')
+      .eq('profile_id', userId);
+
+    const cleanId = (id?: string) => (id || '').replace(/^(partner_|mec_|institution_)/, '');
+
+    const combinedMap = new Map<string, any>();
+    (dbMatches || []).forEach((m: any) => combinedMap.set(cleanId(m.unified_opportunity_id), m));
+    (matches || []).forEach((m: any) => combinedMap.set(cleanId(m.unified_opportunity_id), m));
+    const allMatches = Array.from(combinedMap.values());
+
+    // 8. Fetch better opportunities (or top open opportunities)
+    let fetchedOpps: IUnifiedOpportunity[] = [];
+    const currentPartnerCleanId = cleanId(currentApp.partner_id);
+
+    const currentMatch = allMatches.find(m => cleanId(m.unified_opportunity_id) === currentPartnerCleanId);
+    const currentScore = currentMatch?.match_score ?? 0;
+    let targetMatches = allMatches.filter(m => cleanId(m.unified_opportunity_id) !== currentPartnerCleanId && m.match_score >= currentScore);
+
+    if (targetMatches.length === 0) {
+      targetMatches = allMatches.filter(m => cleanId(m.unified_opportunity_id) !== currentPartnerCleanId);
+    }
+
+    targetMatches.sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0));
+
+    if (targetMatches.length > 0) {
+      const matchIds = targetMatches.map(m => m.unified_opportunity_id);
+      const searchIds = Array.from(new Set([
+        ...matchIds,
+        ...matchIds.map(id => cleanId(id)),
+        ...matchIds.map(id => `partner_${cleanId(id)}`),
+        ...matchIds.map(id => `mec_${cleanId(id)}`)
+      ]));
+
+      const { data: opps } = await supabase
+        .from('v_unified_opportunities')
+        .select('*')
+        .in('unified_id', searchIds);
+
+      if (opps && opps.length > 0) {
+        fetchedOpps = opps
+          .map((opp: any) => {
+            const m = allMatches.find(match => cleanId(match.unified_opportunity_id) === cleanId(opp.unified_id));
+            const cutoffFromMatch = m?.match_details?.cutoff_score ?? m?.match_details?.min_cutoff_score;
+            return mapRowToUnifiedOpportunity({
+              ...opp,
+              match_score: m?.match_score ?? opp.match_score,
+              min_cutoff_score_current: opp.min_cutoff_score_current ?? cutoffFromMatch,
+              max_cutoff_score_current: opp.max_cutoff_score_current ?? cutoffFromMatch,
+            });
+          })
+          .filter((opp: IUnifiedOpportunity) => opp.status === 'opened' || opp.status === 'incoming' || !opp.status)
+          .sort((a: IUnifiedOpportunity, b: IUnifiedOpportunity) => (b.match_score ?? 0) - (a.match_score ?? 0));
+      }
+    }
+
+    // Fallback: If no matches returned, fetch top active opportunities from v_unified_opportunities
+    if (fetchedOpps.length === 0) {
+      const { data: fallbackOpps } = await supabase
+        .from('v_unified_opportunities')
+        .select('*')
+        .neq('unified_id', currentApp.partner_id)
+        .neq('unified_id', `partner_${currentApp.partner_id}`)
+        .limit(6);
+
+      if (fallbackOpps && fallbackOpps.length > 0) {
+        fetchedOpps = fallbackOpps.map((opp: any) => {
+          const m = allMatches.find(match => cleanId(match.unified_opportunity_id) === cleanId(opp.unified_id));
+          const cutoffFromMatch = m?.match_details?.cutoff_score ?? m?.match_details?.min_cutoff_score;
+          return mapRowToUnifiedOpportunity({
+            ...opp,
+            match_score: m?.match_score ?? opp.match_score,
+            min_cutoff_score_current: opp.min_cutoff_score_current ?? cutoffFromMatch,
+            max_cutoff_score_current: opp.max_cutoff_score_current ?? cutoffFromMatch,
+          });
+        });
+      }
+    }
+
+    setBetterOpportunities(fetchedOpps);
+  };
+
+  const handlePrepareReview = async (data: Record<string, unknown>) => {
+    if (!application) return;
+    const prepKey = `${application.id}_${selectedProfileId}`;
+    if (preparedAppsRef.current.has(prepKey)) return;
+    preparedAppsRef.current.add(prepKey);
+
+    setPreparingReview(true);
+    try {
+      await persistMappingSourceAndCalculateMatch(data, application, fields);
+    } catch (err) {
+      console.error("Failed to prepare review:", err);
+    } finally {
+      setPreparingReview(false);
+    }
+  };
+
   const isRedirect = !!application?.external_redirect?.enabled;
 
   const handleSubmitForm = async (data: Record<string, unknown>) => {
     if (!application) return { success: false };
+
+    setPhase("submitting");
 
     const finalStatus = isRedirect ? 'redirected' : 'SUBMITTED';
     const eligibilityResults = computeEligibility(data);
@@ -247,11 +539,9 @@ export default function PartnerFormsPage() {
 
       if (error || !result?.success) {
         if (redirectWindow) redirectWindow.close();
+        setPhase("form");
         return { success: false };
       }
-
-      // Save eligibility results and map data to user profile
-      const userId = selectedProfileId || user!.id;
 
       // Save eligibility results directly to student_applications
       if (eligibilityResults && eligibilityResults.length > 0) {
@@ -261,67 +551,12 @@ export default function PartnerFormsPage() {
           .eq("id", application.id);
       }
 
-      // 1. Build profile updates from field mappings
-      const profileUpdates: Record<string, any> = {};
-
-      const userPrefUpdates: Record<string, any> = {};
-
-      fields.forEach(field => {
-        const userAnswer = data[field.field_name];
-        if (userAnswer === undefined || userAnswer === null) return;
-
-        // Map to user_profiles columns
-        if (field.mapping_source?.startsWith("user_profiles.")) {
-          const column = field.mapping_source.split(".")[1];
-          profileUpdates[column] = userAnswer;
-        }
-        // Map to user_preferences json key
-        else if (field.mapping_source?.startsWith("user_preferences.")) {
-          const jsonKey = field.mapping_source.split(".")[1];
-          userPrefUpdates[jsonKey] = userAnswer;
-        }
-      });
-
-      // 2. Upsert user_profiles — upsert (not update) so the mapping still
-      // works when the profile row doesn't exist yet. A plain UPDATE on a
-      // missing row affects 0 rows silently and the full_name/mapping is lost.
-      if (Object.keys(profileUpdates).length > 0) {
-        const { error: profileError } = await supabase
-          .from("user_profiles")
-          .upsert({ id: userId, ...profileUpdates }, { onConflict: "id" });
-
-        if (profileError) {
-          console.error("Failed to upsert user profile:", profileError);
-        }
-      }
-
-      // 3. Update user_preferences (upsert json)
-      if (Object.keys(userPrefUpdates).length > 0) {
-        const { data: existingPrefs } = await supabase
-          .from("user_preferences")
-          .select("preferences")
-          .eq("user_id", userId)
-          .maybeSingle();
-
-        const mergedPrefs = {
-          ...(existingPrefs?.preferences ?? {}),
-          ...userPrefUpdates
-        };
-
-        const { error: prefError } = await supabase
-          .from("user_preferences")
-          .upsert({
-            user_id: userId,
-            preferences: mergedPrefs
-          });
-
-        if (prefError) {
-          console.error("Failed to update user preferences:", prefError);
-        }
-      }
+      // Perform mapping source persistence and match generation if not already run
+      await persistMappingSourceAndCalculateMatch(data, application, fields);
 
       if (isRedirect && application.external_redirect?.url) {
         try {
+          const userId = selectedProfileId || application.user_id || user!.id;
           const { url } = await trackAndRedirect(
             userId,
             application.partner_id,
@@ -340,6 +575,7 @@ export default function PartnerFormsPage() {
       }
     } catch (err) {
       if (redirectWindow) redirectWindow.close();
+      setPhase("form");
       return { success: false };
     }
 
@@ -363,14 +599,39 @@ export default function PartnerFormsPage() {
     }
   })();
 
-  if (phase === "loading") {
-    return (
-      <AppShell>
-        <div className="flex items-center justify-center py-24">
-          <Loader2 size={32} className="animate-spin text-[#38B1E4]" />
+  // Spinner JSX without extra motion animations (only the spinning arc)
+  const CloudinhaSpinner = (
+    <div className="flex flex-col items-center justify-center min-h-[65vh] py-16 px-4 text-center">
+      <div className="relative flex items-center justify-center mb-8">
+        {/* Spinning Arc */}
+        <div className="w-32 h-32 rounded-full border-4 border-t-[#38B1E4] border-r-[#024F86] border-b-transparent border-l-transparent animate-spin" />
+        {/* Cloudinha Avatar Box */}
+        <div className="absolute w-20 h-20 rounded-2xl bg-white p-2 border border-gray-100 shadow-md flex items-center justify-center overflow-hidden">
+          <img
+            src="/assets/cloudinha-candidaturas.png"
+            alt="Cloudinha"
+            className="w-full h-full object-contain"
+          />
         </div>
-      </AppShell>
-    );
+      </div>
+      <h3
+        className="text-lg md:text-xl font-black text-[#024F86] tracking-tight mb-2"
+        style={{ fontFamily: "Montserrat, sans-serif" }}
+      >
+        {loadingPhrase}
+      </h3>
+      <p className="text-xs text-[#3A424E]/70 max-w-sm leading-relaxed font-medium">
+        Estamos processando suas respostas e calculando sua compatibilidade em tempo real.
+      </p>
+    </div>
+  );
+
+  if (phase === "loading") {
+    return <AppShell>{CloudinhaSpinner}</AppShell>;
+  }
+
+  if (phase === "submitting") {
+    return <AppShell>{CloudinhaSpinner}</AppShell>;
   }
 
   if (phase === "error") {
@@ -391,12 +652,12 @@ export default function PartnerFormsPage() {
 
     return (
       <AppShell title={isRedirected ? "Redirecionamento" : "Candidatura enviada"}>
-        <div className="flex flex-col items-center justify-center py-16 md:py-24 px-4 sm:px-6">
+        <div className="flex flex-col items-center justify-center py-16 md:py-24 px-4 sm:px-6 max-w-4xl mx-auto w-full gap-8">
           <motion.div
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="w-full max-w-md bg-white rounded-3xl p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/50 flex flex-col items-center text-center relative overflow-hidden"
+            className="w-full max-w-md bg-white rounded-3xl p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/50 flex flex-col items-center text-center relative overflow-hidden mx-auto"
           >
             {/* Top accent line */}
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#024F86] to-[#38B1E4]" />
@@ -465,7 +726,37 @@ export default function PartnerFormsPage() {
                 Ver minhas candidaturas
               </button>
             </motion.div>
+
+            {/* Stepper only if there are phases */}
+            {phases && phases.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="w-full mt-4 border-t border-gray-100 pt-4"
+              >
+                <p className="text-xs font-semibold text-gray-500 mb-2">Próximos passos do processo:</p>
+                <OpportunityPhaseStepper 
+                  phases={phases} 
+                  currentPhaseId={application?.phase_id || null} 
+                  initialStepLabel={isRedirected ? "Estudante Redirecionado" : "Candidatura Enviada"}
+                />
+              </motion.div>
+            )}
           </motion.div>
+
+          {/* MatchResult / MatchCarousel */}
+          {betterOpportunities.length > 0 && (
+            <div className="w-full mt-4 max-w-2xl mx-auto">
+              <OpportunityCarousel
+                title="Melhores opções para você"
+                opportunities={betterOpportunities}
+              />
+              <p className="text-[10px] text-center text-[#3A424E]/50 mt-1.5 font-medium">
+                Matches mais prováveis
+              </p>
+            </div>
+          )}
         </div>
       </AppShell>
     );
@@ -540,24 +831,29 @@ export default function PartnerFormsPage() {
         )}
 
         <div className="flex-1 px-4 pb-4">
+          {preparingReview && CloudinhaSpinner}
           {application && (
-            <PartnerFormEngine
-              key={formKey}
-              partnerName={application.partner_name}
-              applicationId={application.id}
-              opportunityId={application.partner_id}
-              steps={steps}
-              fields={fields}
-              defaultValues={defaultValues}
-              dbAnswers={application.answers}
-              localStorageKey={localStorageKey}
-              onSaveDraft={handleSaveDraft}
-              onSubmitForm={handleSubmitForm}
-              onComputeEligibility={fields.some(f => f.is_criterion) ? computeEligibility : undefined}
-              isRedirectFlow={isRedirect}
-              onStepIndexChange={setStepIndex}
-              userContextData={profileData}
-            />
+            <div className={preparingReview ? "hidden" : "block"}>
+              <PartnerFormEngine
+                key={formKey}
+                partnerName={application.partner_name}
+                applicationId={application.id}
+                opportunityId={application.partner_id}
+                steps={steps}
+                fields={fields}
+                defaultValues={defaultValues}
+                dbAnswers={application.answers}
+                localStorageKey={localStorageKey}
+                onSaveDraft={handleSaveDraft}
+                onPrepareReview={handlePrepareReview}
+                onSubmitForm={handleSubmitForm}
+                onComputeEligibility={fields.some(f => f.is_criterion) ? computeEligibility : undefined}
+                isRedirectFlow={isRedirect}
+                onStepIndexChange={setStepIndex}
+                userContextData={profileData}
+                betterOpportunities={betterOpportunities}
+              />
+            </div>
           )}
         </div>
       </div>

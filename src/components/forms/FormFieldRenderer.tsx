@@ -5,6 +5,7 @@ import { Controller, useFormContext } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
 import { applyMask, validateMask, getPlaceholder, getMaxLength, getComponentType } from '@/utils/maskUtils';
+import IncomeCalculatorField from './ui-components/IncomeCalculatorField';
 
 export interface PartnerFormField {
     id: string;
@@ -22,6 +23,7 @@ export interface PartnerFormField {
     sort_order: number;
     optional: boolean;
     maskking: string | null;
+    ui_component?: string | null;
 }
 
 interface FormFieldRendererProps {
@@ -64,6 +66,31 @@ export default function FormFieldRenderer({
         }`;
 
     return (
+        <>
+        {/* ── ui_component override ── */}
+        {field.ui_component === 'income_calculator' ? (
+            <Controller
+                control={control}
+                name={fieldName}
+                rules={{ required: !field.optional }}
+                render={({ field: rhfField }) => (
+                    <motion.div
+                        key={field.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <IncomeCalculatorField
+                            value={typeof rhfField.value === 'string' ? rhfField.value : ''}
+                            onChange={rhfField.onChange}
+                            hasError={hasError}
+                            required={!field.optional}
+                            label={field.question_text}
+                        />
+                    </motion.div>
+                )}
+            />
+        ) : (
         <Controller
             control={control}
             name={fieldName}
@@ -412,5 +439,7 @@ export default function FormFieldRenderer({
                 );
             }}
         />
+        )}
+        </>
     );
 }

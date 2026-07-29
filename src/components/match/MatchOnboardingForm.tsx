@@ -22,7 +22,8 @@ import {
   markOnboardingComplete,
   getUserOnboardingData
 } from '@/services/profileService';
-import { generateMatchAsync, getMatchStatus } from '@/services/matchService';
+import { generateMatch, generateMatchAsync, getMatchStatus } from '@/services/matchService';
+import IncomeCalculatorField, { IncomeCalculatorValue } from '@/components/forms/ui-components/IncomeCalculatorField';
 import { fetchAvailableCategories, type AvailableCategory } from '@/lib/availableCategories';
 
 interface MatchOnboardingFormProps {
@@ -42,6 +43,13 @@ const EDUCATION_OPTIONS = [
 ];
 
 const SHIFTS_OPTIONS = ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EAD'];
+
+const SCHOOL_TYPE_OPTIONS = [
+  'Escola pública',
+  'Escola particular com bolsa 100%',
+  'Escola particular com bolsa parcial',
+  'Escola particular sem bolsa',
+];
 
 // Fallback estático caso o fetch de categorias disponíveis falhe
 const STATIC_PROGRAM_OPTIONS = [
@@ -73,6 +81,14 @@ const SALARIO_MINIMO = 1518.00;
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+const formatCPF = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+};
 
 // Normaliza rótulos EAD legados ('Curso a distância', 'EaD') para o vocabulário do form
 // ('EAD'). Sem isso, um valor legado salvo no banco fica INVISÍVEL nos checkboxes (nenhum
@@ -183,7 +199,9 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
   const [birthDate, setBirthDate] = useState('');
   const [education, setEducation] = useState('');
   const [educationYear, setEducationYear] = useState('');
+  const [schoolType, setSchoolType] = useState('');
   const [cpf, setCpf] = useState('');
+  const [race, setRace] = useState('');
   const [phone, setPhone] = useState('');
   
   // Address
@@ -234,12 +252,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
   };
 
   // Income Calculator
-  const [useCalculator, setUseCalculator] = useState(true);
-  const [familyCount, setFamilyCount] = useState('');
-  const [socialBenefits, setSocialBenefits] = useState('');
-  const [alimony, setAlimony] = useState('');
-  const [memberIncomes, setMemberIncomes] = useState<string[]>([]);
-  const [manualPerCapita, setManualPerCapita] = useState<number | null>(null);
+  const [incomeData, setIncomeData] = useState<IncomeCalculatorValue | null>(null);
 
 
   // ── Step 3 State (Interesses & Filtros) ────────────────────────────────────
@@ -356,7 +369,9 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         if (data.profile) {
           setFullName(data.profile.full_name || '');
           setBirthDate(data.profile.birth_date || '');
-          setCpf(data.profile.cpf || '');
+          setCpf(data.profile.cpf ? formatCPF(data.profile.cpf) : '');
+          setRace(data.profile.race || '');
+          setSchoolType(data.profile.school_type || '');
           setEducation(data.profile.education || '');
           setEducationYear(data.profile.education_year || '');
           setOutsideBrazil(data.profile.outside_brazil || false);
@@ -371,17 +386,14 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         }
 
         if (data.income) {
-          setFamilyCount(data.income.family_count?.toString() || '');
-          setSocialBenefits(data.income.social_benefits?.toString() || '');
-          setAlimony(data.income.alimony?.toString() || '');
-          if (data.income.member_incomes && data.income.member_incomes.length > 0) {
-            setMemberIncomes(data.income.member_incomes.map((i: any) => i.toString()));
-          }
-          if (data.income.per_capita_income != null) {
-            setManualPerCapita(data.income.per_capita_income);
-            if (!data.income.member_incomes || data.income.member_incomes.length === 0) {
-              setUseCalculator(false);
-            }
+          if (data.income.family_count != null || data.income.per_capita_income != null) {
+            setIncomeData({
+              family_count: data.income.family_count || null,
+              social_benefits: data.income.social_benefits || 0,
+              alimony: data.income.alimony || 0,
+              member_incomes: data.income.member_incomes || [],
+              per_capita_income: data.income.per_capita_income || 0,
+            });
           }
         }
 
@@ -437,17 +449,26 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
   const [globalError, setGlobalError] = useState<string | null>(null);
 
   // ── Derived Values ─────────────────────────────────────────────────────────
-  const perCapitaIncome = useMemo(() => {
-    if (!useCalculator) return manualPerCapita;
-    const count = parseInt(familyCount) || 0;
-    const incomesTotal = memberIncomes
-      .map(i => parseFloat(i.replace(',', '.')))
-      .filter(n => !isNaN(n))
-      .reduce((a, b) => a + b, 0);
-    const benefits = parseFloat(socialBenefits.replace(',', '.')) || 0;
-    const alim = parseFloat(alimony.replace(',', '.')) || 0;
-    return count > 0 ? (incomesTotal + benefits + alim) / count : 0;
-  }, [useCalculator, familyCount, memberIncomes, socialBenefits, alimony, manualPerCapita]);
+  const perCapitaIncome = incomeData?.per_capita_income || 0;
+
+  const incomeCalculatorSerializedValue = useMemo(() => {
+    if (!incomeData) return '';
+    return JSON.stringify(incomeData);
+  }, [incomeData]);
+
+  const handleIncomeCalculatorChange = (val: string) => {
+    if (errors.income) {
+      setErrors(prev => ({ ...prev, income: false }));
+    }
+    try {
+      const parsed = JSON.parse(val);
+      if (parsed) {
+        setIncomeData(parsed);
+      }
+    } catch (e) {
+      // fallback
+    }
+  };
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -470,19 +491,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
     }
   };
 
-  const handleFamilyCountChange = (val: string) => {
-    setFamilyCount(val);
-    const count = parseInt(val);
-    if (!isNaN(count) && count > 0) {
-      setMemberIncomes(prev => {
-        const arr = [...prev];
-        while (arr.length < count) arr.push('');
-        return arr.slice(0, count);
-      });
-    } else {
-      setMemberIncomes([]);
-    }
-  };
+
 
   const validateStep = () => {
     const errs: Record<string, boolean> = {};
@@ -506,6 +515,11 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         errs.educationYear = true;
         const label = education === 'Ensino Superior Incompleto' ? 'Semestre' : 'Ano Escolar';
         errorDetails.push({ field: label, error_message: `Selecione o ${label} atual.` });
+      }
+      const requiresSchoolType = education && education !== 'Ensino Fundamental';
+      if (requiresSchoolType && !schoolType) {
+        errs.schoolType = true;
+        errorDetails.push({ field: 'Tipo de Escola', error_message: 'Selecione o tipo de escola onde faz/fez o Ensino Médio.' });
       }
       if (!outsideBrazil) {
         if (zipCode.length < 8) {
@@ -560,9 +574,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
       }
       
       // Income is mandatory
-      const isIncomeFilled = useCalculator 
-        ? (familyCount && parseInt(familyCount) > 0)
-        : (manualPerCapita !== null);
+      const isIncomeFilled = incomeData?.family_count && incomeData.family_count > 0;
         
       if (!isIncomeFilled) {
         errs.income = true;
@@ -600,6 +612,8 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         full_name: fullName,
         birth_date: birthDate,
         cpf: cpf || null,
+        race: race || null,
+        school_type: education !== 'Ensino Fundamental' ? (schoolType || null) : null,
         age: calculateAge(birthDate) || undefined,
         education,
         education_year: educationYear || 'N/A',
@@ -616,10 +630,10 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
 
       // 2. Save Income
       await saveUserIncome(userId, {
-        family_count: parseInt(familyCount) || null,
-        social_benefits: parseFloat(socialBenefits) || 0,
-        alimony: parseFloat(alimony) || 0,
-        member_incomes: memberIncomes.map(i => parseFloat(i) || 0),
+        family_count: incomeData?.family_count || null,
+        social_benefits: incomeData?.social_benefits || 0,
+        alimony: incomeData?.alimony || 0,
+        member_incomes: incomeData?.member_incomes || [],
         per_capita_income: perCapitaIncome || 0,
       });
 
@@ -683,8 +697,17 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         device_longitude: cachedLng,
       });
 
-      // 5. Generate Match and Complete (Async Flow)
-      await generateMatchAsync();
+      // 5. Generate Match and Complete (Async Flow with Sync RPC Fallback)
+      try {
+        const res = await generateMatchAsync(userId);
+        if (res.jobId === 'sync-fallback') {
+          await supabase.from('user_preferences').update({ match_status: 'ready' }).eq('user_id', userId);
+        }
+      } catch (err) {
+        console.warn('Async match failed, running synchronous calculate_match RPC:', err);
+        await generateMatch(userId);
+        await supabase.from('user_preferences').update({ match_status: 'ready' }).eq('user_id', userId);
+      }
       
       // Polling for completion
       let status = await getMatchStatus(userId);
@@ -695,11 +718,17 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
         await new Promise(r => setTimeout(r, 2000));
         status = await getMatchStatus(userId);
         retryCount++;
-        if (status === 'error') throw new Error('O motor de match encontrou um erro. Tente novamente em alguns instantes.');
+        if (status === 'error') {
+          await generateMatch(userId);
+          await supabase.from('user_preferences').update({ match_status: 'ready' }).eq('user_id', userId);
+          status = 'ready';
+          break;
+        }
       }
 
       if (status === 'processing') {
-        throw new Error('O processamento está demorando mais que o esperado. Seus matches aparecerão em breve no catálogo.');
+        await generateMatch(userId);
+        await supabase.from('user_preferences').update({ match_status: 'ready' }).eq('user_id', userId);
       }
 
       await markOnboardingComplete();
@@ -764,8 +793,9 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               <p className="text-[#636E7C] text-[14px] mt-1">Conte-nos um pouco sobre você para começarmos.</p>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="md:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+              {/* Linha 1: Nome Completo (2/3) | CPF (1/3) */}
+              <div className="md:col-span-4">
                 <FieldLabel label="Nome Completo" icon={User} required error={errors.fullName} htmlFor="fullName" />
                 <input 
                   id="fullName"
@@ -775,7 +805,20 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                   onChange={e => setFullName(e.target.value)}
                 />
               </div>
-              <div>
+              <div className="md:col-span-2">
+                <FieldLabel label="CPF (Opcional)" icon={Hash} htmlFor="cpf" />
+                <input 
+                  id="cpf"
+                  className={inputCls} 
+                  placeholder="000.000.000-00"
+                  value={cpf}
+                  maxLength={14}
+                  onChange={e => setCpf(formatCPF(e.target.value))}
+                />
+              </div>
+
+              {/* Linha 2: Data de Nascimento (1/2) | Raça / Etnia (1/2) */}
+              <div className="md:col-span-3">
                 <FieldLabel label="Data de Nascimento" icon={Calendar} required error={errors.birthDate} htmlFor="birthDate" />
                 <input 
                   id="birthDate"
@@ -785,19 +828,25 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                   onChange={e => setBirthDate(e.target.value)}
                 />
               </div>
-              <div>
-                <FieldLabel label="CPF (Opcional)" icon={Hash} htmlFor="cpf" />
-                <input 
-                  id="cpf"
+              <div className="md:col-span-3">
+                <FieldLabel label="Raça / Etnia" icon={Users} htmlFor="race" />
+                <select 
+                  id="race"
                   className={inputCls} 
-                  placeholder="000.000.000-00"
-                  value={cpf}
-                  onChange={e => setCpf(e.target.value)}
-                />
+                  value={race}
+                  onChange={e => setRace(e.target.value)}
+                >
+                  <option value="">Selecione...</option>
+                  {['Amarela', 'Branca', 'Indígena', 'Parda', 'Preta', 'Outra', 'Prefiro não informar'].map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
               </div>
-              <div className="md:col-span-2">
+
+              {/* Linha 3: Escolaridade + Ano/Semestre */}
+              <div className={(education === 'Ensino Fundamental' || education === 'Ensino Médio Incompleto' || education === 'Ensino Superior Incompleto') ? "md:col-span-4" : "md:col-span-6"}>
                 <FieldLabel label="Escolaridade" icon={GraduationCap} required error={errors.education} htmlFor="education" />
-                <select id="education" className={inputCls} value={education} onChange={e => { setEducation(e.target.value); setEducationYear(''); }}>
+                <select id="education" className={inputCls} value={education} onChange={e => { setEducation(e.target.value); setEducationYear(''); if (e.target.value === 'Ensino Fundamental') setSchoolType(''); }}>
                   <option value="">Selecione...</option>
                   {EDUCATION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
@@ -806,7 +855,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                 <div className="md:col-span-2">
                   <FieldLabel label="Ano Escolar" icon={GraduationCap} required error={errors.educationYear} htmlFor="educationYear" />
                   <select id="educationYear" className={inputCls} value={educationYear} onChange={e => setEducationYear(e.target.value)}>
-                    <option value="">Selecione o ano...</option>
+                    <option value="">Selecione...</option>
                     {['1º Ano','2º Ano','3º Ano','4º Ano','5º Ano','6º Ano','7º Ano','8º Ano','9º Ano'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
                   </select>
                 </div>
@@ -815,8 +864,19 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                 <div className="md:col-span-2">
                   <FieldLabel label="Semestre" icon={GraduationCap} required error={errors.educationYear} htmlFor="educationYear" />
                   <select id="educationYear" className={inputCls} value={educationYear} onChange={e => setEducationYear(e.target.value)}>
-                    <option value="">Selecione o semestre...</option>
+                    <option value="">Selecione...</option>
                     {['1º Semestre','2º Semestre','3º Semestre','4º Semestre','5º Semestre','6º Semestre','7º Semestre','8º Semestre','9º Semestre','10º Semestre'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Linha 4: Tipo de Escola (exibido para todos exceto Ensino Fundamental) */}
+              {education && education !== 'Ensino Fundamental' && (
+                <div className="md:col-span-6">
+                  <FieldLabel label="Você faz/fez o Ensino Médio em que tipo de escola?" icon={Building} required error={errors.schoolType} htmlFor="schoolType" />
+                  <select id="schoolType" className={inputCls} value={schoolType} onChange={e => setSchoolType(e.target.value)}>
+                    <option value="">Selecione...</option>
+                    {SCHOOL_TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                   </select>
                 </div>
               )}
@@ -978,56 +1038,14 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
               </div>
             </div>
 
-            <div className="bg-[#F8FAFC] rounded-2xl p-5 border border-gray-100">
-               <h3 className="font-bold text-[#024F86] mb-4 flex items-center justify-between gap-2 uppercase text-[13px]">
-                <div className="flex items-center gap-2"><DollarSign size={16} /> Renda Per Capita</div>
-              </h3>
-
-              <div className="space-y-4 animate-in fade-in duration-300">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <FieldLabel label="Nº de Familiares" icon={Users} required error={errors.income} />
-                    <input type="number" className={`${inputCls} ${errors.income ? 'border-red-500' : ''}`} placeholder="Ex: 1" value={familyCount} onChange={e => { handleFamilyCountChange(e.target.value); if (errors.income) setErrors(prev => ({ ...prev, income: false })); }} onFocus={triggerIncomeIntent} />
-                  </div>
-                  <div>
-                    <FieldLabel label="Benefícios (Bruto)" icon={DollarSign} />
-                    <input type="number" className={inputCls} placeholder="R$ 0,00" value={socialBenefits} onChange={e => setSocialBenefits(e.target.value)} onFocus={triggerIncomeIntent} />
-                  </div>
-                </div>
-                
-                {memberIncomes.length > 0 && (
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-[#636E7C] uppercase">Rendas Individuais</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {memberIncomes.map((inc, i) => (
-                        <input 
-                          key={i} 
-                          type="number" 
-                          placeholder={`Pessoa ${i+1}`}
-                          className="bg-white border rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-[#38B1E4]" 
-                          value={inc}
-                          onChange={e => {
-                            const arr = [...memberIncomes];
-                            arr[i] = e.target.value;
-                            setMemberIncomes(arr);
-                          }}
-                          onFocus={triggerIncomeIntent}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {familyCount && perCapitaIncome !== null && perCapitaIncome > 0 && (
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-[#024F86] to-[#38B1E4] rounded-2xl text-white shadow-lg animate-in slide-in-from-top-2 duration-300">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold opacity-80 uppercase">Renda Per Capita Calculada</span>
-                      <span className="text-[20px] font-black">{formatCurrency(perCapitaIncome || 0)}</span>
-                    </div>
-                    <CheckCircle size={24} className="opacity-40" />
-                  </div>
-                )}
-              </div>
+            <div className="bg-[#F8FAFC] rounded-2xl p-2 border border-gray-100">
+              <IncomeCalculatorField
+                label="Renda Per Capita"
+                required
+                hasError={errors.income}
+                value={incomeCalculatorSerializedValue}
+                onChange={handleIncomeCalculatorChange}
+              />
             </div>
           </div>
         )}

@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import { getCookie } from "@/utils/cookies";
 
 const COUNTRIES = [
   { code: 'BR', name: 'Brasil', dialCode: '+55', mask: '(DD) 99999-9999', flag: '🇧🇷' },
@@ -87,9 +88,13 @@ export default function AuthModal({ onClose }: AuthModalProps) {
         const { error } = await supabase.auth.updateUser({ phone: formattedPhone });
         if (error) throw error;
       } else {
+        const referral = getCookie('nubo:referral');
         const { error } = await supabase.auth.signInWithOtp({
           phone: formattedPhone,
-          options: { channel: 'whatsapp' },
+          options: { 
+            channel: 'whatsapp',
+            data: referral ? { referral_source: referral } : undefined
+          },
         });
         if (error) throw error;
       }

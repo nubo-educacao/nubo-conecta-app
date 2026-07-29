@@ -6,7 +6,7 @@ import {
   ChevronLeft, Share2, Heart, ExternalLink, Info, MapPin,
   Globe, GraduationCap, Award, Users, Clock, Calendar,
   CheckCircle2, Building2, Sun, Sunset, Moon, SunMoon, Laptop,
-  Loader2,
+  Loader2, Sparkles,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -477,28 +477,43 @@ export default function DetailsLayout({
           )}
         </div>
 
-        {/* Match Score Circular Badge */}
+        {/* Match Score Circular Badge + link discreto para explicação */}
         {opportunity.match_score != null && Number(opportunity.match_score) > 0 && (
-          <div className="relative size-16 shrink-0">
-            <svg className="size-full -rotate-90" viewBox="0 0 36 36">
-              <circle cx="18" cy="18" r="16" fill="none" className="stroke-gray-100" strokeWidth="3" />
-              <motion.circle
-                cx="18" cy="18" r="16" fill="none"
-                className="stroke-[#3092BB]"
-                strokeWidth="3"
-                strokeDasharray="100 100"
-                initial={{ strokeDashoffset: 100 }}
-                animate={{ strokeDashoffset: 100 - (Number(opportunity.match_score) || 0) }}
-                transition={{ duration: 1.5, ease: "easeOut" }}
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-sm font-black text-[#3092BB] leading-none">
-                {Math.round(Number(opportunity.match_score))}%
-              </span>
-              <span className="text-[7px] font-light text-[#3092BB] uppercase tracking-tighter">match</span>
+          <div className="flex flex-col items-center gap-1.5 shrink-0">
+            <div className="relative size-16">
+              <svg className="size-full -rotate-90" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="16" fill="none" className="stroke-gray-100" strokeWidth="3" />
+                <motion.circle
+                  cx="18" cy="18" r="16" fill="none"
+                  className="stroke-[#3092BB]"
+                  strokeWidth="3"
+                  strokeDasharray="100 100"
+                  initial={{ strokeDashoffset: 100 }}
+                  animate={{ strokeDashoffset: 100 - (Number(opportunity.match_score) || 0) }}
+                  transition={{ duration: 1.5, ease: "easeOut" }}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-sm font-black text-[#3092BB] leading-none">
+                  {Math.round(Number(opportunity.match_score))}%
+                </span>
+                <span className="text-[7px] font-light text-[#3092BB] uppercase tracking-tighter">match</span>
+              </div>
             </div>
+            <button
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent('cloudinha-intent', {
+                    detail: { type: 'explain_match', metadata: { opportunity_id: opportunity.id } }
+                  })
+                );
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#3092BB]/10 text-[#3092BB] text-[10px] font-bold hover:bg-[#3092BB]/20 active:scale-95 transition-all duration-200 whitespace-nowrap"
+            >
+              <Sparkles size={11} />
+              Entender Match
+            </button>
           </div>
         )}
       </section>

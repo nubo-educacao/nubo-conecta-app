@@ -26,6 +26,8 @@ export interface UserProfileData {
   outside_brazil?: boolean;
   onboarding_completed?: boolean;
   cpf?: string | null;
+  race?: string | null;
+  school_type?: string | null;
 }
 
 export interface UserIncomeData {
