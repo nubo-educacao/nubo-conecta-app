@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
+import { expect as vitestExpect } from 'vitest';
+import * as jestDomMatchers from '@testing-library/jest-dom/matchers';
 import { render, screen } from '@testing-library/react';
 import HomeClient from '@/app/HomeClient';
+
+vitestExpect.extend(jestDomMatchers);
 
 // Mock todos os componentes filhos
 vi.mock('@/components/home/HeroSearch', () => ({ default: () => <div data-testid="hero-search" /> }));
@@ -16,6 +20,9 @@ vi.mock('@/components/home/ImportantDates', () => ({
 }));
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ user: null, loading: false, setShowAuthModal: vi.fn() }),
+}));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
 }));
 vi.mock('@/hooks/useMatchResults', () => ({
   useMatchResults: () => ({ results: [], matchState: 'idle', error: null, runMatch: vi.fn(), loadExisting: vi.fn() }),

@@ -154,14 +154,16 @@ export default function OpportunitiesClient({
                 >
                   Seus Matches
                 </h2>
-                <button
-                  onClick={() => setIsRefining(true)}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-white/60 border border-[#3092bb]/30 rounded-2xl text-[#3092bb] text-[13px] font-bold hover:bg-[#3092bb] hover:text-white hover:border-[#3092bb] transition-all duration-300 shadow-sm active:scale-95"
-                  style={{ fontFamily: 'Montserrat, sans-serif' }}
-                >
-                  <RefreshCw size={14} className={isRefining ? 'animate-spin' : ''} />
-                  Refazer Match
-                </button>
+                {user && (
+                  <button
+                    onClick={() => setIsRefining(true)}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-white/60 border border-[#3092bb]/30 rounded-2xl text-[#3092bb] text-[13px] font-bold hover:bg-[#3092bb] hover:text-white hover:border-[#3092bb] transition-all duration-300 shadow-sm active:scale-95"
+                    style={{ fontFamily: 'Montserrat, sans-serif' }}
+                  >
+                    <RefreshCw size={14} className={isRefining ? 'animate-spin' : ''} />
+                    Refazer Match
+                  </button>
+                )}
               </div>
 
               {/* Card list — responsive grid (same as ExploreClient) */}
@@ -179,13 +181,15 @@ export default function OpportunitiesClient({
                   <p className="text-center text-[14px] text-[#636e7c] mt-2 max-w-md">
                     Tente ajustar suas preferências para encontrar cursos que combinem com seu perfil.
                   </p>
-                  <button
-                    onClick={() => setIsRefining(true)}
-                    className="mt-8 px-8 py-3 bg-[#3092bb] text-white rounded-2xl font-bold shadow-lg shadow-[#3092bb]/20 hover:bg-[#2a81a5] transition-all active:scale-95"
-                    style={{ fontFamily: 'Montserrat, sans-serif' }}
-                  >
-                    Ajustar Preferências
-                  </button>
+                  {user && (
+                    <button
+                      onClick={() => setIsRefining(true)}
+                      className="mt-8 px-8 py-3 bg-[#3092bb] text-white rounded-2xl font-bold shadow-lg shadow-[#3092bb]/20 hover:bg-[#2a81a5] transition-all active:scale-95"
+                      style={{ fontFamily: 'Montserrat, sans-serif' }}
+                    >
+                      Ajustar Preferências
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>
