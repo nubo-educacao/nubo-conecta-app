@@ -441,14 +441,27 @@ export default function PartnerFormsPage() {
     let fetchedOpps: IUnifiedOpportunity[] = [];
     const currentPartnerId = currentApp.partner_id;
 
-    const { data: userMatches } = await supabase
+    // Fetch top partners first to guarantee they are included
+    const { data: partnerMatches } = await supabase
       .from('user_opportunity_matches')
       .select('unified_opportunity_id, match_score')
       .eq('profile_id', userId)
+      .like('unified_opportunity_id', 'partner_%')
       .neq('unified_opportunity_id', currentPartnerId)
       .neq('unified_opportunity_id', `partner_${currentPartnerId}`)
       .order('match_score', { ascending: false })
+      .limit(5);
+
+    // Fetch top MEC matches
+    const { data: mecMatches } = await supabase
+      .from('user_opportunity_matches')
+      .select('unified_opportunity_id, match_score')
+      .eq('profile_id', userId)
+      .not('unified_opportunity_id', 'like', 'partner_%')
+      .order('match_score', { ascending: false })
       .limit(10);
+
+    const userMatches = [...(partnerMatches || []), ...(mecMatches || [])];
 
     if (userMatches && userMatches.length > 0) {
       const ids = userMatches.map((m: any) => m.unified_opportunity_id);
