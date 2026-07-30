@@ -113,7 +113,7 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-40">
-        <div className="w-6 h-6 border-2 border-[#3092bb] border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-[#38B1E4] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -125,7 +125,7 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
           className="flex items-center justify-center w-16 h-16 rounded-full mb-4"
           style={{ background: "rgba(48,146,187,0.08)" }}
         >
-          <Heart size={28} style={{ color: "#3092bb" }} />
+          <Heart size={28} style={{ color: "#38B1E4" }} />
         </div>
         <h3 className="text-base font-bold mb-2" style={{ color: "#3A424E", fontFamily: "Montserrat, sans-serif" }}>
           Nenhum favorito ainda

@@ -104,7 +104,7 @@ export default function TopBar({ title }: TopBarProps) {
                   href={href}
                   className="px-3 py-1.5 rounded-full text-sm transition-colors"
                   style={{
-                    color: isActive ? "#3092bb" : "#707A7E",
+                    color: isActive ? "#38B1E4" : "#707A7E",
                     fontWeight: isActive ? 700 : 500,
                     background: isActive ? "rgba(48,146,187,0.08)" : "transparent",
                     fontFamily: "Montserrat, sans-serif",
@@ -232,7 +232,7 @@ export default function TopBar({ title }: TopBarProps) {
                             onClick={() => handleSwitchProfile(p.id)}
                             className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm transition-colors hover:bg-black/5"
                             style={{
-                              color: isActive ? "#3092bb" : "#3A424E",
+                              color: isActive ? "#38B1E4" : "#3A424E",
                               fontFamily: "Montserrat, sans-serif",
                               fontWeight: isActive ? 600 : 400,
                             }}
@@ -255,7 +255,7 @@ export default function TopBar({ title }: TopBarProps) {
                             <span className="truncate flex-1 text-left">
                               {isActive ? label : `Trocar para: ${label}`}
                             </span>
-                            {isActive && <Check size={14} style={{ color: "#3092bb" }} />}
+                            {isActive && <Check size={14} style={{ color: "#38B1E4" }} />}
                           </button>
                         );
                       })}
@@ -267,7 +267,7 @@ export default function TopBar({ title }: TopBarProps) {
                   <button
                     onClick={handleAddDependent}
                     className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm transition-colors hover:bg-black/5"
-                    style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}
+                    style={{ color: "#38B1E4", fontFamily: "Montserrat, sans-serif" }}
                   >
                     <UserPlus size={15} />
                     Adicionar dependente

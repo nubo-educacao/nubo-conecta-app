@@ -24,7 +24,7 @@ interface OpportunityCardProps {
 const BadgeCompatibilidade = ({ score, variant }: { score: number; variant: 'default' | 'partner' }) => {
   const bgGradient = variant === 'partner'
     ? 'linear-gradient(-44.61deg, #7030C2 17.03%, rgba(112, 48, 194, 0.8) 47.27%, rgba(112, 48, 194, 0.6) 88.85%)'
-    : 'linear-gradient(159.94deg, #3092BB 13.38%, #164255 141.45%)';
+    : 'linear-gradient(159.94deg, #38B1E4 13.38%, #164255 141.45%)';
 
   return (
     <div
@@ -93,10 +93,10 @@ export default function OpportunityCard({
       hoverBorder: '#FF9900',
     },
     default: {
-      cardBg: 'linear-gradient(239.86deg, rgba(48, 146, 187, 0.8) 9.15%, #3092BB 59.27%)',
-      btnBg: 'rgba(4, 143, 173, 0.15)',
-      btnText: '#3092BB',
-      hoverBorder: '#3092BB',
+      cardBg: 'linear-gradient(239.86deg, rgba(56, 177, 228, 0.8) 9.15%, #38B1E4 59.27%)',
+      btnBg: 'white',
+      btnText: '#38B1E4',
+      hoverBorder: '#38B1E4',
     }
   };
 

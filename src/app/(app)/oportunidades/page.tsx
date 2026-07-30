@@ -3,7 +3,7 @@
 // Tab + filters controlled via searchParams for SSR-safe re-renders and URL shareability.
 // Figma tokens for SwitchPill (node 22:1160):
 //   Container:    bg-[#f3f4f6] h-[47px] rounded-full w-full
-//   Aba ativa:    bg-[#3092bb] rounded-full shadow-[0px_4px_6px_...] h-[39px]
+//   Aba ativa:    bg-[#38B1E4] rounded-full shadow-[0px_4px_6px_...] h-[39px]
 //   Texto ativo:  text-white font-semibold text-[13px] (Montserrat SemiBold)
 //   Texto inativo: text-[#636e7c] font-semibold text-[13px]
 

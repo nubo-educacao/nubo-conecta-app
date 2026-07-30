@@ -60,7 +60,7 @@ export default function CampusFilter({ locations }: CampusFilterProps) {
       {canScrollLeft && (
         <button
           onClick={() => scroll('left')}
-          className="hidden md:flex absolute -left-2 top-1/2 -translate-y-1/2 z-10 items-center justify-center w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 text-[#636e7c] hover:text-[#3092bb] transition-all hover:scale-105 active:scale-95"
+          className="hidden md:flex absolute -left-2 top-1/2 -translate-y-1/2 z-10 items-center justify-center w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 text-[#636e7c] hover:text-[#38B1E4] transition-all hover:scale-105 active:scale-95"
           aria-label="Rolar para esquerda"
         >
           <ChevronLeft size={18} />
@@ -83,12 +83,12 @@ export default function CampusFilter({ locations }: CampusFilterProps) {
           className={cn(
             "flex items-center gap-1.5 px-5 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 font-semibold text-[13px] active:scale-95",
             !selectedLocation
-              ? "bg-[#3092bb] text-white shadow-md shadow-[#3092bb]/20"
-              : "bg-white/60 text-[#636e7c] hover:bg-white border border-[#3092bb]/20"
+              ? "bg-[#38B1E4] text-white shadow-md shadow-[#38B1E4]/20"
+              : "bg-white/60 text-[#636e7c] hover:bg-white border border-[#38B1E4]/20"
           )}
           style={{ fontFamily: 'Montserrat, sans-serif' }}
         >
-          <MapPin size={14} className={!selectedLocation ? "text-white" : "text-[#3092bb]"} />
+          <MapPin size={14} className={!selectedLocation ? "text-white" : "text-[#38B1E4]"} />
           Todos os Campus
         </button>
 
@@ -99,8 +99,8 @@ export default function CampusFilter({ locations }: CampusFilterProps) {
             className={cn(
               "flex items-center px-5 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 font-semibold text-[13px] active:scale-95",
               selectedLocation === loc
-                ? "bg-[#3092bb] text-white shadow-md shadow-[#3092bb]/20"
-                : "bg-white/60 text-[#636e7c] hover:bg-white border border-gray-200/60 hover:border-[#3092bb]/30"
+                ? "bg-[#38B1E4] text-white shadow-md shadow-[#38B1E4]/20"
+                : "bg-white/60 text-[#636e7c] hover:bg-white border border-gray-200/60 hover:border-[#38B1E4]/30"
             )}
             style={{ fontFamily: 'Montserrat, sans-serif' }}
           >
@@ -112,7 +112,7 @@ export default function CampusFilter({ locations }: CampusFilterProps) {
       {canScrollRight && (
         <button
           onClick={() => scroll('right')}
-          className="hidden md:flex absolute -right-2 top-1/2 -translate-y-1/2 z-10 items-center justify-center w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 text-[#636e7c] hover:text-[#3092bb] transition-all hover:scale-105 active:scale-95"
+          className="hidden md:flex absolute -right-2 top-1/2 -translate-y-1/2 z-10 items-center justify-center w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 text-[#636e7c] hover:text-[#38B1E4] transition-all hover:scale-105 active:scale-95"
           aria-label="Rolar para direita"
         >
           <ChevronRight size={18} />

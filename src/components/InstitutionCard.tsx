@@ -44,7 +44,7 @@ export default function InstitutionCard({
   const isPartner = institution.type === 'partner';
   
   // Nubo Colors
-  const nuboPrimary = '#3092BB';
+  const nuboPrimary = '#38B1E4';
   const brandColor = (isPartner && institution.brand_color) ? institution.brand_color : '#7030C2'; // Use partner brand color or default partner purple
   
   // Theme similar to OpportunityCard
@@ -55,9 +55,9 @@ export default function InstitutionCard({
       hoverBorder: '#FF9900',
     },
     default: {
-      cardBg: 'linear-gradient(239.86deg, rgba(48, 146, 187, 0.8) 9.15%, #3092BB 59.27%)',
-      btnText: '#3092BB',
-      hoverBorder: '#3092BB',
+      cardBg: 'linear-gradient(239.86deg, rgba(56, 177, 228, 0.8) 9.15%, #38B1E4 59.27%)',
+      btnText: '#38B1E4',
+      hoverBorder: '#38B1E4',
     }
   };
 

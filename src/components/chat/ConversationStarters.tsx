@@ -40,7 +40,7 @@ export default function ConversationStarters({
             className="text-left px-3 py-2 rounded-xl text-xs font-medium transition-all hover:shadow-sm active:scale-[0.98]"
             style={{
               background: 'rgba(255,255,255,0.8)',
-              color: '#3092bb',
+              color: '#38B1E4',
               border: '1px solid rgba(48,146,187,0.3)',
               fontFamily: 'Montserrat, sans-serif',
             }}

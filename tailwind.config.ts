@@ -12,7 +12,8 @@ const config: Config = {
       // Design tokens — extraídos do Figma (node 32:6814) em 2026-04-01
       colors: {
         nubo: {
-          primary:       "#3092bb",   // Novo Azul MEC
+          primary:       "#38B1E4",   // Novo Azul MEC
+          secondary:     "#E6F4F9",
           "primary-light": "#60c6f2", 
           "primary-dark":  "#024F86", // Logo / Dark
           "nav-active":  "#3092bb",   // Alinhado com MEC

@@ -100,7 +100,7 @@ export default function DetailsLayout({
     fetchExisting();
   }, [user, activeProfileId, opportunity.id, isPartner]);
 
-  const brandColor = opportunity.brand_color || (isPartner ? '#7030C2' : '#3092BB');
+  const brandColor = opportunity.brand_color || (isPartner ? '#7030C2' : '#38B1E4');
 
   const mobileFallback = isPartner ? "/assets/institution-partner-cover.png" : "/assets/institution-cover.png";
   const desktopFallback = isPartner ? "/assets/institution-partner-desktop-cover.png" : "/assets/institution-desktop-cover.png";
@@ -317,7 +317,7 @@ export default function DetailsLayout({
           if (key === 'badges') return null;
 
           let displayValue = String(value);
-          let icon = <Info size={16} className="text-[#3092BB]" />;
+          let icon = <Info size={16} className="text-[#38B1E4]" />;
 
           if (key === 'income') {
             displayValue = String(value);
@@ -382,7 +382,7 @@ export default function DetailsLayout({
           style={{
             background: isPartner
               ? brandColor
-              : 'linear-gradient(239.86deg, rgba(48, 146, 187, 0.8) 9.15%, #3092BB 59.27%)'
+              : 'linear-gradient(239.86deg, rgba(48, 146, 187, 0.8) 9.15%, #38B1E4 59.27%)'
           }}
         >
           {/* Image Overlay */}
@@ -443,7 +443,7 @@ export default function DetailsLayout({
 
         {/* Category Chips on Hero */}
         <div className="absolute bottom-6 left-6 flex gap-2 z-20 overflow-x-auto pb-1 no-scrollbar">
-          <span className="bg-white/90 backdrop-blur-md text-[#3092BB] text-[12px] font-black px-4 py-1.5 rounded-full shadow-lg whitespace-nowrap">
+          <span className="bg-white/90 backdrop-blur-md text-[#38B1E4] text-[12px] font-black px-4 py-1.5 rounded-full shadow-lg whitespace-nowrap">
             {categoryLabel}
           </span>
           <span className="bg-white/20 backdrop-blur-md text-white text-[12px] font-bold px-4 py-1.5 rounded-full border border-white/30 shadow-lg whitespace-nowrap">
@@ -460,7 +460,7 @@ export default function DetailsLayout({
           </h1>
           <Link
             href={`/instituicoes/${opportunity.institution_id}`}
-            className="flex items-center gap-2 mt-2 text-[#3092BB] font-bold hover:underline"
+            className="flex items-center gap-2 mt-2 text-[#38B1E4] font-bold hover:underline"
           >
             <Building2 size={18} />
             <span className="text-sm">{opportunity.institution_name}</span>
@@ -485,7 +485,7 @@ export default function DetailsLayout({
                 <circle cx="18" cy="18" r="16" fill="none" className="stroke-gray-100" strokeWidth="3" />
                 <motion.circle
                   cx="18" cy="18" r="16" fill="none"
-                  className="stroke-[#3092BB]"
+                  className="stroke-[#38B1E4]"
                   strokeWidth="3"
                   strokeDasharray="100 100"
                   initial={{ strokeDashoffset: 100 }}
@@ -495,10 +495,10 @@ export default function DetailsLayout({
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-sm font-black text-[#3092BB] leading-none">
+                <span className="text-sm font-black text-[#38B1E4] leading-none">
                   {Math.round(Number(opportunity.match_score))}%
                 </span>
-                <span className="text-[7px] font-light text-[#3092BB] uppercase tracking-tighter">match</span>
+                <span className="text-[7px] font-light text-[#38B1E4] uppercase tracking-tighter">match</span>
               </div>
             </div>
             <button
@@ -509,7 +509,7 @@ export default function DetailsLayout({
                   })
                 );
               }}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#3092BB]/10 text-[#3092BB] text-[10px] font-bold hover:bg-[#3092BB]/20 active:scale-95 transition-all duration-200 whitespace-nowrap"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#38B1E4]/10 text-[#38B1E4] text-[10px] font-bold hover:bg-[#38B1E4]/20 active:scale-95 transition-all duration-200 whitespace-nowrap"
             >
               <Sparkles size={11} />
               Entender Match
@@ -651,7 +651,7 @@ export default function DetailsLayout({
                 className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100"
               >
                 <h3 className="text-[#3A424E] font-bold text-lg mb-4 flex items-center gap-2">
-                  <Award size={20} className="text-[#3092BB]" />
+                  <Award size={20} className="text-[#38B1E4]" />
                   Pesos do ENEM
                 </h3>
                 <div className="grid grid-cols-5 gap-2">
@@ -736,7 +736,7 @@ export default function DetailsLayout({
                           <td className="py-2 text-right text-[#636E7C]">
                             {row.nota_maxima != null ? Number(row.nota_maxima).toFixed(1) : '—'}
                           </td>
-                          <td className="py-2 text-right text-[#3092BB] font-bold">
+                          <td className="py-2 text-right text-[#38B1E4] font-bold">
                             {row.nota_media != null ? Number(row.nota_media).toFixed(1) : '—'}
                           </td>
                         </tr>
@@ -822,7 +822,7 @@ export default function DetailsLayout({
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-50 rounded-2xl p-4">
                 <p className="text-[10px] text-gray-400 font-bold uppercase">IGC (MEC)</p>
-                <p className="text-lg font-black text-[#3092BB]">{opportunity.institution_igc || 'N/A'}</p>
+                <p className="text-lg font-black text-[#38B1E4]">{opportunity.institution_igc || 'N/A'}</p>
               </div>
               <div className="bg-gray-50 rounded-2xl p-4">
                 <p className="text-[10px] text-gray-400 font-bold uppercase">Organização</p>
@@ -902,7 +902,7 @@ export default function DetailsLayout({
     {isOpen && (() => {
       const floatShell = "fixed bottom-6 left-4 right-4 md:left-8 md:right-8 z-[200] flex flex-col items-stretch gap-2";
       const btnBase = "w-full h-14 rounded-full font-black text-base flex items-center justify-center gap-2 transition-all duration-200";
-      const shadow = isPartner ? 'shadow-[#7030C2]/40' : 'shadow-[#3092BB]/40';
+      const shadow = isPartner ? 'shadow-[#7030C2]/40' : 'shadow-[#38B1E4]/40';
       
       let label = isPartner ? 'Candidatar Agora' : 'Quero me Candidatar';
       let isDisabled = applying || loadingApplication;

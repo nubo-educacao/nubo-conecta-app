@@ -135,7 +135,7 @@ export default function AddDependentSheet({ open, onClose }: AddDependentSheetPr
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Nome do dependente"
-                  className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-[#3092bb] transition-colors"
+                  className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-[#38B1E4] transition-colors"
                   style={{ borderColor: "#E2E8F0", fontFamily: "Montserrat, sans-serif", color: "#3A424E" }}
                 />
               </div>
@@ -151,7 +151,7 @@ export default function AddDependentSheet({ open, onClose }: AddDependentSheetPr
                   type="date"
                   value={birthDate}
                   onChange={(e) => setBirthDate(e.target.value)}
-                  className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-[#3092bb] transition-colors"
+                  className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-[#38B1E4] transition-colors"
                   style={{ borderColor: "#E2E8F0", fontFamily: "Montserrat, sans-serif", color: "#3A424E" }}
                 />
               </div>
@@ -167,7 +167,7 @@ export default function AddDependentSheet({ open, onClose }: AddDependentSheetPr
                   required
                   value={relationship}
                   onChange={(e) => setRelationship(e.target.value)}
-                  className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-[#3092bb] transition-colors bg-white"
+                  className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-[#38B1E4] transition-colors bg-white"
                   style={{ borderColor: "#E2E8F0", fontFamily: "Montserrat, sans-serif", color: "#3A424E" }}
                 >
                   <option value="">Selecione...</option>

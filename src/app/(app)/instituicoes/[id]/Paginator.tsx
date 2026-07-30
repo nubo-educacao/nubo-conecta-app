@@ -23,11 +23,11 @@ export default function Paginator({ currentPage, totalPages }: { currentPage: nu
         className="flex items-center justify-center w-9 h-9 rounded-full transition-all disabled:opacity-30"
         style={{ background: 'rgba(48,146,187,0.1)' }}
       >
-        <ChevronLeft size={16} style={{ color: '#3092bb' }} />
+        <ChevronLeft size={16} style={{ color: '#38B1E4' }} />
       </button>
       <span
         className="text-[13px] font-bold px-3 py-1.5 rounded-full"
-        style={{ background: '#3092bb', color: '#fff', fontFamily: 'Montserrat, sans-serif' }}
+        style={{ background: '#38B1E4', color: '#fff', fontFamily: 'Montserrat, sans-serif' }}
       >
         {currentPage} de {totalPages}
       </span>
@@ -37,7 +37,7 @@ export default function Paginator({ currentPage, totalPages }: { currentPage: nu
         className="flex items-center justify-center w-9 h-9 rounded-full transition-all disabled:opacity-30"
         style={{ background: 'rgba(48,146,187,0.1)' }}
       >
-        <ChevronRight size={16} style={{ color: '#3092bb' }} />
+        <ChevronRight size={16} style={{ color: '#38B1E4' }} />
       </button>
     </div>
   );
