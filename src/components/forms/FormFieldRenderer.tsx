@@ -206,7 +206,7 @@ export default function FormFieldRenderer({
                     >
                         <legend className={`
                             px-1 text-[11px] md:text-sm font-bold transition-all duration-200
-                            ${hasError ? 'text-red-500' : 'text-[#024F86] group-focus-within:text-[#38B1E4] md:group-focus-within:text-[#024F86]'}
+                            text-[#024F86] group-focus-within:text-[#38B1E4] md:group-focus-within:text-[#024F86]
                             ${isButtonField ? 'bg-transparent mb-1' : 'bg-[#fcfdfe]'}
                             max-w-full whitespace-normal leading-tight rounded-sm
                             md:px-0 md:bg-transparent md:mb-2 md:block`}

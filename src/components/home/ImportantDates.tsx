@@ -98,7 +98,7 @@ export default function ImportantDates({ dates }: ImportantDatesProps) {
             >
               {/* Calendário: bg-white rounded-full shadow-sm, ícone grafite */}
               <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-sm mt-0.5">
-                <Calendar size={18} style={{ color: '#3A424E' }} strokeWidth={1.75} />
+                <Calendar size={18} style={{ color: styles.dateColor }} strokeWidth={1.75} />
               </div>
 
               {/* Conteúdo */}

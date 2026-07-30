@@ -95,7 +95,7 @@ export default function HeroSearch() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Ex: Medicina em São Paulo..."
-              className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-white/50"
+              className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-white/50 focus:placeholder-transparent"
               style={{ fontFamily: 'Montserrat, sans-serif' }}
             />
             {/* Botão: círculo perfeito com ArrowRight */}
