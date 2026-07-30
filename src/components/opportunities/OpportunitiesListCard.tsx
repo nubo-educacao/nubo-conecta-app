@@ -114,7 +114,7 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
 
   const isSisu = opportunities[0]?.opportunity_type?.toLowerCase() === 'sisu';
   const isProuni = opportunities[0]?.opportunity_type?.toLowerCase() === 'prouni';
-  const accentColor = isSisu ? '#3092BB' : '#7030C2';
+  const accentColor = isSisu ? '#38B1E4' : '#7030C2';
 
   const renderTags = (tags: any) => {
     if (!tags || tags.length === 0) return null;
@@ -134,7 +134,7 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                 return (
                   <span 
                     key={tag} 
-                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${style.bg} ${style.text} ${style.border} whitespace-nowrap`}
+                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${style.bg} ${style.text} ${style.border} whitespace-nowrap hover:brightness-95 transition-all cursor-default`}
                   >
                     {style.label}
                   </span>
@@ -270,7 +270,7 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                       )}
 
                       <div className="relative group/info">
-                        <Info size={14} className="text-slate-300 cursor-help hover:text-[#3092BB] transition-colors" />
+                        <Info size={14} className="text-slate-300 cursor-help hover:text-[#38B1E4] transition-colors" />
                         <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-[#3A424E] text-white text-[10px] rounded-lg opacity-0 group-hover/info:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl leading-tight">
                           {opp.concurrency_type || opp.scholarship_type || 'Vaga regular sem restrições de cota.'}
                           <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#3A424E]" />

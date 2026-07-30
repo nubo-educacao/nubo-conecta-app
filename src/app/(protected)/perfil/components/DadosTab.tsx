@@ -35,7 +35,7 @@ const formatCurrency = (v: number | null | undefined) => {
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
 const inputCls =
-  "w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#3092bb] transition-colors bg-white";
+  "w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#38B1E4] transition-colors bg-white";
 const inputStyle = { borderColor: "#E2E8F0", fontFamily: "Montserrat, sans-serif", color: "#3A424E" };
 const labelStyle = { color: "#707A7E", fontFamily: "Montserrat, sans-serif" };
 
@@ -133,8 +133,8 @@ function EditActions({
     return (
       <button
         onClick={onEdit}
-        className="flex items-center gap-1 text-xs font-semibold"
-        style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}
+        className="flex items-center gap-1 text-xs font-semibold hover:opacity-70 active:scale-95 transition-all"
+        style={{ color: "#38B1E4", fontFamily: "Montserrat, sans-serif" }}
       >
         <Pencil size={12} /> Editar
       </button>
@@ -370,7 +370,7 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
                 <button
                   type="button"
                   onClick={() => openAuthModal('UPDATE_PHONE')}
-                  className="px-3 py-2 bg-[#3092bb] text-white text-xs font-bold rounded-xl"
+                  className="px-3 py-2 bg-[#38B1E4] text-white text-xs font-bold rounded-xl"
                   style={{ fontFamily: "Montserrat, sans-serif" }}
                 >
                   Alterar

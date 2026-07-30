@@ -64,12 +64,12 @@ function Chip({ label, active, onClick, showX }: { label: string; active: boolea
     <button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1.5 ${active ? "shadow-sm" : ""}`}
+      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1.5 hover:opacity-80 active:scale-95 ${active ? "shadow-sm" : ""}`}
       style={{
         fontFamily: "Montserrat, sans-serif",
-        background: active ? "#3092bb" : "transparent",
+        background: active ? "#38B1E4" : "transparent",
         color: active ? "white" : "#707A7E",
-        borderColor: active ? "#3092bb" : "#E2E8F0",
+        borderColor: active ? "#38B1E4" : "#E2E8F0",
       }}
     >
       {label}
@@ -95,7 +95,7 @@ function Section({ title, editing, onEdit, onSave, onCancel, saving, children, r
           {title}
         </h3>
         {!editing ? (
-          <button onClick={onEdit} className="flex items-center gap-1 text-xs font-semibold" style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}>
+          <button onClick={onEdit} className="flex items-center gap-1 text-xs font-semibold hover:opacity-70 active:scale-95 transition-all" style={{ color: "#38B1E4", fontFamily: "Montserrat, sans-serif" }}>
             <Pencil size={12} /> Editar
           </button>
         ) : (
@@ -126,7 +126,7 @@ function InputNum({ label, value, onChange }: { label: string; value: string; on
         type="number"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#3092bb] transition-colors"
+        className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#38B1E4] transition-colors"
         style={{ borderColor: "#E2E8F0", fontFamily: "Montserrat, sans-serif", color: "#3A424E" }}
       />
     </div>
@@ -303,7 +303,7 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
               <div className="relative flex-1">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#707A7E]" />
                 <input
-                  className="w-full rounded-xl border pl-9 pr-8 py-2 text-sm outline-none focus:border-[#3092bb] transition-colors"
+                  className="w-full rounded-xl border pl-9 pr-8 py-2 text-sm outline-none focus:border-[#38B1E4] transition-colors"
                   style={{ borderColor: "#E2E8F0", fontFamily: "Montserrat, sans-serif", color: "#3A424E" }}
                   placeholder="Buscar curso (ex: Medicina)..."
                   value={courseInput}
@@ -319,7 +319,7 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
                   }}
                 />
                 {coursesLoading && (
-                  <Loader2 size={14} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-[#3092bb]" />
+                  <Loader2 size={14} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-[#38B1E4]" />
                 )}
               </div>
             </div>
@@ -384,12 +384,12 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
               <label 
                 key={q.id} 
                 className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                  quotaTypes.includes(q.id) ? "bg-[#E0F2FE]/50 border-[#3092bb]/50" : "bg-white/30 border-black/5"
+                  quotaTypes.includes(q.id) ? "bg-[#E0F2FE]/50 border-[#38B1E4]/50" : "bg-white/30 border-black/5"
                 }`}
               >
                 <input 
                   type="checkbox" 
-                  className="w-4 h-4 accent-[#3092bb]"
+                  className="w-4 h-4 accent-[#38B1E4]"
                   checked={quotaTypes.includes(q.id)}
                   onChange={() => {
                     if (quotaTypes.includes(q.id)) setQuotaTypes(quotaTypes.filter(x => x !== q.id));
@@ -502,7 +502,7 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
                 value={locationPref}
                 onChange={(e) => setLocationPref(e.target.value)}
                 placeholder="Ex: Capital, Interior..."
-                className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#3092bb] transition-colors"
+                className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#38B1E4] transition-colors"
                 style={{ borderColor: "#E2E8F0", fontFamily: "Montserrat, sans-serif", color: "#3A424E" }}
               />
             </div>
@@ -515,7 +515,7 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
                 value={statePref}
                 onChange={(e) => setStatePref(e.target.value)}
                 placeholder="Ex: SP, RJ..."
-                className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#3092bb] transition-colors"
+                className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#38B1E4] transition-colors"
                 style={{ borderColor: "#E2E8F0", fontFamily: "Montserrat, sans-serif", color: "#3A424E" }}
               />
             </div>
