@@ -1,34 +1,27 @@
 // TP-5 5b — Server Action submitPartnerSolicitation (card 7410a5bc).
-// Mocka @supabase/ssr e next/headers, como redirectService.test.ts — sem banco real.
+//
+// A escrita e a validação de negócio vivem na RPC submit_partner_solicitation
+// (migration 20260812120000), exercitada contra Postgres real em
+// supabase/tests/. Aqui se testa o que é responsabilidade DESTA camada:
+// honeypot, resolução do IP, encaminhamento dos campos e tradução do status
+// para o que a UI mostra.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const mockHeaderGet = vi.fn();
+
 vi.mock('next/headers', () => ({
   cookies: vi.fn().mockResolvedValue({ getAll: () => [], setAll: () => {} }),
+  headers: vi.fn().mockResolvedValue({ get: (k: string) => mockHeaderGet(k) }),
 }));
 
-const mockInsert = vi.fn();
-const mockLimit = vi.fn();
-const mockFrom = vi.fn();
+const mockRpc = vi.fn();
 
 vi.mock('@supabase/ssr', () => ({
-  createServerClient: vi.fn(() => ({ from: mockFrom })),
+  createServerClient: vi.fn(() => ({ rpc: mockRpc })),
 }));
 
 import { submitPartnerSolicitation } from '@/services/partnerSolicitations';
-
-/** Encadeamento do dedupe: .select().eq().gte().or().limit() */
-function buildQueryChain() {
-  const chain = {
-    select: vi.fn(() => chain),
-    eq: vi.fn(() => chain),
-    gte: vi.fn(() => chain),
-    or: vi.fn(() => chain),
-    limit: mockLimit,
-    insert: mockInsert,
-  };
-  return chain;
-}
 
 const valid = {
   institution_name: 'Instituto Sol',
@@ -41,106 +34,113 @@ const valid = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockFrom.mockImplementation(() => buildQueryChain());
-  mockLimit.mockResolvedValue({ data: [], error: null });
-  mockInsert.mockResolvedValue({ error: null });
+  mockHeaderGet.mockReturnValue(null);
+  mockRpc.mockResolvedValue({ data: { status: 'created' }, error: null });
 });
 
-describe('submitPartnerSolicitation — validação', () => {
-  it('aceita uma submissão válida e insere', async () => {
+describe('submitPartnerSolicitation — encaminhamento', () => {
+  it('delega para a RPC, sem inserir na tabela direto', async () => {
     const result = await submitPartnerSolicitation(valid);
 
     expect(result).toEqual({ ok: true, duplicate: false });
-    expect(mockInsert).toHaveBeenCalledTimes(1);
-    expect(mockInsert).toHaveBeenCalledWith(
+    expect(mockRpc).toHaveBeenCalledTimes(1);
+    expect(mockRpc).toHaveBeenCalledWith(
+      'submit_partner_solicitation',
       expect.objectContaining({
-        institution_name: 'Instituto Sol',
-        contact_name: 'Maria',
-        email: 'maria@instituto.org',
-        how_did_you_know: 'Indicação',
+        p_institution_name: 'Instituto Sol',
+        p_contact_name: 'Maria',
+        p_email: 'maria@instituto.org',
+        p_how_did_you_know: 'Indicação',
       }),
     );
   });
 
-  it('rejeita sem nome da instituição, sem inserir', async () => {
-    const result = await submitPartnerSolicitation({ ...valid, institution_name: '   ' });
+  it('usa o primeiro IP de x-forwarded-for, não a cadeia inteira', async () => {
+    // Os demais endereços da cadeia são dos proxies; usar a string toda daria
+    // um "IP" distinto por rota e furaria o rate limit.
+    mockHeaderGet.mockImplementation((k: string) =>
+      k === 'x-forwarded-for' ? '203.0.113.7, 70.41.3.18, 150.172.238.178' : null,
+    );
 
-    expect(result).toEqual({ ok: false, error: 'Informe o nome da instituição.' });
-    expect(mockInsert).not.toHaveBeenCalled();
-  });
+    await submitPartnerSolicitation(valid);
 
-  it('rejeita quando não há nem whatsapp válido nem e-mail válido', async () => {
-    const result = await submitPartnerSolicitation({
-      ...valid,
-      email: '',
-      whatsapp: '123',
-    });
-
-    expect(result.ok).toBe(false);
-    expect(mockInsert).not.toHaveBeenCalled();
-  });
-
-  it('aceita só com whatsapp, sem e-mail', async () => {
-    const result = await submitPartnerSolicitation({
-      ...valid,
-      email: '',
-      whatsapp: '(11) 98888-7777',
-    });
-
-    expect(result).toEqual({ ok: true, duplicate: false });
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ whatsapp: '(11) 98888-7777', email: null }),
+    expect(mockRpc).toHaveBeenCalledWith(
+      'submit_partner_solicitation',
+      expect.objectContaining({ p_ip: '203.0.113.7' }),
     );
   });
 
-  it('normaliza o e-mail para minúsculas', async () => {
-    await submitPartnerSolicitation({ ...valid, email: 'Maria@Instituto.ORG' });
+  it('cai para x-real-ip quando não há x-forwarded-for', async () => {
+    mockHeaderGet.mockImplementation((k: string) => (k === 'x-real-ip' ? '198.51.100.4' : null));
 
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'maria@instituto.org' }),
+    await submitPartnerSolicitation(valid);
+
+    expect(mockRpc).toHaveBeenCalledWith(
+      'submit_partner_solicitation',
+      expect.objectContaining({ p_ip: '198.51.100.4' }),
     );
   });
 
-  it('trunca campos longos em vez de deixar a tabela crescer sem teto', async () => {
-    await submitPartnerSolicitation({ ...valid, goals: 'x'.repeat(5000) });
+  it('envia null quando não consegue resolver o IP, sem quebrar', async () => {
+    const result = await submitPartnerSolicitation(valid);
 
-    const inserted = mockInsert.mock.calls[0][0];
-    expect(inserted.goals.length).toBe(2000);
+    expect(result.ok).toBe(true);
+    expect(mockRpc).toHaveBeenCalledWith(
+      'submit_partner_solicitation',
+      expect.objectContaining({ p_ip: null }),
+    );
   });
 });
 
-describe('submitPartnerSolicitation — abuso', () => {
-  it('descarta submissão com honeypot preenchido, respondendo sucesso', async () => {
+describe('submitPartnerSolicitation — honeypot', () => {
+  it('descarta antes de tocar o banco e responde sucesso', async () => {
     // Sucesso e não erro de propósito: dizer "você é um bot" ensina o bot.
     const result = await submitPartnerSolicitation({ ...valid, website: 'http://spam.example' });
 
     expect(result).toEqual({ ok: true, duplicate: false });
-    expect(mockInsert).not.toHaveBeenCalled();
-  });
-
-  it('trata reenvio do mesmo contato como duplicado e não insere de novo', async () => {
-    mockLimit.mockResolvedValue({ data: [{ id: 'existente' }], error: null });
-
-    const result = await submitPartnerSolicitation(valid);
-
-    expect(result).toEqual({ ok: true, duplicate: true });
-    expect(mockInsert).not.toHaveBeenCalled();
-  });
-
-  it('não perde o lead se a checagem de duplicidade falhar', async () => {
-    // Um duplicado custa menos que um lead perdido.
-    mockLimit.mockResolvedValue({ data: null, error: { message: 'timeout' } });
-
-    const result = await submitPartnerSolicitation(valid);
-
-    expect(result).toEqual({ ok: true, duplicate: false });
-    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 });
 
-describe('submitPartnerSolicitation — falha de escrita', () => {
+describe('submitPartnerSolicitation — tradução do status', () => {
+  it('duplicate vira sucesso marcado como duplicado', async () => {
+    mockRpc.mockResolvedValue({ data: { status: 'duplicate' }, error: null });
+
+    expect(await submitPartnerSolicitation(valid)).toEqual({ ok: true, duplicate: true });
+  });
+
+  it('rate_limited vira mensagem de espera, não erro genérico', async () => {
+    mockRpc.mockResolvedValue({ data: { status: 'rate_limited', scope: 'ip' }, error: null });
+
+    const result = await submitPartnerSolicitation(valid);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/aguarde alguns minutos/i);
+  });
+
+  it('invalid usa a mensagem do campo que a RPC apontou', async () => {
+    mockRpc.mockResolvedValue({
+      data: { status: 'invalid', field: 'contact' },
+      error: null,
+    });
+
+    const result = await submitPartnerSolicitation(valid);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/WhatsApp válido ou um e-mail válido/);
+  });
+
+  it('status desconhecido não é tratado como sucesso', async () => {
+    mockRpc.mockResolvedValue({ data: { status: 'algo_novo' }, error: null });
+
+    expect((await submitPartnerSolicitation(valid)).ok).toBe(false);
+  });
+});
+
+describe('submitPartnerSolicitation — falha da RPC', () => {
   it('devolve erro genérico e não vaza detalhe do banco', async () => {
-    mockInsert.mockResolvedValue({
+    mockRpc.mockResolvedValue({
+      data: null,
       error: { message: 'duplicate key value violates unique constraint "pk_xyz"' },
     });
 

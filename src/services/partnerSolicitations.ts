@@ -1,19 +1,32 @@
 'use server';
 // Server Action: submitPartnerSolicitation — TP-5 5b, card 7410a5bc
 //
-// Porta o formulário "Seja um parceiro Nubo" do nubo-hub-app (legado) para o
-// nubo-conecta-app. PLAYBOOK § 2: mutações via Server Action.
+// Porta o formulário "Seja um parceiro Nubo" do nubo-hub-app (legado).
+// PLAYBOOK § 2: mutações via Server Action.
 //
-// Por que Server Action e não insert direto do client, como fazia o legado:
-// a policy de INSERT em partner_solicitations é pública (`WITH CHECK true`) —
-// ela existe em produção e NÃO deve ser recriada. Uma policy aberta significa
-// que qualquer pessoa com a anon key pode escrever nessa tabela. Expor o insert
-// direto do browser é entregar o endpoint pronto. Passando por Server Action, a
-// validação, o honeypot e a deduplicação rodam no servidor, onde o cliente não
-// alcança.
+// A escrita NÃO acontece aqui: esta função valida o que dá para validar barato,
+// resolve o IP e delega para a RPC `submit_partner_solicitation`, que é a única
+// porta de entrada da tabela (migration 20260812120000).
+//
+// Por que a RPC e não um insert daqui:
+//
+//   1. Deduplicar exige LER a tabela, e a policy de leitura é restrita a admin
+//      (`permission = 'Dashboard'`). Um visitante anônimo não tem auth.uid(),
+//      então o SELECT volta vazio SEMPRE — não "às vezes". Uma primeira versão
+//      desta função deduplicava assim e a dedupe nunca disparava. A RPC é
+//      SECURITY DEFINER e enxerga o que o RLS esconderia.
+//
+//   2. Rate limit precisa de estado compartilhado entre invocações. Contador em
+//      memória não serve em serverless: cada instância teria o seu, e quem
+//      abusa cai numa instância nova a cada request. O banco JÁ é esse estado
+//      compartilhado — a RPC conta as tentativas por hash de IP lá dentro. Não
+//      é preciso Redis nem WAF.
+//
+//   3. A migration 20260812120100 removeu a policy de INSERT público. Não
+//      existe mais caminho alternativo de escrita para quem não é admin.
 
 import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 
 export interface PartnerSolicitationInput {
   institution_name: string;
@@ -30,66 +43,42 @@ export type SubmitResult =
   | { ok: true; duplicate: boolean }
   | { ok: false; error: string };
 
-/** Limites de tamanho — a tabela aceita texto livre; sem teto, um POST enche a tabela. */
-const MAX = {
-  institution_name: 200,
-  contact_name: 150,
-  whatsapp: 20,
-  email: 254,
-  how_did_you_know: 500,
-  goals: 2000,
-} as const;
+const MESSAGES: Record<string, string> = {
+  institution_name: 'Informe o nome da instituição.',
+  contact_name: 'Informe o nome do responsável.',
+  how_did_you_know: 'Conte como conheceu a Nubo.',
+  contact: 'Informe um WhatsApp válido ou um e-mail válido.',
+};
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const GENERIC_ERROR = 'Não foi possível enviar agora. Tente novamente em instantes.';
+const RATE_LIMITED =
+  'Recebemos várias solicitações deste dispositivo. Aguarde alguns minutos e tente de novo.';
 
-/** Janela de deduplicação: reenvio do mesmo contato dentro dela é tratado como idempotente. */
-const DEDUPE_WINDOW_HOURS = 24;
-
-function clean(value: string | undefined, max: number): string {
-  return (value ?? '').trim().slice(0, max);
-}
-
-function digitsOnly(value: string): string {
-  return value.replace(/\D/g, '');
+/** Primeiro IP do encadeamento de proxies; os seguintes são dos próprios proxies. */
+async function resolveClientIp(): Promise<string | null> {
+  const h = await headers();
+  const forwarded = h.get('x-forwarded-for');
+  if (forwarded) {
+    const first = forwarded.split(',')[0]?.trim();
+    if (first) return first;
+  }
+  return h.get('x-real-ip');
 }
 
 /**
  * Registra uma solicitação de parceria.
  *
- * Nunca lança para o cliente: devolve `{ ok: false, error }` com mensagem
- * genérica. Detalhe de erro do banco vira log do servidor — mensagem de erro
- * detalhada num formulário público é superfície de reconhecimento.
+ * Nunca lança para o cliente e nunca devolve detalhe do banco: mensagem de erro
+ * detalhada em formulário público é superfície de reconhecimento.
  */
 export async function submitPartnerSolicitation(
   input: PartnerSolicitationInput,
 ): Promise<SubmitResult> {
-  // ── Honeypot ───────────────────────────────────────────────────────────────
-  // Responde sucesso, não erro: dizer "você é um bot" ensina o bot a contornar.
-  if (clean(input.website, 100).length > 0) {
+  // Honeypot barrado aqui, antes de gastar uma ida ao banco. Responde sucesso e
+  // não erro: dizer "você é um bot" ensina o bot a contornar na próxima.
+  if ((input.website ?? '').trim().length > 0) {
     console.warn('[partner-solicitation] honeypot acionado, submissão descartada');
     return { ok: true, duplicate: false };
-  }
-
-  const institution_name = clean(input.institution_name, MAX.institution_name);
-  const contact_name = clean(input.contact_name, MAX.contact_name);
-  const how_did_you_know = clean(input.how_did_you_know, MAX.how_did_you_know);
-  const goals = clean(input.goals, MAX.goals);
-  const email = clean(input.email, MAX.email).toLowerCase();
-  const whatsappRaw = clean(input.whatsapp, MAX.whatsapp);
-  const whatsappDigits = digitsOnly(whatsappRaw);
-
-  // ── Validação (espelha a do modal legado) ──────────────────────────────────
-  if (!institution_name) return { ok: false, error: 'Informe o nome da instituição.' };
-  if (!contact_name) return { ok: false, error: 'Informe o nome do responsável.' };
-  if (!how_did_you_know) return { ok: false, error: 'Conte como conheceu a Nubo.' };
-
-  const hasPhone = whatsappDigits.length >= 10;
-  const hasEmail = EMAIL_RE.test(email);
-  if (!hasPhone && !hasEmail) {
-    return { ok: false, error: 'Informe um WhatsApp válido ou um e-mail válido.' };
-  }
-  if (email && !hasEmail) {
-    return { ok: false, error: 'O e-mail informado não parece válido.' };
   }
 
   const cookieStore = await cookies();
@@ -104,47 +93,45 @@ export async function submitPartnerSolicitation(
     },
   );
 
-  // ── Deduplicação / idempotência ────────────────────────────────────────────
-  // Duplo clique e reenvio por ansiedade são o caso comum; sem isto a equipe
-  // comercial recebe o mesmo lead três vezes. Devolve sucesso, porque do ponto
-  // de vista de quem preencheu o formulário deu certo — e deu.
-  const since = new Date(Date.now() - DEDUPE_WINDOW_HOURS * 3600_000).toISOString();
-  const contactFilters: string[] = [];
-  if (hasEmail) contactFilters.push(`email.eq.${email}`);
-  if (hasPhone) contactFilters.push(`whatsapp.eq.${whatsappRaw}`);
+  const ip = await resolveClientIp();
 
-  if (contactFilters.length > 0) {
-    const { data: existing, error: dedupeError } = await supabase
-      .from('partner_solicitations')
-      .select('id')
-      .eq('institution_name', institution_name)
-      .gte('created_at', since)
-      .or(contactFilters.join(','))
-      .limit(1);
-
-    if (dedupeError) {
-      // Falha na checagem não bloqueia o lead: um duplicado custa menos que um
-      // lead perdido. Só registra.
-      console.error('[partner-solicitation] falha ao checar duplicidade:', dedupeError);
-    } else if (existing && existing.length > 0) {
-      return { ok: true, duplicate: true };
-    }
-  }
-
-  const { error } = await supabase.from('partner_solicitations').insert({
-    institution_name,
-    contact_name,
-    whatsapp: whatsappRaw || null,
-    email: email || null,
-    how_did_you_know,
-    goals: goals || null,
+  const { data, error } = await supabase.rpc('submit_partner_solicitation', {
+    p_institution_name: input.institution_name ?? '',
+    p_contact_name: input.contact_name ?? '',
+    p_how_did_you_know: input.how_did_you_know ?? '',
+    p_whatsapp: input.whatsapp ?? null,
+    p_email: input.email ?? null,
+    p_goals: input.goals ?? null,
+    p_ip: ip,
   });
 
   if (error) {
-    console.error('[partner-solicitation] falha ao inserir:', error);
-    return { ok: false, error: 'Não foi possível enviar agora. Tente novamente em instantes.' };
+    console.error('[partner-solicitation] falha na RPC:', error);
+    return { ok: false, error: GENERIC_ERROR };
   }
 
-  console.info('[partner-solicitation] lead registrado:', { institution_name });
-  return { ok: true, duplicate: false };
+  const status = (data as { status?: string; field?: string } | null)?.status;
+  const field = (data as { field?: string } | null)?.field;
+
+  switch (status) {
+    case 'created':
+      console.info('[partner-solicitation] lead registrado');
+      return { ok: true, duplicate: false };
+
+    case 'duplicate':
+      // Sucesso do ponto de vista de quem preencheu: preencheu uma vez e deu
+      // certo. O que não pode é o comercial receber o mesmo lead três vezes.
+      return { ok: true, duplicate: true };
+
+    case 'rate_limited':
+      console.warn('[partner-solicitation] rate limit atingido');
+      return { ok: false, error: RATE_LIMITED };
+
+    case 'invalid':
+      return { ok: false, error: MESSAGES[field ?? ''] ?? GENERIC_ERROR };
+
+    default:
+      console.error('[partner-solicitation] status inesperado da RPC:', data);
+      return { ok: false, error: GENERIC_ERROR };
+  }
 }
