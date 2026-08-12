@@ -30,12 +30,10 @@ describe('trackAndRedirect', () => {
     vi.clearAllMocks();
   });
 
-  it('calls INSERT before returning the URL (happy path)', async () => {
-    // Arrange: simulate successful INSERT
-    mockInsert.mockResolvedValueOnce({ error: null });
+  it('grava na fonte nova E na antiga, nessa ordem (dual-write do expand/contract)', async () => {
+    mockInsert.mockResolvedValue({ error: null });
     mockFrom.mockReturnValue({ insert: mockInsert });
 
-    // Act
     const result = await trackAndRedirect(
       'user-uuid-001',
       'institution-uuid-001',
@@ -43,53 +41,91 @@ describe('trackAndRedirect', () => {
       'catalog_card',
     );
 
-    // Assert: INSERT was called exactly once with the correct payload
-    expect(mockFrom).toHaveBeenCalledWith('external_redirect_clicks');
-    expect(mockInsert).toHaveBeenCalledOnce();
-    expect(mockInsert).toHaveBeenCalledWith({
+    // engagement_events primeiro: é a fonte de verdade a partir de agora.
+    expect(mockFrom).toHaveBeenNthCalledWith(1, 'engagement_events');
+    expect(mockInsert).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      event_type:      'redirect',
+      user_id:         'user-uuid-001',
+      entity_type:     'partner_opportunity',
+      entity_id:       'institution-uuid-001',
+      destination_url: 'https://example.com/apply',
+      source:          'catalog_card',
+    }));
+
+    // A antiga segue recebendo enquanto vw_partner_funnel e as três RPCs de
+    // funil ainda leem dela.
+    expect(mockFrom).toHaveBeenNthCalledWith(2, 'external_redirect_clicks');
+    expect(mockInsert).toHaveBeenNthCalledWith(2, {
       user_id:      'user-uuid-001',
       partner_id:   'institution-uuid-001',
       redirect_url: 'https://example.com/apply',
       source:       'catalog_card',
     });
 
-    // Assert: URL returned only after INSERT
     expect(result.url).toBe('https://example.com/apply');
   });
 
-  it('throws and does NOT return URL when INSERT fails', async () => {
-    // Arrange: simulate INSERT failure
+  it('não devolve a URL quando o registro do evento falha', async () => {
+    // O contrato duro continua: sem registro confirmado, sem URL. É o que
+    // impede contornar o tracking (requisito de segurança do TDD da Sprint 02).
     mockInsert.mockResolvedValueOnce({ error: { message: 'RLS violation' } });
     mockFrom.mockReturnValue({ insert: mockInsert });
 
-    // Act & Assert: must throw, never resolve with URL
     await expect(
       trackAndRedirect(
         'user-uuid-002',
-        null,
+        'institution-uuid-002',
         'https://example.com/apply',
         'opportunity_detail',
       ),
-    ).rejects.toThrow('trackAndRedirect: failed to record click');
-
-    // INSERT was called (we attempted tracking)
-    expect(mockInsert).toHaveBeenCalledOnce();
+    ).rejects.toThrow('trackAndRedirect: failed to record event');
   });
 
-  it('accepts null partnerId for non-partner (MEC) opportunities', async () => {
-    mockInsert.mockResolvedValueOnce({ error: null });
+  it('event_id duplicado não é erro — é a idempotência funcionando', async () => {
+    // 23505 = violação de unicidade. Duplo clique no botão não pode virar dois
+    // redirects, e também não pode impedir a pessoa de chegar ao destino.
+    mockInsert
+      .mockResolvedValueOnce({ error: { code: '23505', message: 'duplicate key' } })
+      .mockResolvedValueOnce({ error: null });
+    mockFrom.mockReturnValue({ insert: mockInsert });
+
+    const result = await trackAndRedirect(
+      'user-uuid-004',
+      'institution-uuid-004',
+      'https://example.com/apply',
+      'catalog_card',
+    );
+
+    expect(result.url).toBe('https://example.com/apply');
+  });
+
+  it('RASTREIA oportunidade MEC em vez de pular o tracking', async () => {
+    // Esta é a mudança de comportamento do TP-2 2b. A versão anterior tinha um
+    // guard que devolvia a URL SEM registrar quando partnerId era null — e era
+    // exatamente por isso que oportunidade MEC nunca apareceu em métrica
+    // nenhuma. O teste antigo afirmava esse comportamento como correto.
+    mockInsert.mockResolvedValue({ error: null });
     mockFrom.mockReturnValue({ insert: mockInsert });
 
     const result = await trackAndRedirect(
       'user-uuid-003',
-      null,                              // null partnerId — MEC opportunity
+      null,                              // MEC não tem partner_id
       'https://sisu.mec.gov.br',
       'mec_opportunity',
+      'mec_abc-123',
     );
 
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ partner_id: null }),
-    );
+    expect(mockFrom).toHaveBeenCalledWith('engagement_events');
+    expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
+      event_type:             'redirect',
+      entity_type:            'mec_opportunity',
+      entity_id:              null,
+      unified_opportunity_id: 'mec_abc-123',
+    }));
+
+    // A tabela antiga NÃO recebe: a FK dela exige parceiro. O evento já está
+    // registrado na fonte nova.
+    expect(mockFrom).not.toHaveBeenCalledWith('external_redirect_clicks');
     expect(result.url).toBe('https://sisu.mec.gov.br');
   });
 });
