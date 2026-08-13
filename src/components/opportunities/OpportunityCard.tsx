@@ -71,11 +71,15 @@ export default function OpportunityCard({
       return;
     }
     
-    // Register click if it's a partner opportunity
-    if (opportunity.is_partner) {
-      const partnerId = opportunity.id.replace('partner_', '');
-      registerPartnerClick(partnerId).catch(console.error);
-    }
+    // Registra o clique em QUALQUER card, parceiro ou MEC (TP-2 2b / ADR-0022).
+    // O guard `if (is_partner)` que existia aqui era a razão de o catálogo MEC
+    // não ter métrica de interesse nenhuma — 66 mil oportunidades invisíveis.
+    const partnerId = opportunity.is_partner
+      ? opportunity.id.replace('partner_', '')
+      : null;
+    registerPartnerClick(partnerId, {
+      unifiedOpportunityId: opportunity.id,
+    }).catch(console.error);
 
     if (!isAuthenticated) { setShowAuthModal(true); return; }
     router.push(`/oportunidades/${opportunity.id}`);
