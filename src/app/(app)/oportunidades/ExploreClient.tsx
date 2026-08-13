@@ -179,7 +179,7 @@ export default function ExploreClient({
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
             {opportunities.map((opp) => (
-              <OpportunityCard key={opp.id} opportunity={opp} />
+              <OpportunityCard key={opp.id} opportunity={opp} surface="oportunidades_explorar" />
             ))}
           </div>
 

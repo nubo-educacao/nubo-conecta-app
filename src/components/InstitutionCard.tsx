@@ -8,18 +8,29 @@ import type { UnifiedInstitution } from '@/types/institutions';
 import { cn } from '@/lib/utils';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCardView, useViewSubject } from '@/hooks/useCardView';
 
 interface InstitutionCardProps {
   institution: UnifiedInstitution;
   onClick?: () => void;
   className?: string;
+  /** Tela onde o card aparece — vira a dimensão `surface` do card_view. */
+  surface?: string;
 }
 
 export default function InstitutionCard({
   institution,
   onClick,
-  className
+  className,
+  surface = 'unknown',
 }: InstitutionCardProps) {
+  // card_view (TP-2 2a t2) — dentro do componente, para valer em toda tela que
+  // renderize um card de instituição.
+  const viewSubject = useViewSubject();
+  const viewRef = useCardView<HTMLDivElement>(
+    { entityType: 'institution', entityId: institution.id, surface },
+    viewSubject,
+  );
   const router = useRouter();
   const [imgError, setImgError] = useState(false);
   const [logoError, setLogoError] = useState(false);
@@ -84,6 +95,7 @@ export default function InstitutionCard({
 
   return (
     <motion.div
+      ref={viewRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       whileHover="hover"

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Heart, MapPin, Star, GraduationCap, Lock, Clock, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCardView, useViewSubject } from '@/hooks/useCardView';
 import { useRouter } from 'next/navigation';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 import { cn } from '@/lib/utils';
@@ -16,6 +17,8 @@ interface OpportunityCardProps {
   isFavorited?: boolean;
   onClickOverride?: (id: string) => void;
   className?: string;
+  /** Tela onde o card aparece — vira a dimensão `surface` do card_view. */
+  surface?: string;
 }
 
 /**
@@ -44,11 +47,27 @@ export default function OpportunityCard({
   onFavorite,
   isFavorited,
   onClickOverride,
-  className
+  className,
+  surface = 'unknown',
 }: OpportunityCardProps) {
   const router = useRouter();
   const { user, setShowAuthModal } = useAuth();
   const isAuthenticated = !!user;
+
+  // card_view (TP-2 2a t2). Fica AQUI e não nas telas: assim toda tela que
+  // renderiza um card de oportunidade passa a medir visualização, inclusive as
+  // que ainda não existem. Instrumentar tela a tela garantiria que a próxima
+  // nascesse sem métrica.
+  const viewSubject = useViewSubject();
+  const viewRef = useCardView<HTMLDivElement>(
+    {
+      entityType: opportunity.is_partner ? 'partner_opportunity' : 'mec_opportunity',
+      entityId: opportunity.is_partner ? opportunity.id.replace('partner_', '') : null,
+      unifiedOpportunityId: opportunity.id,
+      surface,
+    },
+    viewSubject,
+  );
   const { isFavorited: isFavoritedContext, toggleFavorite } = useFavorites();
 
   const isActuallyFavorited = isFavorited !== undefined ? isFavorited : isFavoritedContext(opportunity.id);
@@ -122,6 +141,7 @@ export default function OpportunityCard({
 
   return (
     <motion.div
+      ref={viewRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       whileHover="hover"

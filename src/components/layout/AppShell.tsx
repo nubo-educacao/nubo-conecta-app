@@ -1,4 +1,5 @@
 import TopBar from "@/components/navigation/TopBar";
+import CardViewTracker from "@/components/CardViewTracker";
 import BottomNav from "@/components/navigation/BottomNav";
 
 interface AppShellProps {
@@ -8,6 +9,10 @@ interface AppShellProps {
 
 export default function AppShell({ children, title }: AppShellProps) {
   return (
+    <>
+      {/* Despacha a fila de card_view (TP-2 2a t2). Montado uma vez, aqui,
+          porque toda tela do app passa pelo shell. */}
+      <CardViewTracker />
     <div className="flex flex-col min-h-screen bg-transparent">
       <TopBar title={title} />
 
@@ -20,5 +25,6 @@ export default function AppShell({ children, title }: AppShellProps) {
       </main>
       <BottomNav />
     </div>
+    </>
   );
 }
