@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { attachAttribution } from "@/services/attributionService";
+import { trackLead } from "@/lib/analytics";
 import type { Session, User } from "@supabase/supabase-js";
 
 interface AuthContextType {
@@ -62,6 +63,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         attachAttribution(userId).catch((err) => {
           console.error('[auth] falha ao costurar atribuição', err);
         });
+
+        // Evento de conversão `Lead` (TP-7 7A t4). Mesmo gancho da atribuição
+        // pela mesma razão: é por onde todo login passa. O GTM só dispara o
+        // pixel se houver consentimento — quem recusou empurra para o
+        // dataLayer e nada sai daqui.
+        trackLead(userId);
       }
     });
 

@@ -3,8 +3,11 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Instagram, Linkedin } from 'lucide-react';
+import { useConsent } from '@/components/consent/ConsentProvider';
 
 export default function Footer() {
+  const { reopen } = useConsent();
+
   return (
     <footer className="w-full bg-[#024F86] text-white py-12 px-6 font-montserrat mt-auto z-20 relative">
       <div className="container mx-auto max-w-[1200px] flex flex-col gap-8">
@@ -64,6 +67,16 @@ export default function Footer() {
             <Link href="/termos-de-uso.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-[#38B1E4] transition-colors">
               Termos de uso
             </Link>
+            {/* Revogacao precisa ser tao facil quanto aceitar — LGPD Art. 8o
+                paragrafo 5o: procedimento gratuito e facilitado. Dai o link
+                permanente, em todas as paginas, com o mesmo peso dos demais. */}
+            <button
+              type="button"
+              onClick={reopen}
+              className="hover:text-[#38B1E4] transition-colors underline-offset-2"
+            >
+              Preferências de cookies
+            </button>
           </div>
         </div>
       </div>
