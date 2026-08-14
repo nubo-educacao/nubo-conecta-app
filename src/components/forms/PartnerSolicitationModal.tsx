@@ -5,6 +5,7 @@
 // honeypot, e estado de sucesso/erro inline — o app não tem sonner.
 
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Check, Loader2 } from 'lucide-react';
 import { submitPartnerSolicitation } from '@/services/partnerSolicitations';
 
@@ -33,6 +34,7 @@ export default function PartnerSolicitationModal({
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -41,6 +43,21 @@ export default function PartnerSolicitationModal({
       setSubmitted(false);
       setError(null);
     }
+  }, [isOpen]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
   }, [isOpen]);
 
   const set = useCallback(
@@ -91,20 +108,20 @@ export default function PartnerSolicitationModal({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const inputClass =
     'w-full bg-white border border-[#E2E8F0] rounded-xl px-4 py-3 text-sm text-[#3A424E] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#024F86]/20 focus:border-[#024F86] transition-all';
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 z-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
         data-testid="partner-modal-backdrop"
       />
 
-      <div className="relative w-full max-w-[500px] max-h-[90vh] overflow-y-auto rounded-[24px] bg-white p-6 shadow-2xl md:p-8">
+      <div className="relative z-10 w-full max-w-[500px] max-h-[90vh] overflow-y-auto rounded-[24px] bg-white p-6 shadow-2xl md:p-8">
         <button
           onClick={onClose}
           className="absolute right-6 top-6 text-neutral-400 transition-colors hover:text-neutral-600"
@@ -240,7 +257,8 @@ export default function PartnerSolicitationModal({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
