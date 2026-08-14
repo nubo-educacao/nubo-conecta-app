@@ -23,6 +23,7 @@ import {
   getUserOnboardingData
 } from '@/services/profileService';
 import { generateMatch, generateMatchAsync, getMatchStatus } from '@/services/matchService';
+import { trackCompleteRegistration } from '@/lib/analytics';
 import IncomeCalculatorField, { IncomeCalculatorValue } from '@/components/forms/ui-components/IncomeCalculatorField';
 import { fetchAvailableCategories, type AvailableCategory } from '@/lib/availableCategories';
 
@@ -732,6 +733,13 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
       }
 
       await markOnboardingComplete();
+
+      // Só DEPOIS de markOnboardingComplete, e nunca antes: é este write que
+      // define "onboarding completo" para o resto do produto. Disparar no
+      // início do submit contaria como completo quem abandonou no meio — que é
+      // exatamente a métrica que este evento existe para separar do Lead.
+      trackCompleteRegistration(userId);
+
       onComplete();
     } catch (err) {
       setGlobalError(err instanceof Error ? err.message : 'Erro ao processar dados.');

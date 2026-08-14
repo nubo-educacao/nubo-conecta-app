@@ -11,6 +11,7 @@ import { notFound } from 'next/navigation';
 import DetailsLayout from '@/components/opportunities/DetailsLayout';
 import RequireAuth from '@/components/auth/RequireAuth';
 import AppShell from '@/components/layout/AppShell';
+import ViewContentTracker from '@/components/analytics/ViewContentTracker';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 import type { Opportunity } from '@/components/opportunities/OpportunitiesListCard';
 
@@ -441,6 +442,9 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
 
   return (
     <AppShell>
+      {/* Só chega aqui depois do notFound(): ViewContent de uma oportunidade
+          que não existe seria ruído puro no relatório da Meta. */}
+      <ViewContentTracker unifiedOpportunityId={unifiedId} />
       <DetailsLayout
         opportunity={opportunity}
         relatedOpportunities={relatedOpportunities}
