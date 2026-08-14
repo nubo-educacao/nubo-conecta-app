@@ -4,6 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockInsert = vi.fn();
+const mockRpc = vi.fn();
 const mockFrom = vi.fn();
 const mockGetUser = vi.fn();
 const mockSelect = vi.fn();
@@ -11,6 +12,7 @@ const mockSelect = vi.fn();
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: { getUser: () => mockGetUser() },
+    rpc: (...args: unknown[]) => mockRpc(...args),
     from: (t: string) => mockFrom(t),
   },
 }));
@@ -19,9 +21,7 @@ import { registerPartnerClick } from '@/services/partnersClickService';
 
 const USER = { id: 'user-001' };
 
-/** partners_click faz select().eq().eq().single(); engagement_events só insert. */
-function chainFor(table: string) {
-  if (table === 'engagement_events') return { insert: mockInsert };
+function chainFor() {
   const chain: any = {
     insert: mockInsert,
     update: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) })),
@@ -35,6 +35,8 @@ function chainFor(table: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetUser.mockResolvedValue({ data: { user: USER } });
+  mockRpc.mockResolvedValue({ data: { status: 'created', inserted: 1 }, error: null });
+  document.cookie = 'nubo:aid=; path=/; max-age=0';
   mockFrom.mockImplementation(chainFor);
   mockInsert.mockResolvedValue({ error: null });
   mockSelect.mockResolvedValue({ data: null, error: { code: 'PGRST116' } });
@@ -44,12 +46,10 @@ describe('registerPartnerClick', () => {
   it('registra card_click de PARCEIRO nas duas fontes (dual-write)', async () => {
     await registerPartnerClick('partner-uuid-1', { unifiedOpportunityId: 'partner_partner-uuid-1' });
 
-    expect(mockFrom).toHaveBeenCalledWith('engagement_events');
-    expect(mockInsert).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      event_type:  'card_click',
-      user_id:     'user-001',
-      entity_type: 'partner_opportunity',
-      entity_id:   'partner-uuid-1',
+    expect(mockRpc).toHaveBeenCalledWith('record_card_click', expect.objectContaining({
+      p_entity_type: 'partner_opportunity',
+      p_entity_id: 'partner-uuid-1',
+      p_unified_opportunity_id: 'partner_partner-uuid-1',
     }));
 
     // A antiga segue recebendo: vw_partner_funnel ainda lê dela.
@@ -62,11 +62,10 @@ describe('registerPartnerClick', () => {
     // oportunidades sem nenhuma métrica de interesse.
     await registerPartnerClick(null, { unifiedOpportunityId: 'mec_abc-123' });
 
-    expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
-      event_type:             'card_click',
-      entity_type:            'mec_opportunity',
-      entity_id:              null,
-      unified_opportunity_id: 'mec_abc-123',
+    expect(mockRpc).toHaveBeenCalledWith('record_card_click', expect.objectContaining({
+      p_entity_type: 'mec_opportunity',
+      p_entity_id: null,
+      p_unified_opportunity_id: 'mec_abc-123',
     }));
 
     // E NÃO tenta a tabela antiga, cuja FK rejeitaria.
@@ -74,21 +73,36 @@ describe('registerPartnerClick', () => {
   });
 
   it('event_id duplicado não é tratado como erro', async () => {
-    // Clicar duas vezes no card enquanto a página carrega não pode virar dois
-    // cliques nem estourar um erro na cara de quem clicou.
-    mockInsert.mockResolvedValueOnce({ error: { code: '23505', message: 'duplicate key' } });
+    mockRpc.mockResolvedValueOnce({
+      data: { status: 'duplicate', inserted: 0 },
+      error: null,
+    });
 
     const { error } = await registerPartnerClick(null, { unifiedOpportunityId: 'mec_abc-123' });
 
     expect(error).toBeNull();
   });
 
-  it('não registra nada para visitante não autenticado', async () => {
+  it('registra clique anônimo usando a identidade estável do cookie', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null } });
+    document.cookie = 'nubo:aid=anon-001; path=/';
+
+    const { error } = await registerPartnerClick(null, { unifiedOpportunityId: 'mec_abc-123' });
+
+    expect(error).toBeNull();
+    expect(mockRpc).toHaveBeenCalledWith('record_card_click', expect.objectContaining({
+      p_anonymous_id: 'anon-001',
+      p_entity_type: 'mec_opportunity',
+    }));
+    expect(mockFrom).not.toHaveBeenCalledWith('partners_click');
+  });
+
+  it('não registra sem usuário nem identidade anônima', async () => {
     mockGetUser.mockResolvedValue({ data: { user: null } });
 
     const { error } = await registerPartnerClick('partner-uuid-1');
 
-    expect(error).toBe('User not authenticated');
-    expect(mockInsert).not.toHaveBeenCalled();
+    expect(error).toBe('Missing click subject');
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 });

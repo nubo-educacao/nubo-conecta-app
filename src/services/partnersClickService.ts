@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { ATTR_COOKIES } from '@/lib/attribution';
 
 // Clique em card — TP-2 2b / ADR-0022.
 //
@@ -15,6 +16,14 @@ interface RegisterClickOptions {
   unifiedOpportunityId?: string | null;
 }
 
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(
+    new RegExp('(?:^|; )' + name.replace(/[:.]/g, '\\$&') + '=([^;]*)'),
+  );
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 export async function registerPartnerClick(
   partnerId: string | null,
   options: RegisterClickOptions = {},
@@ -22,37 +31,46 @@ export async function registerPartnerClick(
   try {
     const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) {
-      return { error: 'User not authenticated' };
+    const anonymousId = readCookie(ATTR_COOKIES.anonymous);
+    const subjectId = user?.id ?? anonymousId;
+    if (!subjectId) {
+      return { error: 'Missing click subject' };
     }
 
     const isPartner = Boolean(partnerId);
 
     // ── Fonte nova ───────────────────────────────────────────────────────────
-    // event_id por usuário + entidade + minuto: clicar duas vezes no mesmo card
-    // enquanto a página carrega não vira dois cliques.
+    // A RPC é a única porta que aceita sessão anônima: valida sujeito/entidade,
+    // limita volume e preserva a idempotência.
     const entityKey = partnerId ?? options.unifiedOpportunityId ?? 'unknown';
-    const { error: eventError } = await supabase
-      .from('engagement_events')
-      .insert({
-        event_id: `card_click:${user.id}:${entityKey}:${new Date().toISOString().slice(0, 16)}`,
-        event_type: 'card_click',
-        user_id: user.id,
-        entity_type: isPartner ? 'partner_opportunity' : 'mec_opportunity',
-        entity_id: partnerId,
-        unified_opportunity_id: options.unifiedOpportunityId ?? null,
-        source: 'card',
+    const { data: eventResult, error: eventError } = await (supabase.rpc as any)(
+      'record_card_click',
+      {
+        p_event_id: `card_click:${subjectId}:${entityKey}:${new Date().toISOString().slice(0, 16)}`,
+        p_entity_type: isPartner ? 'partner_opportunity' : 'mec_opportunity',
+        p_entity_id: partnerId,
+        p_unified_opportunity_id: options.unifiedOpportunityId ?? null,
+        p_source: 'card',
+        p_anonymous_id: anonymousId,
       });
 
-    // 23505 é violação de unicidade do event_id — ou seja, o clique já foi
-    // registrado. Não é erro: é a idempotência funcionando.
-    if (eventError && eventError.code !== '23505') {
+    if (eventError) {
       console.error('Error registering engagement event:', eventError);
+      return { error: eventError };
+    }
+
+    const eventStatus = (eventResult as { status?: string } | null)?.status;
+    if (eventStatus !== 'created' && eventStatus !== 'duplicate') {
+      const error = { message: `record_card_click returned ${eventStatus ?? 'unknown'}` };
+      console.error('Error registering engagement event:', error);
+      return { error };
     }
 
     // ── Fonte antiga (só parceiro; a FK exige) ───────────────────────────────
-    if (!isPartner) {
-      return { error: eventError && eventError.code !== '23505' ? eventError : null };
+    // Anônimo não tem user_id para a tabela legada; o evento novo será
+    // costurado no login.
+    if (!isPartner || !user) {
+      return { error: null };
     }
 
     const { data, error: fetchError } = await supabase
