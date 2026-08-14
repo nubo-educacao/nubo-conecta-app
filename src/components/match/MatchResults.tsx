@@ -95,11 +95,15 @@ export default function MatchResults({ results, onRegenerate, isLoading }: Match
           <Link
             key={item.unified_opportunity_id}
             href={`/oportunidades/${item.unified_opportunity_id}`}
-            onClick={(e) => {
-              if (item.is_partner) {
-                const partnerId = item.unified_opportunity_id.replace('partner_', '');
-                registerPartnerClick(partnerId).catch(console.error);
-              }
+            onClick={() => {
+              // Parceiro e MEC (TP-2 2b): o guard `if (is_partner)` que existia
+              // aqui deixava o clique em resultado de match MEC sem registro.
+              const partnerId = item.is_partner
+                ? item.unified_opportunity_id.replace('partner_', '')
+                : null;
+              registerPartnerClick(partnerId, {
+                unifiedOpportunityId: item.unified_opportunity_id,
+              }).catch(console.error);
             }}
             className="group flex items-center gap-4 rounded-2xl p-4 transition-all hover:shadow-md"
             style={{
