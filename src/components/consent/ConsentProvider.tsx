@@ -26,6 +26,7 @@ interface ConsentContextValue {
     decided: boolean;
     save: (state: ConsentState) => void;
     reopen: () => void;
+    close: () => void;
     isOpen: boolean;
 }
 
@@ -85,6 +86,7 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
     // Revogar precisa ser tão fácil quanto aceitar (LGPD, Art. 8º §5º:
     // procedimento gratuito e facilitado). Daí o link permanente no rodapé.
     const reopen = useCallback(() => setIsOpen(true), []);
+    const close = useCallback(() => setIsOpen(false), []);
 
     const value = useMemo<ConsentContextValue>(
         () => ({
@@ -93,9 +95,10 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
             decided: record !== null,
             save,
             reopen,
+            close,
             isOpen,
         }),
-        [record, save, reopen, isOpen],
+        [record, save, reopen, close, isOpen],
     );
 
     return <ConsentContext.Provider value={value}>{children}</ConsentContext.Provider>;

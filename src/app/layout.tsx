@@ -145,16 +145,6 @@ export default function RootLayout({
         )}
       </head>
       <body className={`${montserrat.className} relative min-h-screen overflow-x-hidden`}>
-        {GTM_CONTAINER_ID && (
-          <noscript>
-            <iframe
-              src={`https://www.googletagmanager.com/ns.html?id=${GTM_CONTAINER_ID}`}
-              height="0"
-              width="0"
-              style={{ display: "none", visibility: "hidden" }}
-            />
-          </noscript>
-        )}
         <CloudBackground />
         <ConsentProvider>
         <AuthProvider>

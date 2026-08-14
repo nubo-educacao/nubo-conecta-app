@@ -11,7 +11,7 @@
 // padrão escuro e enfraquece a validade do consentimento — o que anula o
 // propósito de ter o banner.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import {
@@ -24,9 +24,15 @@ import {
 import { useConsent } from './ConsentProvider';
 
 export default function ConsentBanner() {
-    const { isOpen, decided, save } = useConsent();
+    const { isOpen, decided, state, save, close } = useConsent();
     const [customizing, setCustomizing] = useState(false);
     const [draft, setDraft] = useState<ConsentState>(DENIED);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        setDraft(state);
+        setCustomizing(false);
+    }, [isOpen, state]);
 
     if (!isOpen) return null;
 
@@ -45,7 +51,7 @@ export default function ConsentBanner() {
                     <h2 className="text-base font-bold text-[#024F86]">{CONSENT_COPY.title}</h2>
                     {decided && (
                         <button
-                            onClick={() => save(draft)}
+                            onClick={close}
                             aria-label="Fechar"
                             className="text-neutral-400 transition-colors hover:text-neutral-600"
                         >
