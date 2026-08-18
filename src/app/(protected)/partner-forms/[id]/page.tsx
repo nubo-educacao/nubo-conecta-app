@@ -368,7 +368,17 @@ export default function PartnerFormsPage() {
         userPrefUpdates[jsonKey] = (val && typeof val === 'object' && jsonKey in val) ? (val as any)[jsonKey] : val;
       } else if (field.mapping_source?.startsWith("user_income.")) {
         const column = field.mapping_source.split(".")[1];
-        userIncomeUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
+        if (val && typeof val === 'object') {
+          // income_calculator returns full object — spread all known DB columns
+          const incomeObj = val as any;
+          if (incomeObj.per_capita_income !== undefined) userIncomeUpdates["per_capita_income"] = incomeObj.per_capita_income;
+          if (incomeObj.family_count !== undefined) userIncomeUpdates["family_count"] = incomeObj.family_count;
+          if (incomeObj.social_benefits !== undefined) userIncomeUpdates["social_benefits"] = incomeObj.social_benefits;
+          if (incomeObj.alimony !== undefined) userIncomeUpdates["alimony"] = incomeObj.alimony;
+          if (incomeObj.member_incomes !== undefined) userIncomeUpdates["member_incomes"] = incomeObj.member_incomes;
+        } else {
+          userIncomeUpdates[column] = val;
+        }
       } else if (field.mapping_source?.startsWith("user_enem_scores.")) {
         const column = field.mapping_source.split(".")[1];
         userEnemUpdates[column] = (val && typeof val === 'object' && column in val) ? (val as any)[column] : val;
@@ -388,9 +398,22 @@ export default function PartnerFormsPage() {
       const mergedPrefs = { ...(existingPrefs?.preferences ?? {}), ...userPrefUpdates };
       await supabase.from("user_preferences").upsert({ user_id: userId, preferences: mergedPrefs });
     }
-    // 4. Upsert user_income
+    // 4. Update user_income — use UPDATE (not upsert) to avoid id NOT NULL constraint issue.
+    // If income_calculator returns the full object, spread all known numeric columns.
     if (Object.keys(userIncomeUpdates).length > 0) {
-      await supabase.from("user_income").upsert({ user_id: userId, ...userIncomeUpdates }, { onConflict: "user_id" });
+      // Attempt UPDATE first (works if row exists)
+      const { error: incomeUpdateErr, data: incomeUpdateData } = await supabase
+        .from("user_income")
+        .update({ ...userIncomeUpdates, updated_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .select("id");
+
+      // If no row existed, INSERT (row count = 0)
+      if (!incomeUpdateErr && (!incomeUpdateData || incomeUpdateData.length === 0)) {
+        await supabase.from("user_income").insert({ user_id: userId, ...userIncomeUpdates });
+      } else if (incomeUpdateErr) {
+        console.error("[income] update failed:", incomeUpdateErr);
+      }
     }
     // 5. Upsert user_enem_scores
     if (Object.keys(userEnemUpdates).length > 0) {
@@ -407,91 +430,85 @@ export default function PartnerFormsPage() {
       }
     }
 
-    // 7. Calculate match via RPC & query user_opportunity_matches
-    let matches: any[] = [];
+    // 7. Calculate match via RPC
     try {
-      matches = await generateMatch(userId);
+      await generateMatch(userId);
     } catch (matchErr) {
       console.error("Failed to generate match:", matchErr);
     }
 
-    const { data: dbMatches } = await supabase
-      .from('user_opportunity_matches')
-      .select('unified_opportunity_id, match_score, match_details')
-      .eq('profile_id', userId);
-
-    const cleanId = (id?: string) => (id || '').replace(/^(partner_|mec_|institution_)/, '');
-
-    const combinedMap = new Map<string, any>();
-    (dbMatches || []).forEach((m: any) => combinedMap.set(cleanId(m.unified_opportunity_id), m));
-    (matches || []).forEach((m: any) => combinedMap.set(cleanId(m.unified_opportunity_id), m));
-    const allMatches = Array.from(combinedMap.values());
-
-    // 8. Fetch better opportunities (or top open opportunities)
+    // 8. Fetch top matched opportunities mirroring DetailsLayout.tsx (Outras Oportunidades para Você)
     let fetchedOpps: IUnifiedOpportunity[] = [];
-    const currentPartnerCleanId = cleanId(currentApp.partner_id);
+    const currentPartnerId = currentApp.partner_id;
 
-    const currentMatch = allMatches.find(m => cleanId(m.unified_opportunity_id) === currentPartnerCleanId);
-    const currentScore = currentMatch?.match_score ?? 0;
-    let targetMatches = allMatches.filter(m => cleanId(m.unified_opportunity_id) !== currentPartnerCleanId && m.match_score >= currentScore);
+    // Fetch top partners first to guarantee they are included
+    const { data: partnerMatches } = await supabase
+      .from('user_opportunity_matches')
+      .select('unified_opportunity_id, match_score')
+      .eq('profile_id', userId)
+      .like('unified_opportunity_id', 'partner_%')
+      .neq('unified_opportunity_id', currentPartnerId)
+      .neq('unified_opportunity_id', `partner_${currentPartnerId}`)
+      .order('match_score', { ascending: false })
+      .limit(5);
 
-    if (targetMatches.length === 0) {
-      targetMatches = allMatches.filter(m => cleanId(m.unified_opportunity_id) !== currentPartnerCleanId);
-    }
+    // Fetch top MEC matches
+    const { data: mecMatches } = await supabase
+      .from('user_opportunity_matches')
+      .select('unified_opportunity_id, match_score')
+      .eq('profile_id', userId)
+      .not('unified_opportunity_id', 'like', 'partner_%')
+      .order('match_score', { ascending: false })
+      .limit(10);
 
-    targetMatches.sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0));
+    const userMatches = [...(partnerMatches || []), ...(mecMatches || [])];
 
-    if (targetMatches.length > 0) {
-      const matchIds = targetMatches.map(m => m.unified_opportunity_id);
-      const searchIds = Array.from(new Set([
-        ...matchIds,
-        ...matchIds.map(id => cleanId(id)),
-        ...matchIds.map(id => `partner_${cleanId(id)}`),
-        ...matchIds.map(id => `mec_${cleanId(id)}`)
-      ]));
+    if (userMatches && userMatches.length > 0) {
+      const ids = userMatches.map((m: any) => m.unified_opportunity_id);
 
       const { data: opps } = await supabase
         .from('v_unified_opportunities')
-        .select('*')
-        .in('unified_id', searchIds);
+        .select('unified_id, title, provider_name, location, opportunity_type, type, is_partner, category, badges, brand_color, institution_cover_url, created_at, min_cutoff_score_current, min_cutoff_score_prev, max_cutoff_score_current, max_cutoff_score_prev, vagas_ociosas_current, vagas_ociosas_prev, status')
+        .in('unified_id', ids);
 
       if (opps && opps.length > 0) {
-        fetchedOpps = opps
-          .map((opp: any) => {
-            const m = allMatches.find(match => cleanId(match.unified_opportunity_id) === cleanId(opp.unified_id));
-            const cutoffFromMatch = m?.match_details?.cutoff_score ?? m?.match_details?.min_cutoff_score;
-            return mapRowToUnifiedOpportunity({
-              ...opp,
-              match_score: m?.match_score ?? opp.match_score,
-              min_cutoff_score_current: opp.min_cutoff_score_current ?? cutoffFromMatch,
-              max_cutoff_score_current: opp.max_cutoff_score_current ?? cutoffFromMatch,
-            });
-          })
-          .filter((opp: IUnifiedOpportunity) => opp.status === 'opened' || opp.status === 'incoming' || !opp.status)
-          .sort((a: IUnifiedOpportunity, b: IUnifiedOpportunity) => (b.match_score ?? 0) - (a.match_score ?? 0));
-      }
-    }
+        const scoreMap = Object.fromEntries(userMatches.map((m: any) => [m.unified_opportunity_id, m.match_score]));
+        
+        const sorted = [...opps].sort((a: any, b: any) => {
+          if (a.is_partner && !b.is_partner) return -1;
+          if (!a.is_partner && b.is_partner) return 1;
 
-    // Fallback: If no matches returned, fetch top active opportunities from v_unified_opportunities
-    if (fetchedOpps.length === 0) {
-      const { data: fallbackOpps } = await supabase
-        .from('v_unified_opportunities')
-        .select('*')
-        .neq('unified_id', currentApp.partner_id)
-        .neq('unified_id', `partner_${currentApp.partner_id}`)
-        .limit(6);
+          const aOpen = a.status === 'opened';
+          const bOpen = b.status === 'opened';
+          if (aOpen && !bOpen) return -1;
+          if (!aOpen && bOpen) return 1;
 
-      if (fallbackOpps && fallbackOpps.length > 0) {
-        fetchedOpps = fallbackOpps.map((opp: any) => {
-          const m = allMatches.find(match => cleanId(match.unified_opportunity_id) === cleanId(opp.unified_id));
-          const cutoffFromMatch = m?.match_details?.cutoff_score ?? m?.match_details?.min_cutoff_score;
-          return mapRowToUnifiedOpportunity({
-            ...opp,
-            match_score: m?.match_score ?? opp.match_score,
-            min_cutoff_score_current: opp.min_cutoff_score_current ?? cutoffFromMatch,
-            max_cutoff_score_current: opp.max_cutoff_score_current ?? cutoffFromMatch,
-          });
+          return (Number(scoreMap[b.unified_id]) || 0) - (Number(scoreMap[a.unified_id]) || 0);
         });
+
+        fetchedOpps = sorted.slice(0, 8).map((o: any) => ({
+          id: o.unified_id,
+          title: o.title,
+          institution_name: o.provider_name,
+          location: o.location,
+          opportunity_type: o.opportunity_type ?? o.type,
+          type: o.type,
+          is_partner: o.is_partner,
+          category: o.category,
+          category_label: o.category === 'educational_programs' ? 'Programas Educacionais' : o.category === 'public_universities' ? 'Universidades Públicas' : o.category === 'grants_scholarships' ? 'Bolsas e Gratuidades' : o.category,
+          badges: Array.isArray(o.badges) ? o.badges.filter(Boolean) : [],
+          brand_color: o.brand_color,
+          institution_cover_url: o.institution_cover_url,
+          created_at: o.created_at,
+          match_score: scoreMap[o.unified_id] !== undefined ? Math.round(Number(scoreMap[o.unified_id])) : null,
+          education_level: 'Graduação',
+          min_cutoff_score_current: o.min_cutoff_score_current,
+          min_cutoff_score_prev: o.min_cutoff_score_prev,
+          max_cutoff_score_current: o.max_cutoff_score_current,
+          max_cutoff_score_prev: o.max_cutoff_score_prev,
+          vagas_ociosas_current: o.vagas_ociosas_current,
+          vagas_ociosas_prev: o.vagas_ociosas_prev,
+        } as IUnifiedOpportunity));
       }
     }
 
@@ -500,9 +517,6 @@ export default function PartnerFormsPage() {
 
   const handlePrepareReview = async (data: Record<string, unknown>) => {
     if (!application) return;
-    const prepKey = `${application.id}_${selectedProfileId}`;
-    if (preparedAppsRef.current.has(prepKey)) return;
-    preparedAppsRef.current.add(prepKey);
 
     setPreparingReview(true);
     try {
@@ -766,15 +780,17 @@ export default function PartnerFormsPage() {
   return (
     <AppShell title={application?.partner_name ?? "Candidatura"}>
       <div className="h-full flex flex-col">
-        <button
-          onClick={() => router.push("/candidaturas")}
-          className="flex items-center gap-1 text-xs text-[#3A424E]/60 px-4 pt-4 mb-2 hover:text-[#024F86] transition-colors"
-        >
-          <ArrowLeft size={14} /> Minhas candidaturas
-        </button>
+        {!preparingReview && (
+          <button
+            onClick={() => router.push("/candidaturas")}
+            className="flex items-center gap-1 text-xs text-[#3A424E]/60 px-4 pt-4 mb-2 hover:text-[#024F86] transition-colors"
+          >
+            <ArrowLeft size={14} /> Minhas candidaturas
+          </button>
+        )}
 
         {/* ── Titularidade ── */}
-        {stepIndex === 0 && profiles.length > 0 && (
+        {!preparingReview && stepIndex === 0 && profiles.length > 0 && (
           <div className="px-4 pt-2 pb-4">
             <p className="text-[11px] text-[#707A7E] font-bold uppercase mb-2">Candidatura para</p>
             <div className="flex gap-3">

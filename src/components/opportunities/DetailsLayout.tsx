@@ -193,13 +193,23 @@ export default function DetailsLayout({
 
       const { data: opps } = await supabase
         .from('v_unified_opportunities')
-        .select('unified_id, title, provider_name, location, opportunity_type, type, is_partner, category, badges, brand_color, institution_cover_url, created_at, min_cutoff_score_current, min_cutoff_score_prev, max_cutoff_score_current, max_cutoff_score_prev, vagas_ociosas_current, vagas_ociosas_prev')
+        .select('unified_id, title, provider_name, location, opportunity_type, type, is_partner, category, badges, brand_color, institution_cover_url, created_at, min_cutoff_score_current, min_cutoff_score_prev, max_cutoff_score_current, max_cutoff_score_prev, vagas_ociosas_current, vagas_ociosas_prev, status')
         .in('unified_id', ids);
 
       if (!opps || opps.length === 0) return;
 
       const scoreMap = Object.fromEntries(matches.map((m: any) => [m.unified_opportunity_id, m.match_score]));
-      const sorted = [...opps].sort((a: any, b: any) => (scoreMap[b.unified_id] || 0) - (scoreMap[a.unified_id] || 0));
+      const sorted = [...opps].sort((a: any, b: any) => {
+        if (a.is_partner && !b.is_partner) return -1;
+        if (!a.is_partner && b.is_partner) return 1;
+
+        const aOpen = a.status === 'opened';
+        const bOpen = b.status === 'opened';
+        if (aOpen && !bOpen) return -1;
+        if (!aOpen && bOpen) return 1;
+
+        return (Number(scoreMap[b.unified_id]) || 0) - (Number(scoreMap[a.unified_id]) || 0);
+      });
 
       const mapped = sorted.slice(0, 6).map((o: any) => ({
         id: o.unified_id,
