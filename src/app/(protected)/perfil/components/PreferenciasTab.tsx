@@ -294,7 +294,7 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
           readOnlyView={
             <div className="flex flex-wrap gap-2">
               {courseInterest.length ? courseInterest.map(course => (
-                <Chip key={course} label={course} active={true} onClick={() => {}} />
+                <Chip key={course} label={course} active={true} onClick={() => {}} interactive={false} />
               )) : <p className="text-sm text-[#707A7E]">Nenhum interesse selecionado</p>}
             </div>
           }
