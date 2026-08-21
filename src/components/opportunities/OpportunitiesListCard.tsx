@@ -114,7 +114,7 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
 
   const isSisu = opportunities[0]?.opportunity_type?.toLowerCase() === 'sisu';
   const isProuni = opportunities[0]?.opportunity_type?.toLowerCase() === 'prouni';
-  const accentColor = isSisu ? '#38B1E4' : '#7030C2';
+  const accentColor = isSisu ? '#3092bb' : '#7030C2';
 
   const renderTags = (tags: any) => {
     if (!tags || tags.length === 0) return null;
@@ -214,14 +214,14 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                   key={opp.id}
                   className={`transition-colors group ${
                     isBest
-                      ? 'bg-[#38B1E4]/5 hover:bg-[#38B1E4]/10'
+                      ? 'bg-[#3092bb]/5 hover:bg-[#3092bb]/10'
                       : 'hover:bg-gray-50/50'
                   }`}
                 >
-                  <td className={`px-6 py-4 transition-all ${isBest ? 'border-l-4 border-[#38B1E4] pl-5' : ''}`}>
+                  <td className={`px-6 py-4 transition-all ${isBest ? 'border-l-4 border-[#3092bb] pl-5' : ''}`}>
                     <div className="relative group/shift flex items-center justify-center">
                       <div className={`size-8 rounded-xl bg-white shadow-sm border ${
-                        isBest ? 'border-[#38B1E4]/30' : 'border-gray-100'
+                        isBest ? 'border-[#3092bb]/30' : 'border-gray-100'
                        } flex items-center justify-center ${color}`}>
                         <Icon size={16} />
                       </div>
@@ -264,13 +264,13 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                       )}
 
                       {isBest && (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#38B1E4]/10 text-[#38B1E4] text-[9px] font-black uppercase tracking-wider border border-[#38B1E4]/20">
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#3092bb]/10 text-[#3092bb] text-[9px] font-black uppercase tracking-wider border border-[#3092bb]/20">
                           ★ Melhor Opção
                         </span>
                       )}
 
                       <div className="relative group/info">
-                        <Info size={14} className="text-slate-300 cursor-help hover:text-[#38B1E4] transition-colors" />
+                        <Info size={14} className="text-slate-300 cursor-help hover:text-[#3092bb] transition-colors" />
                         <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-[#3A424E] text-white text-[10px] rounded-lg opacity-0 group-hover/info:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl leading-tight">
                           {opp.concurrency_type || opp.scholarship_type || 'Vaga regular sem restrições de cota.'}
                           <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#3A424E]" />
@@ -289,8 +289,8 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                     <td className="px-6 py-4 text-right">
                       <div className="flex flex-col items-end">
                         <div className="flex items-center gap-1.5">
-                          <Award size={14} className={isBest ? 'text-[#38B1E4]' : 'text-[#FF9900]'} />
-                          <span className={`text-sm font-black ${isBest ? 'text-[#38B1E4]' : 'text-[#3A424E]'}`}>
+                          <Award size={14} className={isBest ? 'text-[#3092bb]' : 'text-[#FF9900]'} />
+                          <span className={`text-sm font-black ${isBest ? 'text-[#3092bb]' : 'text-[#3A424E]'}`}>
                             {opp.cutoff_score ? opp.cutoff_score.toFixed(1) : '---'}
                           </span>
                         </div>

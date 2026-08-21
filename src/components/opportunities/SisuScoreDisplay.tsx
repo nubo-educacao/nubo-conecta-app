@@ -115,7 +115,7 @@ export default function SisuScoreDisplay({ weights, opportunity_type = 'sisu', c
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      className="bg-gradient-to-r from-[#024F86] to-[#38B1E4] rounded-3xl p-6 shadow-sm"
+      className="bg-gradient-to-r from-[#024F86] to-[#3092bb] rounded-3xl p-6 shadow-sm"
     >
       <h3 className="text-white font-bold text-base mb-1 flex items-center gap-2">
         <Sparkles size={18} className="opacity-80" />

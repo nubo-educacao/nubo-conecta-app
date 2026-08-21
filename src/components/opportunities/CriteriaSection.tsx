@@ -62,7 +62,7 @@ export default function CriteriaSection({ partnerOpportunityId, legacyCriteria }
           title="Você é elegível?"
           subtitle="Critérios eliminatórios"
           items={eligibility}
-          color="#38B1E4"
+          color="#3092bb"
           bgClass="bg-[#F8FBFF] border-blue-100/50"
         />
       )}
@@ -132,7 +132,7 @@ function LegacyBlock({ data }: { data: any }) {
         className="bg-[#F8FBFF] rounded-[32px] p-8 border border-blue-100/50"
       >
         <h3 className="text-[#3A424E] font-black text-xl mb-6 flex items-center gap-3">
-          <div className="size-10 rounded-2xl bg-[#38B1E4]/10 flex items-center justify-center text-[#38B1E4]">
+          <div className="size-10 rounded-2xl bg-[#3092bb]/10 flex items-center justify-center text-[#3092bb]">
             <Shield size={24} />
           </div>
           Critérios de Elegibilidade
@@ -151,7 +151,7 @@ function LegacyBlock({ data }: { data: any }) {
       className="bg-[#F8FBFF] rounded-[32px] p-8 border border-blue-100/50"
     >
       <h3 className="text-[#3A424E] font-black text-xl mb-6 flex items-center gap-3">
-        <div className="size-10 rounded-2xl bg-[#38B1E4]/10 flex items-center justify-center text-[#38B1E4]">
+        <div className="size-10 rounded-2xl bg-[#3092bb]/10 flex items-center justify-center text-[#3092bb]">
           <Shield size={24} />
         </div>
         Critérios de Elegibilidade

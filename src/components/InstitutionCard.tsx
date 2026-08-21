@@ -44,7 +44,7 @@ export default function InstitutionCard({
   const isPartner = institution.type === 'partner';
   
   // Nubo Colors
-  const nuboPrimary = '#38B1E4';
+  const nuboPrimary = '#3092bb';
   const brandColor = (isPartner && institution.brand_color) ? institution.brand_color : '#7030C2'; // Use partner brand color or default partner purple
   
   // Theme similar to OpportunityCard
@@ -55,9 +55,9 @@ export default function InstitutionCard({
       hoverBorder: '#FF9900',
     },
     default: {
-      cardBg: 'linear-gradient(239.86deg, rgba(56, 177, 228, 0.8) 9.15%, #38B1E4 59.27%)',
-      btnText: '#38B1E4',
-      hoverBorder: '#38B1E4',
+      cardBg: 'linear-gradient(239.86deg, rgba(56, 177, 228, 0.8) 9.15%, #3092bb 59.27%)',
+      btnText: '#3092bb',
+      hoverBorder: '#3092bb',
     }
   };
 
@@ -225,7 +225,7 @@ export default function InstitutionCard({
         {/* Action Button */}
         <button
           onClick={(e) => { e.stopPropagation(); handleViewDetails(); }}
-          className="relative w-full h-[32px] rounded-full overflow-hidden flex items-center justify-center transition-all mt-2 shadow-[0px_8px_16px_rgba(0,0,0,0.12)] hover:brightness-95 active:scale-[0.98]"
+          className="relative w-full h-[32px] rounded-full overflow-hidden flex items-center justify-center transition-all mt-2 shadow-[0px_8px_16px_rgba(0,0,0,0.12)] hover:opacity-80 active:scale-95"
         >
           <div className="absolute inset-0 opacity-15" style={{ background: currentTheme.btnText }} />
           <span className="relative z-10 font-semibold text-[13px]" style={{ color: currentTheme.btnText }}>

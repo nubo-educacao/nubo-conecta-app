@@ -59,17 +59,18 @@ const QUOTA_OPTIONS = [
   { id: 'ESCOLA_PRIVADA_BOLSA_INTEGRAL', label: 'Escola Privada com Bolsa Integral', description: 'Cursou o ensino médio com bolsa integral em escola privada.' },
 ];
 
-function Chip({ label, active, onClick, showX }: { label: string; active: boolean; onClick: () => void; showX?: boolean }) {
+function Chip({ label, active, onClick, showX, interactive = true }: { label: string; active: boolean; onClick: () => void; showX?: boolean; interactive?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1.5 hover:opacity-80 active:scale-95 ${active ? "shadow-sm" : ""}`}
+      disabled={!interactive}
+      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1.5 ${interactive ? "hover:opacity-80 active:scale-95 cursor-pointer" : "cursor-default"} ${active ? "shadow-sm" : ""}`}
       style={{
         fontFamily: "Montserrat, sans-serif",
-        background: active ? "#38B1E4" : "transparent",
+        background: active ? "#3092bb" : "transparent",
         color: active ? "white" : "#707A7E",
-        borderColor: active ? "#38B1E4" : "#E2E8F0",
+        borderColor: active ? "#3092bb" : "#E2E8F0",
       }}
     >
       {label}
@@ -95,7 +96,7 @@ function Section({ title, editing, onEdit, onSave, onCancel, saving, children, r
           {title}
         </h3>
         {!editing ? (
-          <button onClick={onEdit} className="flex items-center gap-1 text-xs font-semibold hover:opacity-70 active:scale-95 transition-all" style={{ color: "#38B1E4", fontFamily: "Montserrat, sans-serif" }}>
+          <button onClick={onEdit} className="flex items-center gap-1 text-xs font-semibold hover:opacity-70 active:scale-95 transition-all" style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}>
             <Pencil size={12} /> Editar
           </button>
         ) : (
@@ -126,7 +127,7 @@ function InputNum({ label, value, onChange }: { label: string; value: string; on
         type="number"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#38B1E4] transition-colors"
+        className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#3092bb] transition-colors"
         style={{ borderColor: "#E2E8F0", fontFamily: "Montserrat, sans-serif", color: "#3A424E" }}
       />
     </div>
@@ -303,7 +304,7 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
               <div className="relative flex-1">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#707A7E]" />
                 <input
-                  className="w-full rounded-xl border pl-9 pr-8 py-2 text-sm outline-none focus:border-[#38B1E4] transition-colors"
+                  className="w-full rounded-xl border pl-9 pr-8 py-2 text-sm outline-none focus:border-[#3092bb] transition-colors"
                   style={{ borderColor: "#E2E8F0", fontFamily: "Montserrat, sans-serif", color: "#3A424E" }}
                   placeholder="Buscar curso (ex: Medicina)..."
                   value={courseInput}
@@ -319,7 +320,7 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
                   }}
                 />
                 {coursesLoading && (
-                  <Loader2 size={14} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-[#38B1E4]" />
+                  <Loader2 size={14} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-[#3092bb]" />
                 )}
               </div>
             </div>
@@ -353,6 +354,7 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
                 label={course} 
                 active={true} 
                 showX={true}
+                interactive={true}
                 onClick={() => setCourseInterest(courseInterest.filter(x => x !== course))} 
               />
             ))}
@@ -374,7 +376,7 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
             <div className="flex flex-wrap gap-2">
               {quotaTypes.length ? quotaTypes.map(qId => {
                 const q = QUOTA_OPTIONS.find(opt => opt.id === qId);
-                return <Chip key={qId} label={q?.label || qId} active={true} onClick={() => {}} />;
+                return <Chip key={qId} label={q?.label || qId} active={true} onClick={() => {}} interactive={false} />;
               }) : <p className="text-sm text-[#707A7E]">Nenhuma cota selecionada</p>}
             </div>
           }
@@ -384,12 +386,12 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
               <label 
                 key={q.id} 
                 className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                  quotaTypes.includes(q.id) ? "bg-[#E0F2FE]/50 border-[#38B1E4]/50" : "bg-white/30 border-black/5"
+                  quotaTypes.includes(q.id) ? "bg-[#E0F2FE]/50 border-[#3092bb]/50" : "bg-white/30 border-black/5"
                 }`}
               >
                 <input 
                   type="checkbox" 
-                  className="w-4 h-4 accent-[#38B1E4]"
+                  className="w-4 h-4 accent-[#3092bb]"
                   checked={quotaTypes.includes(q.id)}
                   onChange={() => {
                     if (quotaTypes.includes(q.id)) setQuotaTypes(quotaTypes.filter(x => x !== q.id));
@@ -418,13 +420,13 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
           saving={saving}
           readOnlyView={
             <div className="flex flex-wrap gap-2">
-              {preferredShifts.length ? preferredShifts.map(s => <Chip key={s} label={s} active={true} onClick={() => {}} />) : <p className="text-sm text-[#707A7E]">Nenhum turno selecionado</p>}
+              {preferredShifts.length ? preferredShifts.map(s => <Chip key={s} label={s} active={true} onClick={() => {}} interactive={false} />) : <p className="text-sm text-[#707A7E]">Nenhum turno selecionado</p>}
             </div>
           }
         >
           <div className="flex flex-wrap gap-2">
             {SHIFTS_OPTIONS.map((s) => (
-              <Chip key={s} label={s} active={preferredShifts.includes(s)} onClick={() => toggleArr(preferredShifts, s, setPreferredShifts, editingShift)} />
+              <Chip key={s} label={s} active={preferredShifts.includes(s)} onClick={() => toggleArr(preferredShifts, s, setPreferredShifts, editingShift)} interactive={editingShift} />
             ))}
           </div>
         </Section>
@@ -442,13 +444,13 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
           saving={saving}
           readOnlyView={
             <div className="flex flex-wrap gap-2">
-              <Chip label={PROGRAMS.find(p => p.value === programPref)?.label || programPref} active={true} onClick={() => {}} />
+              <Chip label={PROGRAMS.find(p => p.value === programPref)?.label || programPref} active={true} onClick={() => {}} interactive={false} />
             </div>
           }
         >
           <div className="flex gap-2 flex-wrap">
             {PROGRAMS.map((p) => (
-              <Chip key={p.value} label={p.label} active={programPref === p.value} onClick={() => setProgramPref(p.value)} />
+              <Chip key={p.value} label={p.label} active={programPref === p.value} onClick={() => editingProgram && setProgramPref(p.value)} interactive={editingProgram} />
             ))}
           </div>
         </Section>
@@ -466,13 +468,13 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
           saving={saving}
           readOnlyView={
             <div className="flex flex-wrap gap-2">
-              <Chip label={UNIVERSITY_TYPES.find(p => p.value === universityPref)?.label || universityPref} active={true} onClick={() => {}} />
+              <Chip label={UNIVERSITY_TYPES.find(p => p.value === universityPref)?.label || universityPref} active={true} onClick={() => {}} interactive={false} />
             </div>
           }
         >
           <div className="flex gap-2 flex-wrap">
             {UNIVERSITY_TYPES.map((u) => (
-              <Chip key={u.value} label={u.label} active={universityPref === u.value} onClick={() => setUniversityPref(u.value)} />
+              <Chip key={u.value} label={u.label} active={universityPref === u.value} onClick={() => editingUniv && setUniversityPref(u.value)} interactive={editingUniv} />
             ))}
           </div>
         </Section>
@@ -502,7 +504,7 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
                 value={locationPref}
                 onChange={(e) => setLocationPref(e.target.value)}
                 placeholder="Ex: Capital, Interior..."
-                className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#38B1E4] transition-colors"
+                className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#3092bb] transition-colors"
                 style={{ borderColor: "#E2E8F0", fontFamily: "Montserrat, sans-serif", color: "#3A424E" }}
               />
             </div>
@@ -515,7 +517,7 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
                 value={statePref}
                 onChange={(e) => setStatePref(e.target.value)}
                 placeholder="Ex: SP, RJ..."
-                className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#38B1E4] transition-colors"
+                className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#3092bb] transition-colors"
                 style={{ borderColor: "#E2E8F0", fontFamily: "Montserrat, sans-serif", color: "#3A424E" }}
               />
             </div>

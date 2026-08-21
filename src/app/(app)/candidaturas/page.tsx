@@ -120,7 +120,7 @@ export default function CandidaturasPage() {
           </div>
           <button
             onClick={() => router.push("/oportunidades")}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#38B1E4] text-white text-xs font-semibold shadow-md hover:shadow-lg transition-all"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#3092bb] text-white text-xs font-semibold shadow-md hover:shadow-lg transition-all"
           >
             <Plus size={14} /> Nova
           </button>
@@ -143,12 +143,12 @@ export default function CandidaturasPage() {
           >
             <div className="relative w-full max-w-sm bg-white/80 backdrop-blur-md border border-gray-100/80 rounded-3xl shadow-[0_12px_30px_rgba(0,0,0,0.03)] p-8 flex flex-col items-center text-center overflow-hidden">
               {/* Soft decorative background glow */}
-              <div className="absolute -top-16 -left-16 w-36 h-36 bg-[#38B1E4]/5 rounded-full blur-2xl pointer-events-none" />
-              <div className="absolute -bottom-16 -right-16 w-36 h-36 bg-[#38B1E4]/5 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -top-16 -left-16 w-36 h-36 bg-[#3092bb]/5 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-16 -right-16 w-36 h-36 bg-[#3092bb]/5 rounded-full blur-2xl pointer-events-none" />
 
               {/* Cloudinha Container with floating animation */}
               <div className="relative mb-6">
-                <div className="absolute inset-0 bg-[#38B1E4]/10 rounded-full scale-110 blur-md animate-pulse" />
+                <div className="absolute inset-0 bg-[#3092bb]/10 rounded-full scale-110 blur-md animate-pulse" />
                 
                 <motion.div
                   animate={{ y: [0, -6, 0] }}
@@ -174,7 +174,7 @@ export default function CandidaturasPage() {
               {/* Decorative Guide steps to make it look premium */}
               <div className="w-full border-t border-gray-100/80 pt-5 mb-5 flex flex-col gap-2.5 text-left relative z-10">
                 <div className="flex items-start gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-[#e6f4f9] text-[#38B1E4] flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                  <div className="w-5 h-5 rounded-full bg-[#e6f4f9] text-[#3092bb] flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
                     1
                   </div>
                   <p className="text-[11px] text-[#556066] leading-snug">
@@ -195,7 +195,7 @@ export default function CandidaturasPage() {
                 whileHover={{ scale: 1.02, y: -1 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setShowAuthModal(true)}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-6 rounded-full bg-gradient-to-r from-[#38B1E4] to-[#247c9f] hover:from-[#359fcb] hover:to-[#2a8bb3] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all duration-200 relative z-10"
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-6 rounded-full bg-gradient-to-r from-[#3092bb] to-[#247c9f] hover:from-[#359fcb] hover:to-[#2a8bb3] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all duration-200 relative z-10"
               >
                 <LogIn size={13} />
                 Fazer login
@@ -212,12 +212,12 @@ export default function CandidaturasPage() {
           >
             <div className="relative w-full max-w-sm bg-white/80 backdrop-blur-md border border-gray-100/80 rounded-3xl shadow-[0_12px_30px_rgba(0,0,0,0.03)] p-8 flex flex-col items-center text-center overflow-hidden">
               {/* Soft decorative background glow */}
-              <div className="absolute -top-16 -left-16 w-36 h-36 bg-[#38B1E4]/5 rounded-full blur-2xl pointer-events-none" />
-              <div className="absolute -bottom-16 -right-16 w-36 h-36 bg-[#38B1E4]/5 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -top-16 -left-16 w-36 h-36 bg-[#3092bb]/5 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-16 -right-16 w-36 h-36 bg-[#3092bb]/5 rounded-full blur-2xl pointer-events-none" />
 
               {/* Cloudinha Container with floating animation */}
               <div className="relative mb-6">
-                <div className="absolute inset-0 bg-[#38B1E4]/10 rounded-full scale-110 blur-md animate-pulse" />
+                <div className="absolute inset-0 bg-[#3092bb]/10 rounded-full scale-110 blur-md animate-pulse" />
                 
                 <motion.div
                   animate={{ y: [0, -6, 0] }}
@@ -243,7 +243,7 @@ export default function CandidaturasPage() {
               {/* Decorative Guide steps to make it look premium */}
               <div className="w-full border-t border-gray-100/80 pt-5 mb-5 flex flex-col gap-2.5 text-left relative z-10">
                 <div className="flex items-start gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-[#e6f4f9] text-[#38B1E4] flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                  <div className="w-5 h-5 rounded-full bg-[#e6f4f9] text-[#3092bb] flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
                     1
                   </div>
                   <p className="text-[11px] text-[#556066] leading-snug">
@@ -251,7 +251,7 @@ export default function CandidaturasPage() {
                   </p>
                 </div>
                 <div className="flex items-start gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-[#e6f4f9] text-[#38B1E4] flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                  <div className="w-5 h-5 rounded-full bg-[#e6f4f9] text-[#3092bb] flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
                     2
                   </div>
                   <p className="text-[11px] text-[#556066] leading-snug">
@@ -264,7 +264,7 @@ export default function CandidaturasPage() {
                 whileHover={{ scale: 1.02, y: -1 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => router.push("/oportunidades")}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-6 rounded-full bg-gradient-to-r from-[#38B1E4] to-[#247c9f] hover:from-[#359fcb] hover:to-[#2a8bb3] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all duration-200 relative z-10"
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-6 rounded-full bg-gradient-to-r from-[#3092bb] to-[#247c9f] hover:from-[#359fcb] hover:to-[#2a8bb3] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all duration-200 relative z-10"
               >
                 <Compass size={13} />
                 Explorar oportunidades

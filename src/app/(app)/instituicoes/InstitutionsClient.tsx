@@ -88,7 +88,7 @@ export default function InstitutionsClient({
           placeholder="Buscar instituição..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="flex-1 bg-transparent outline-none text-[13px]"
+          className="flex-1 bg-transparent outline-none text-[13px] focus:placeholder-transparent"
           style={{ color: '#3a424e', fontFamily: 'Montserrat, sans-serif' }}
           data-testid="search-input"
         />
@@ -105,8 +105,8 @@ export default function InstitutionsClient({
               data-testid={`filter-${tab.id}`}
               className="px-4 py-1.5 rounded-full text-[12px] font-bold transition-colors"
               style={{
-                background: isActive ? '#38B1E4' : 'rgba(56,177,228,0.1)',
-                color:      isActive ? '#fff'    : '#38B1E4',
+                background: isActive ? '#3092bb' : 'rgba(56,177,228,0.1)',
+                color:      isActive ? '#fff'    : '#3092bb',
                 fontFamily: 'Montserrat, sans-serif',
               }}
             >
@@ -126,7 +126,7 @@ export default function InstitutionsClient({
             className="w-14 h-14 rounded-full flex items-center justify-center"
             style={{ background: 'rgba(56,177,228,0.1)' }}
           >
-            <BookOpen size={24} style={{ color: '#38B1E4' }} />
+            <BookOpen size={24} style={{ color: '#3092bb' }} />
           </div>
           <p
             className="text-[14px]"
@@ -163,13 +163,13 @@ export default function InstitutionsClient({
               style={{ background: 'rgba(56,177,228,0.1)' }}
               aria-label="Página anterior"
             >
-              <ChevronLeft size={16} style={{ color: '#38B1E4' }} />
+              <ChevronLeft size={16} style={{ color: '#3092bb' }} />
             </button>
 
             <span
               className="w-9 h-9 flex items-center justify-center rounded-full text-[12px] font-bold"
               style={{
-                background: '#38B1E4',
+                background: '#3092bb',
                 color:      '#fff',
                 fontFamily: 'Montserrat, sans-serif',
               }}
@@ -184,7 +184,7 @@ export default function InstitutionsClient({
               style={{ background: 'rgba(56,177,228,0.1)' }}
               aria-label="Próxima página"
             >
-              <ChevronRight size={16} style={{ color: '#38B1E4' }} />
+              <ChevronRight size={16} style={{ color: '#3092bb' }} />
             </button>
           </div>
         </div>

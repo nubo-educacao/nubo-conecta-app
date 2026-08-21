@@ -24,7 +24,7 @@ interface OpportunityCardProps {
 const BadgeCompatibilidade = ({ score, variant }: { score: number; variant: 'default' | 'partner' }) => {
   const bgGradient = variant === 'partner'
     ? 'linear-gradient(-44.61deg, #7030C2 17.03%, rgba(112, 48, 194, 0.8) 47.27%, rgba(112, 48, 194, 0.6) 88.85%)'
-    : 'linear-gradient(159.94deg, #38B1E4 13.38%, #164255 141.45%)';
+    : 'linear-gradient(159.94deg, #3092bb 13.38%, #164255 141.45%)';
 
   return (
     <div
@@ -93,10 +93,10 @@ export default function OpportunityCard({
       hoverBorder: '#FF9900',
     },
     default: {
-      cardBg: 'linear-gradient(239.86deg, rgba(56, 177, 228, 0.8) 9.15%, #38B1E4 59.27%)',
-      btnBg: 'white',
-      btnText: '#38B1E4',
-      hoverBorder: '#38B1E4',
+      cardBg: 'linear-gradient(239.86deg, rgba(48, 146, 187, 0.8) 9.15%, #3092bb 59.27%)',
+      btnBg: 'rgba(4, 143, 173, 0.15)',
+      btnText: '#3092bb',
+      hoverBorder: '#3092bb',
     }
   };
 
@@ -285,7 +285,7 @@ export default function OpportunityCard({
         {/* Action Button */}
         <button
           onClick={(e) => { e.stopPropagation(); handleViewDetails(); }}
-          className="w-full h-[32px] rounded-full flex items-center justify-center transition-all mt-2 font-semibold text-[13px] shadow-[0px_8px_16px_rgba(0,0,0,0.12)] hover:brightness-95 active:scale-[0.98]"
+          className="w-full h-[32px] rounded-full flex items-center justify-center transition-all mt-2 font-semibold text-[13px] shadow-[0px_8px_16px_rgba(0,0,0,0.12)] hover:opacity-80 active:scale-95"
           style={{ background: currentTheme.btnBg, color: currentTheme.btnText }}
         >
           {isClosed || isIncoming ? 'Ver detalhes' : 'Candidatar'}

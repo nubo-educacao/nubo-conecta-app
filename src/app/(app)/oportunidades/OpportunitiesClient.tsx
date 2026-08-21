@@ -6,7 +6,7 @@
 // "Explorar" branch is delegated to ExploreClient (SearchBar + Pills + FilterModal).
 // Figma SwitchPill tokens (node 22:1160):
 //   Container:     bg-[#f3f4f6] h-[47px] rounded-full w-full
-//   Active tab:    bg-[#38B1E4] rounded-full shadow-[...] h-[39px]
+//   Active tab:    bg-[#3092bb] rounded-full shadow-[...] h-[39px]
 //   Active text:   text-white font-semibold text-[13px] Montserrat
 //   Inactive text: text-[#636e7c] font-semibold text-[13px] Montserrat
 
@@ -88,7 +88,7 @@ export default function OpportunitiesClient({
           className="flex-1 flex items-center justify-center gap-2 rounded-full transition-all duration-300"
           style={{
             height:     39,
-            background: activeTab === 'para-voce' ? '#38B1E4' : 'transparent',
+            background: activeTab === 'para-voce' ? '#3092bb' : 'transparent',
             boxShadow:  activeTab === 'para-voce'
               ? '0px 4px 10px 0px rgba(56,177,228,0.3)'
               : 'none',
@@ -108,7 +108,7 @@ export default function OpportunitiesClient({
           className="flex-1 flex items-center justify-center rounded-full transition-all duration-300"
           style={{
             height:     39,
-            background: activeTab === 'explore' ? '#38B1E4' : 'transparent',
+            background: activeTab === 'explore' ? '#3092bb' : 'transparent',
             boxShadow:  activeTab === 'explore'
               ? '0px 4px 10px 0px rgba(56,177,228,0.3)'
               : 'none',
@@ -130,7 +130,7 @@ export default function OpportunitiesClient({
               {isRefining && (
                 <button
                   onClick={() => setIsRefining(false)}
-                  className="self-start text-[13px] font-bold text-[#38B1E4] flex items-center gap-2 hover:underline mb-2"
+                  className="self-start text-[13px] font-bold text-[#3092bb] flex items-center gap-2 hover:underline mb-2"
                   style={{ fontFamily: 'Montserrat, sans-serif' }}
                 >
                   ← Voltar para Meus Matches
@@ -157,7 +157,7 @@ export default function OpportunitiesClient({
                 {user && (
                   <button
                     onClick={() => setIsRefining(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-white/60 border border-[#38B1E4]/30 rounded-2xl text-[#38B1E4] text-[13px] font-bold hover:bg-[#38B1E4] hover:text-white hover:border-[#38B1E4] transition-all duration-300 shadow-sm active:scale-95"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-white/60 border border-[#3092bb]/30 rounded-2xl text-[#3092bb] text-[13px] font-bold hover:bg-[#3092bb] hover:text-white hover:border-[#3092bb] transition-all duration-300 shadow-sm active:scale-95"
                     style={{ fontFamily: 'Montserrat, sans-serif' }}
                   >
                     <RefreshCw size={14} className={isRefining ? 'animate-spin' : ''} />
@@ -184,7 +184,7 @@ export default function OpportunitiesClient({
                   {user && (
                     <button
                       onClick={() => setIsRefining(true)}
-                      className="mt-8 px-8 py-3 bg-[#38B1E4] text-white rounded-2xl font-bold shadow-lg shadow-[#38B1E4]/20 hover:bg-[#2a81a5] transition-all active:scale-95"
+                      className="mt-8 px-8 py-3 bg-[#3092bb] text-white rounded-2xl font-bold shadow-lg shadow-[#3092bb]/20 hover:bg-[#2a81a5] transition-all active:scale-95"
                       style={{ fontFamily: 'Montserrat, sans-serif' }}
                     >
                       Ajustar Preferências
@@ -215,11 +215,11 @@ export default function OpportunitiesClient({
                         style={{ background: 'rgba(48,146,187,0.1)' }}
                         aria-label="Página anterior"
                       >
-                        <ChevronLeft size={16} style={{ color: '#38B1E4' }} />
+                        <ChevronLeft size={16} style={{ color: '#3092bb' }} />
                       </button>
                       <span
                         className="text-[13px] font-bold px-3 py-1.5 rounded-full"
-                        style={{ background: '#38B1E4', color: '#fff', fontFamily: 'Montserrat, sans-serif' }}
+                        style={{ background: '#3092bb', color: '#fff', fontFamily: 'Montserrat, sans-serif' }}
                       >
                         {currentPage + 1}
                       </span>
@@ -230,7 +230,7 @@ export default function OpportunitiesClient({
                         style={{ background: 'rgba(48,146,187,0.1)' }}
                         aria-label="Próxima página"
                       >
-                        <ChevronRight size={16} style={{ color: '#38B1E4' }} />
+                        <ChevronRight size={16} style={{ color: '#3092bb' }} />
                       </button>
                     </div>
                   </div>

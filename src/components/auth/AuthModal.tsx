@@ -324,24 +324,24 @@ export default function AuthModal({ onClose }: AuthModalProps) {
                 disabled={isLoading || !phone || !acceptedTerms}
                 className={cn(
                   "w-full flex items-center justify-center gap-[10px]",
-                  "bg-nubo-primary rounded-full",
-                  "py-2 px-[10px] h-[45px]",
-                  "hover:bg-nubo-primary/90 active:scale-[0.98]",
-                  "disabled:opacity-50 disabled:cursor-not-allowed",
-                  "transition-all duration-200 mt-1"
+                  "bg-white border border-nubo-primary rounded-[8px]",
+                  "py-2 px-[10px] h-[38px]",
+                  "hover:bg-nubo-primary/5 active:bg-nubo-primary/10",
+                  "disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:border-nubo-line",
+                  "transition-all duration-200 group mt-1"
                 )}
               >
                 {isLoading ? (
-                  <Loader2 className="animate-spin text-white" size={20} />
+                  <Loader2 className="animate-spin text-nubo-primary" size={20} />
                 ) : (
                   <div className="relative w-[20px] h-[20px]">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M17.472 14.382C17.119 14.205 15.385 13.351 15.061 13.234C14.736 13.117 14.5 13.058 14.264 13.411C14.029 13.765 13.351 14.56 13.145 14.795C12.939 15.03 12.732 15.059 12.379 14.882C12.0284 14.7061 10.8932 14.3339 9.549 13.135C8.497 12.197 7.786 11.039 7.58 10.686C7.374 10.332 7.558 10.141 7.734 9.966C7.893 9.808 8.087 9.559 8.264 9.353C8.441 9.147 8.5 8.999 8.618 8.764C8.736 8.529 8.677 8.323 8.588 8.146C8.5 7.97 7.793 6.234 7.5 5.528C7.214 4.841 6.925 4.934 6.703 4.924C6.496 4.914 6.26 4.905 6.024 4.905C5.789 4.905 5.405 4.993 5.081 5.346C4.757 5.7 3.843 6.554 3.843 8.291C3.843 10.028 5.11 11.706 5.287 11.942C5.464 12.177 7.784 15.753 11.455 17.34C13.626 18.279 14.484 18.106 15.192 18.041C16.142 17.954 17.653 17.148 17.969 16.259C18.286 15.369 18.286 14.606 18.196 14.453C18.109 14.301 17.873 14.205 17.472 14.382ZM12.076 21.849C10.273 21.849 8.591 21.373 7.126 20.534L6.812 20.347L3 21.347L4.053 17.653L3.845 17.323C2.909 15.834 2.414 14.076 2.414 12.271C2.414 6.958 6.744 2.636 12.08 2.636C14.662 2.637 17.086 3.642 18.911 5.464C20.735 7.286 21.739 9.709 21.739 12.274C21.739 17.585 17.408 21.849 12.076 21.849Z" fill="currentColor" className="text-white" />
+                      <path d="M17.472 14.382C17.119 14.205 15.385 13.351 15.061 13.234C14.736 13.117 14.5 13.058 14.264 13.411C14.029 13.765 13.351 14.56 13.145 14.795C12.939 15.03 12.732 15.059 12.379 14.882C12.0284 14.7061 10.8932 14.3339 9.549 13.135C8.497 12.197 7.786 11.039 7.58 10.686C7.374 10.332 7.558 10.141 7.734 9.966C7.893 9.808 8.087 9.559 8.264 9.353C8.441 9.147 8.5 8.999 8.618 8.764C8.736 8.529 8.677 8.323 8.588 8.146C8.5 7.97 7.793 6.234 7.5 5.528C7.214 4.841 6.925 4.934 6.703 4.924C6.496 4.914 6.26 4.905 6.024 4.905C5.789 4.905 5.405 4.993 5.081 5.346C4.757 5.7 3.843 6.554 3.843 8.291C3.843 10.028 5.11 11.706 5.287 11.942C5.464 12.177 7.784 15.753 11.455 17.34C13.626 18.279 14.484 18.106 15.192 18.041C16.142 17.954 17.653 17.148 17.969 16.259C18.286 15.369 18.286 14.606 18.196 14.453C18.109 14.301 17.873 14.205 17.472 14.382ZM12.076 21.849C10.273 21.849 8.591 21.373 7.126 20.534L6.812 20.347L3 21.347L4.053 17.653L3.845 17.323C2.909 15.834 2.414 14.076 2.414 12.271C2.414 6.958 6.744 2.636 12.08 2.636C14.662 2.637 17.086 3.642 18.911 5.464C20.735 7.286 21.739 9.709 21.739 12.274C21.739 17.585 17.408 21.849 12.076 21.849Z" fill="currentColor" className="text-nubo-primary" />
                     </svg>
                   </div>
                 )}
-                <span className="font-sans font-bold text-[16px] text-white tracking-tight">
-                  Receber código
+                <span className="font-sans font-bold text-[14px] text-nubo-primary tracking-tight">
+                  Receber código no Whatsapp
                 </span>
               </button>
             </>
@@ -378,7 +378,7 @@ export default function AuthModal({ onClose }: AuthModalProps) {
                 disabled={isLoading || otp.length !== 6}
                 className={cn(
                   "w-full flex items-center justify-center gap-[10px]",
-                  "bg-nubo-primary rounded-full",
+                  "bg-nubo-primary rounded-[8px]",
                   "py-2 px-[10px] h-[45px]",
                   "hover:bg-nubo-primary/90 active:scale-[0.98]",
                   "disabled:opacity-50 disabled:cursor-not-allowed",

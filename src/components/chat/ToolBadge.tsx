@@ -26,7 +26,7 @@ export default function ToolBadge({ toolName }: ToolBadgeProps) {
         className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
         style={{
           background: 'rgba(56,177,228,0.1)',
-          color: '#38B1E4',
+          color: '#3092bb',
           border: '1px solid rgba(56,177,228,0.2)',
           fontFamily: 'Montserrat, sans-serif',
         }}

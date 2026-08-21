@@ -73,12 +73,12 @@ export default function ChatInput({
         className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-xl mb-0.5 transition-all hover:opacity-90 active:scale-95 disabled:opacity-30"
         style={{
           background: canSend
-            ? 'linear-gradient(135deg, #38B1E4, #024F86)'
+            ? 'linear-gradient(135deg, #3092bb, #024F86)'
             : 'rgba(56,177,228,0.2)',
         }}
         aria-label="Enviar"
       >
-        <Send size={14} color={canSend ? 'white' : '#38B1E4'} />
+        <Send size={14} color={canSend ? 'white' : '#3092bb'} />
       </button>
     </div>
   );

@@ -32,7 +32,7 @@ function MessageBubble({ msg, onCloseDrawer }: { msg: ChatMessage; onCloseDrawer
         style={{
           background:
             msg.sender === 'user'
-              ? 'linear-gradient(135deg, #38B1E4, #024F86)'
+              ? 'linear-gradient(135deg, #3092bb, #024F86)'
               : 'rgba(255,255,255,0.85)',
           color: msg.sender === 'user' ? 'white' : '#3a424e',
           borderRadius:
@@ -77,9 +77,9 @@ function MessageBubble({ msg, onCloseDrawer }: { msg: ChatMessage; onCloseDrawer
                           router.push(href!);
                           onCloseDrawer?.();
                         }}
-                        className="underline font-semibold text-[#38B1E4] hover:text-[#024F86] cursor-pointer"
+                        className="underline font-semibold text-[#3092bb] hover:text-[#024F86] cursor-pointer"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={msg.sender === 'user' ? 'text-white inline mr-1' : 'text-[#38B1E4] inline mr-1'}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={msg.sender === 'user' ? 'text-white inline mr-1' : 'text-[#3092bb] inline mr-1'}>
                           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                           <polyline points="15 3 21 3 21 9"></polyline>
                           <line x1="10" y1="14" x2="21" y2="3"></line>
@@ -96,7 +96,7 @@ function MessageBubble({ msg, onCloseDrawer }: { msg: ChatMessage; onCloseDrawer
                       className={`underline font-semibold ${
                         msg.sender === 'user'
                           ? 'text-white hover:text-sky-100'
-                          : 'text-[#38B1E4] hover:text-[#024F86]'
+                          : 'text-[#3092bb] hover:text-[#024F86]'
                       }`}
                     >
                       {children}

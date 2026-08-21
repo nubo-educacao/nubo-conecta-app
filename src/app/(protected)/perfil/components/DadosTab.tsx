@@ -35,7 +35,7 @@ const formatCurrency = (v: number | null | undefined) => {
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
 const inputCls =
-  "w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#38B1E4] transition-colors bg-white";
+  "w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#3092bb] transition-colors bg-white";
 const inputStyle = { borderColor: "#E2E8F0", fontFamily: "Montserrat, sans-serif", color: "#3A424E" };
 const labelStyle = { color: "#707A7E", fontFamily: "Montserrat, sans-serif" };
 
@@ -76,7 +76,7 @@ function Accordion({
           className="flex items-center gap-2 text-sm font-bold"
           style={{ color: "#3A424E", fontFamily: "Montserrat, sans-serif" }}
         >
-          {Icon && <Icon size={16} className="text-[#38B1E4]" />}
+          {Icon && <Icon size={16} className="text-[#3092bb]" />}
           {title}
         </span>
         <ChevronDown
@@ -134,7 +134,7 @@ function EditActions({
       <button
         onClick={onEdit}
         className="flex items-center gap-1 text-xs font-semibold hover:opacity-70 active:scale-95 transition-all"
-        style={{ color: "#38B1E4", fontFamily: "Montserrat, sans-serif" }}
+        style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}
       >
         <Pencil size={12} /> Editar
       </button>
@@ -370,7 +370,7 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
                 <button
                   type="button"
                   onClick={() => openAuthModal('UPDATE_PHONE')}
-                  className="px-3 py-2 bg-[#38B1E4] text-white text-xs font-bold rounded-xl"
+                  className="px-3 py-2 bg-[#3092bb] text-white text-xs font-bold rounded-xl"
                   style={{ fontFamily: "Montserrat, sans-serif" }}
                 >
                   Alterar
@@ -539,9 +539,9 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
                   onClick={() => setEnem((e) => ({ ...e, year: String(y) }))}
                   className="flex-1 py-2 rounded-xl text-xs font-bold border transition-all"
                   style={{
-                    background: enem.year === String(y) ? "#38B1E4" : "white",
+                    background: enem.year === String(y) ? "#3092bb" : "white",
                     color: enem.year === String(y) ? "white" : "#636E7C",
-                    borderColor: enem.year === String(y) ? "#38B1E4" : "#E2E8F0",
+                    borderColor: enem.year === String(y) ? "#3092bb" : "#E2E8F0",
                   }}
                 >
                   {y}
@@ -658,7 +658,7 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
         {data?.income?.per_capita_income != null && (
           <div
             className="mt-4 flex items-center justify-between p-4 rounded-2xl text-white"
-            style={{ background: "linear-gradient(135deg, #024F86 0%, #38B1E4 100%)" }}
+            style={{ background: "linear-gradient(135deg, #024F86 0%, #3092bb 100%)" }}
           >
             <div>
               <p className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Renda Per Capita</p>
@@ -674,10 +674,10 @@ export default function DadosTab({ profileId, data, onRefresh }: DadosTabProps) 
         {onboardingCompleted && (
           <button
             onClick={() => setAddDependentOpen(true)}
-            className="flex items-center gap-2 w-full justify-center py-3.5 rounded-2xl bg-white border border-[#E2E8F0] shadow-sm text-sm font-bold transition-all hover:border-[#38B1E4] hover:text-[#38B1E4]"
+            className="flex items-center gap-2 w-full justify-center py-3.5 rounded-2xl bg-white border border-[#E2E8F0] shadow-sm text-sm font-bold transition-all hover:border-[#3092bb] hover:text-[#3092bb]"
             style={{ color: "#3A424E", fontFamily: "Montserrat, sans-serif" }}
           >
-            <UserPlus size={18} className="text-[#38B1E4]" />
+            <UserPlus size={18} className="text-[#3092bb]" />
             Adicionar Dependente
           </button>
         )}

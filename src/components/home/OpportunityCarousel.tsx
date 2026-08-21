@@ -74,7 +74,7 @@ export default function OpportunityCarousel({
           <a
             href={seeAllHref}
             className="text-xs font-semibold"
-            style={{ color: '#38B1E4', fontFamily: 'Montserrat, sans-serif' }}
+            style={{ color: '#3092bb', fontFamily: 'Montserrat, sans-serif' }}
           >
             Ver tudo
           </a>

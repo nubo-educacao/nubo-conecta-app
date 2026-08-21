@@ -45,7 +45,7 @@ export default function DynamicCTA({
   if (state === 'loading') {
     return (
       <div className="flex justify-center items-center py-8 min-h-[96px] w-full">
-        <Loader2 size={28} className="animate-spin text-[#38B1E4]" />
+        <Loader2 size={28} className="animate-spin text-[#3092bb]" />
       </div>
     );
   }
@@ -132,7 +132,7 @@ export default function DynamicCTA({
           </div>
 
           <div className="flex flex-col gap-0.5 flex-1 pr-12 md:pr-0">
-            <span className="text-[11px] md:text-xs font-semibold text-[#38B1E4] tracking-wider uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <span className="text-[11px] md:text-xs font-semibold text-[#3092bb] tracking-wider uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
               Rápido e fácil!
             </span>
             {/* Desktop Title */}
@@ -232,7 +232,7 @@ export default function DynamicCTA({
     return (
       <Link
         href="/oportunidades"
-        className={`w-full ${cardBorderRadius} p-5 md:p-6 flex items-center justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border-2 border-dashed border-[#38B1E4]/50 bg-white text-left cursor-pointer`}
+        className={`w-full ${cardBorderRadius} p-5 md:p-6 flex items-center justify-between gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.99] border-2 border-dashed border-[#3092bb]/50 bg-white text-left cursor-pointer`}
         style={{
           boxShadow: '0 8px 24px rgba(56, 177, 228, 0.05)'
         }}
@@ -268,7 +268,7 @@ export default function DynamicCTA({
         </div>
 
         {/* Chevron right */}
-        <div className="flex-shrink-0 text-[#38B1E4]">
+        <div className="flex-shrink-0 text-[#3092bb]">
           <ChevronRight size={24} />
         </div>
       </Link>
@@ -375,7 +375,7 @@ export default function DynamicCTA({
         href="/oportunidades"
         className="flex-1 rounded-[20px] px-5 py-5 md:px-6 md:py-6 flex flex-col gap-4 transition-all duration-300 hover:shadow-lg active:scale-[0.98] border border-transparent"
         style={{
-          background: 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)',
+          background: 'linear-gradient(135deg, #3092bb 0%, #024F86 100%)',
           color: 'white',
           boxShadow: '0 8px 30px rgba(2, 79, 134, 0.12)'
         }}

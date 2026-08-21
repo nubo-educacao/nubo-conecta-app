@@ -102,7 +102,7 @@ export default function ExploreClient({
       {/* SearchBar + Filtros — Figma node 22:1967 */}
       <div className="flex items-center gap-2">
         <div
-          className="flex-1 flex items-center gap-2 rounded-[16px] px-4 transition-all focus-within:ring-2 focus-within:ring-[#38B1E4]/20"
+          className="flex-1 flex items-center gap-2 rounded-[16px] px-4 transition-all focus-within:ring-2 focus-within:ring-[#3092bb]/20"
           style={{
             background: '#ffffff',
             border: '1px solid #f3f4f6',
@@ -123,7 +123,7 @@ export default function ExploreClient({
         <button
           onClick={() => setFilterModalOpen(true)}
           className="flex items-center justify-center rounded-[12px] flex-shrink-0"
-          style={{ background: '#38B1E4', width: 48, height: 48 }}
+          style={{ background: '#3092bb', width: 48, height: 48 }}
           aria-label="Abrir filtros avançados"
         >
           <SlidersHorizontal size={18} color="#ffffff" />
@@ -145,8 +145,8 @@ export default function ExploreClient({
               onClick={() => handleCategoryPill(pill.value)}
               className="whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-medium transition-all duration-150 flex-shrink-0"
               style={{
-                background:  isActive ? '#38B1E4' : 'transparent',
-                border:      isActive ? '1px solid #38B1E4' : '1px solid #e5e7eb',
+                background:  isActive ? '#3092bb' : 'transparent',
+                border:      isActive ? '1px solid #3092bb' : '1px solid #e5e7eb',
                 color:       isActive ? '#ffffff' : '#636e7c',
                 fontFamily:  'Montserrat, sans-serif',
                 fontWeight:  isActive ? 600 : 500,
@@ -190,11 +190,11 @@ export default function ExploreClient({
                 style={{ background: 'rgba(48,146,187,0.1)' }}
                 aria-label="Página anterior"
               >
-                <ChevronLeft size={16} style={{ color: '#38B1E4' }} />
+                <ChevronLeft size={16} style={{ color: '#3092bb' }} />
               </button>
               <span
                 className="text-[13px] font-bold px-3 py-1.5 rounded-full"
-                style={{ background: '#38B1E4', color: '#fff', fontFamily: 'Montserrat, sans-serif' }}
+                style={{ background: '#3092bb', color: '#fff', fontFamily: 'Montserrat, sans-serif' }}
               >
                 {currentPage + 1}
               </span>
@@ -205,7 +205,7 @@ export default function ExploreClient({
                 style={{ background: 'rgba(48,146,187,0.1)' }}
                 aria-label="Próxima página"
               >
-                <ChevronRight size={16} style={{ color: '#38B1E4' }} />
+                <ChevronRight size={16} style={{ color: '#3092bb' }} />
               </button>
             </div>
           </div>

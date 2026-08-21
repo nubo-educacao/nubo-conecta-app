@@ -17,7 +17,7 @@ export const DATE_TYPE_COLORS: Record<DateType, string> = {
   prouni: "#9747FF",
   sisu: "#024F86",
   partners: "#FF9900",
-  general: "#38B1E4",
+  general: "#3092bb",
 };
 
 export const DATE_TYPE_LABELS: Record<DateType, string> = {

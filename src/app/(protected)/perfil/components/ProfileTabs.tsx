@@ -34,7 +34,7 @@ export default function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps
             style={{
               fontFamily: "Montserrat, sans-serif",
               background: isActive ? "#ffffff" : "transparent",
-              color: isActive ? "#38B1E4" : "#707A7E",
+              color: isActive ? "#3092bb" : "#707A7E",
               boxShadow: isActive
                 ? "0 2px 8px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05)"
                 : "none",

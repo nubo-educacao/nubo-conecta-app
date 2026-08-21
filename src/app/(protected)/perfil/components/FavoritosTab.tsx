@@ -113,7 +113,7 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-40">
-        <div className="w-6 h-6 border-2 border-[#38B1E4] border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-[#3092bb] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -125,7 +125,7 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
           className="flex items-center justify-center w-16 h-16 rounded-full mb-4"
           style={{ background: "rgba(48,146,187,0.08)" }}
         >
-          <Heart size={28} style={{ color: "#38B1E4" }} />
+          <Heart size={28} style={{ color: "#3092bb" }} />
         </div>
         <h3 className="text-base font-bold mb-2" style={{ color: "#3A424E", fontFamily: "Montserrat, sans-serif" }}>
           Nenhum favorito ainda
@@ -137,7 +137,7 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
           <Link
             href="/oportunidades"
             className="px-6 py-2.5 rounded-full text-sm font-bold text-white transition-opacity hover:opacity-90 text-center"
-            style={{ background: "linear-gradient(135deg, #38B1E4 0%, #024F86 100%)", fontFamily: "Montserrat, sans-serif" }}
+            style={{ background: "linear-gradient(135deg, #3092bb 0%, #024F86 100%)", fontFamily: "Montserrat, sans-serif" }}
           >
             Explorar Oportunidades
           </Link>
@@ -167,7 +167,7 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
         <div className="px-4 py-6 text-center border border-dashed border-gray-100 rounded-2xl bg-gray-50/50">
           <h3 className="text-sm font-bold text-[#3a424e] mb-1">Nenhuma oportunidade favorita</h3>
           <p className="text-xs text-[#707a7e] mb-3">Explore e adicione oportunidades aos seus favoritos.</p>
-          <Link href="/oportunidades" className="text-xs font-semibold text-[#38B1E4] hover:underline">
+          <Link href="/oportunidades" className="text-xs font-semibold text-[#3092bb] hover:underline">
             Explorar oportunidades →
           </Link>
         </div>
@@ -189,7 +189,7 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
         <div className="px-4 py-6 text-center border border-dashed border-gray-100 rounded-2xl bg-gray-50/50">
           <h3 className="text-sm font-bold text-[#3a424e] mb-1">Nenhuma instituição favorita</h3>
           <p className="text-xs text-[#707a7e] mb-3">Explore e adicione instituições aos seus favoritos.</p>
-          <Link href="/instituicoes" className="text-xs font-semibold text-[#38B1E4] hover:underline">
+          <Link href="/instituicoes" className="text-xs font-semibold text-[#3092bb] hover:underline">
             Explorar instituições →
           </Link>
         </div>

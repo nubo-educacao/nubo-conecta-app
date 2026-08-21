@@ -16,7 +16,7 @@ export default function CloudBackground() {
 
       {/* Cloud 1 - Primary Soft Main Cloud (Top Left) */}
       <motion.div
-        className="absolute top-[-10%] -left-[10%] w-[900px] h-[500px] bg-[#38B1E4] rounded-full blur-[140px] opacity-[0.4]"
+        className="absolute top-[-10%] -left-[10%] w-[900px] h-[500px] bg-[#3092bb] rounded-full blur-[140px] opacity-[0.4]"
         style={{ willChange: 'transform' }}
         animate={{
           x: ['-5%', '5%'],

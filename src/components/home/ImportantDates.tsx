@@ -26,9 +26,9 @@ const CATEGORY_STYLES: Record<
   blue: {
     bg: 'rgba(56, 177, 228, 0.1)',
     border: 'rgba(56, 177, 228, 0.2)',
-    dateColor: '#38B1E4',
-    dot: 'text-[#38B1E4]',
-    icon: 'text-[#38B1E4]',
+    dateColor: '#3092bb',
+    dot: 'text-[#3092bb]',
+    icon: 'text-[#3092bb]',
   },
   orange: {
     bg: 'rgba(255, 153, 0, 0.1)',

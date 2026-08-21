@@ -122,16 +122,16 @@ async function lookupCEP(raw: string) {
 
 function FieldLabel({ icon: Icon, label, error, required, htmlFor }: { icon?: React.ElementType; label: string; error?: boolean; required?: boolean; htmlFor?: string }) {
   return (
-    <label htmlFor={htmlFor} className={`text-[12px] font-bold flex items-center gap-1.5 mb-1.5 uppercase tracking-wider ${error ? 'text-red-500' : 'text-[#636E7C]'}`}>
-      {Icon && <Icon size={14} className={error ? 'text-red-500' : 'text-[#1BBBCD]'} />}
+    <label htmlFor={htmlFor} className="text-[12px] font-bold flex items-center gap-1.5 mb-1.5 uppercase tracking-wider text-[#636E7C]">
+      {Icon && <Icon size={14} className="text-[#1BBBCD]" />}
       {label}
-      {required && <span className="text-[#38B1E4]">*</span>}
-      {error && <AlertCircle size={12} className="text-red-500 animate-pulse ml-auto" />}
+      {required && <span className="text-red-500">*</span>}
+      {error && <AlertCircle size={12} className="text-red-500 animate-pulse ml-auto" title="Campo com erro/obrigatório" />}
     </label>
   );
 }
 
-const inputCls = 'bg-white/40 border border-white/60 focus:border-[#38B1E4] focus:bg-white rounded-xl px-4 py-2.5 text-[#3A424E] outline-none transition-all placeholder:text-gray-400 w-full text-[14px] shadow-sm';
+const inputCls = 'bg-white/40 border border-white/60 focus:border-[#3092bb] focus:bg-white rounded-xl px-4 py-2.5 text-[#3A424E] outline-none transition-all placeholder:text-gray-400 w-full text-[14px] shadow-sm';
 
 type YearScores = { ling: string; hum: string; nat: string; mat: string; red: string };
 
@@ -749,7 +749,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
           <div 
             className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[14px] transition-all duration-300 ${
               step === s 
-                ? 'bg-[#38B1E4] text-white shadow-[0_0_15px_rgba(56,177,228,0.4)] scale-110' 
+                ? 'bg-[#3092bb] text-white shadow-[0_0_15px_rgba(56,177,228,0.4)] scale-110' 
                 : step > s 
                   ? 'bg-[#1BBBCD] text-white' 
                   : 'bg-white/50 text-[#636E7C] border border-white/60'
@@ -768,7 +768,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
   if (isLoadingData) {
     return (
       <div className="flex flex-col max-w-2xl mx-auto w-full items-center justify-center min-h-[400px]">
-        <Loader2 className="animate-spin text-[#38B1E4] mb-4" size={48} />
+        <Loader2 className="animate-spin text-[#3092bb] mb-4" size={48} />
         <p className="text-[#636E7C] font-semibold animate-pulse">Carregando seus dados...</p>
       </div>
     );
@@ -780,7 +780,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
 
       <div className="bg-white/20 backdrop-blur-xl border border-white/30 rounded-3xl p-6 md:p-8 shadow-2xl overflow-hidden relative group">
         {/* Glow effect */}
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#38B1E4]/20 rounded-full blur-3xl" />
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#3092bb]/20 rounded-full blur-3xl" />
         <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-[#024F86]/10 rounded-full blur-3xl" />
 
         {/* STEP 1: IDENTIFICAÇÃO */}
@@ -788,7 +788,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
           <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
             <header className="mb-8">
               <h2 className="text-2xl font-black text-[#024F86] flex items-center gap-3" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                <User className="text-[#38B1E4]" /> Identificação
+                <User className="text-[#3092bb]" /> Identificação
               </h2>
               <p className="text-[#636E7C] text-[14px] mt-1">Conte-nos um pouco sobre você para começarmos.</p>
             </header>
@@ -887,7 +887,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                 <h3 className="font-bold text-[#024F86] uppercase tracking-tighter text-[14px]">Endereço de Residência</h3>
                 <button 
                   onClick={() => setOutsideBrazil(!outsideBrazil)}
-                  className="text-[12px] flex items-center gap-1.5 font-bold text-[#38B1E4] hover:underline"
+                  className="text-[12px] flex items-center gap-1.5 font-bold text-[#3092bb] hover:underline"
                 >
                   <Globe size={14} /> {outsideBrazil ? 'Moro no Brasil' : 'Moro no Exterior'}
                 </button>
@@ -906,7 +906,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                         onFocus={triggerAddressIntent}
                         maxLength={8}
                       />
-                      {cepLoading && <Loader2 size={16} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-[#38B1E4]" />}
+                      {cepLoading && <Loader2 size={16} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-[#3092bb]" />}
                     </div>
                   </div>
                   <div className="col-span-1">
@@ -951,12 +951,12 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
           <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
              <header className="mb-8">
               <h2 className="text-2xl font-black text-[#024F86] flex items-center gap-3" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                <Sparkles className="text-[#38B1E4]" /> Desempenho & Renda
+                <Sparkles className="text-[#3092bb]" /> Desempenho & Renda
               </h2>
               <p className="text-[#636E7C] text-[14px] mt-1">Esses dados são cruciais para o cálculo do seu Match.</p>
             </header>
 
-            <div className="bg-[#E0F2FE]/30 rounded-2xl p-5 border border-[#38B1E4]/20">
+            <div className="bg-[#E0F2FE]/30 rounded-2xl p-5 border border-[#3092bb]/20">
               <h3 className="font-bold text-[#024F86] mb-4 flex items-center gap-2 uppercase text-[13px]">
                 <GraduationCap size={16} /> Resultados do ENEM
               </h3>
@@ -971,7 +971,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                         onClick={() => setEnemYear(y.toString())}
                         className={`flex-1 py-2.5 rounded-xl text-[13px] font-bold border transition-all ${
                           enemYear === y.toString()
-                            ? 'bg-[#38B1E4] text-white border-[#38B1E4] shadow-[0_4px_12px_rgba(56,177,228,0.3)]'
+                            ? 'bg-[#3092bb] text-white border-[#3092bb] shadow-[0_4px_12px_rgba(56,177,228,0.3)]'
                             : 'bg-white/40 text-[#636E7C] border-white/60 hover:bg-white/60'
                         }`}
                       >
@@ -992,7 +992,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                           [enemYear]: e.target.checked
                         }));
                       }}
-                      className="w-4 h-4 accent-[#38B1E4] rounded cursor-pointer"
+                      className="w-4 h-4 accent-[#3092bb] rounded cursor-pointer"
                     />
                     <span className="text-[13px] font-semibold text-[#024F86]">
                       Nota de Treineiro / Simulado
@@ -1014,7 +1014,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                         type="number"
                         min="0"
                         max="1000"
-                        className={`w-full bg-white/60 border rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-[#38B1E4] transition-all ${
+                        className={`w-full bg-white/60 border rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-[#3092bb] transition-all ${
                           currentScores[f.field] && (parseFloat(currentScores[f.field]) > 1000 || parseFloat(currentScores[f.field]) < 0)
                             ? 'border-red-400 bg-red-50/50'
                             : 'border-white/80'
@@ -1055,7 +1055,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
           <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
              <header className="mb-8">
               <h2 className="text-2xl font-black text-[#024F86] flex items-center gap-3" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                <BookOpen className="text-[#38B1E4]" /> Interesses & Filtros
+                <BookOpen className="text-[#3092bb]" /> Interesses & Filtros
               </h2>
               <p className="text-[#636E7C] text-[14px] mt-1">Finalize com suas preferências de estudo.</p>
             </header>
@@ -1083,7 +1083,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                         onFocus={() => courseInput.length >= 2 && setShowCourseSuggestions(true)}
                       />
                       {coursesLoading && (
-                        <Loader2 size={14} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-[#38B1E4]" />
+                        <Loader2 size={14} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-[#3092bb]" />
                       )}
                     </div>
                     <button
@@ -1094,7 +1094,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                         setCourseInput('');
                         setShowCourseSuggestions(false);
                       }}
-                      className="bg-[#38B1E4] text-white px-4 rounded-xl font-bold"
+                      className="bg-[#3092bb] text-white px-4 rounded-xl font-bold"
                     >
                       +
                     </button>
@@ -1142,7 +1142,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                           else setShifts([...shifts, s]);
                         }}
                         className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
-                          shifts.includes(s) ? 'bg-[#38B1E4] text-white border-[#38B1E4]' : 'bg-white/40 text-[#636E7C] border-white/60'
+                          shifts.includes(s) ? 'bg-[#3092bb] text-white border-[#3092bb]' : 'bg-white/40 text-[#636E7C] border-white/60'
                         }`}
                       >
                         {s}
@@ -1181,7 +1181,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                       onFocus={() => locationPref.length >= 2 && setShowCitySuggestions(true)}
                     />
                     {citiesLoading && (
-                      <Loader2 size={14} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-[#38B1E4]" />
+                      <Loader2 size={14} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-[#3092bb]" />
                     )}
                     {showCitySuggestions && cityResults.length > 0 && (
                       <div className="absolute z-50 left-0 right-0 mt-1 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden max-h-56 overflow-y-auto">
@@ -1217,10 +1217,10 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
                   {QUOTA_OPTIONS.map(q => (
-                    <label key={q.id} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${quotaTypes.includes(q.id) ? 'bg-[#E0F2FE] border-[#38B1E4]/50' : 'bg-white/30 border-transparent'}`}>
+                    <label key={q.id} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${quotaTypes.includes(q.id) ? 'bg-[#E0F2FE] border-[#3092bb]/50' : 'bg-white/30 border-transparent'}`}>
                       <input 
                         type="checkbox" 
-                        className="w-4 h-4 accent-[#38B1E4]"
+                        className="w-4 h-4 accent-[#3092bb]"
                         checked={quotaTypes.includes(q.id)}
                         onChange={() => {
                           if (quotaTypes.includes(q.id)) setQuotaTypes(quotaTypes.filter(x => x !== q.id));
@@ -1260,7 +1260,7 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
           {step < 3 ? (
             <button 
               onClick={nextStep}
-              className="flex-[2] flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[15px] font-bold text-white bg-[#38B1E4] shadow-[0_10px_20px_rgba(56,177,228,0.3)] hover:shadow-[0_15px_25px_rgba(56,177,228,0.4)] transition-all active:scale-[0.98]"
+              className="flex-[2] flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[15px] font-bold text-white bg-[#3092bb] shadow-[0_10px_20px_rgba(56,177,228,0.3)] hover:shadow-[0_15px_25px_rgba(56,177,228,0.4)] transition-all active:scale-[0.98]"
             >
               Continuar <ChevronRight size={20} />
             </button>
