@@ -116,7 +116,7 @@ export default function ExploreClient({
             defaultValue={filters.q ?? ''}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Buscar oportunidades..."
-            className="flex-1 bg-transparent outline-none text-[14px]"
+            className="flex-1 bg-transparent outline-none text-[14px] focus:placeholder-transparent"
             style={{ color: '#3a424e', fontFamily: 'Montserrat, sans-serif' }}
           />
         </div>

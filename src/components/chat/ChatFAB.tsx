@@ -80,11 +80,11 @@ export default function ChatFAB() {
           }}
         >
           <div
-            className="absolute w-full h-full rounded-full bg-[#38B1E4] animate-ping opacity-75"
+            className="absolute w-full h-full rounded-full bg-[#3092bb] animate-ping opacity-75"
             style={{ animationDuration: '3s' }}
           />
           <div
-            className="absolute w-full h-full rounded-full bg-[#38B1E4] animate-ping opacity-50"
+            className="absolute w-full h-full rounded-full bg-[#3092bb] animate-ping opacity-50"
             style={{ animationDuration: '3s', animationDelay: '1.5s' }}
           />
         </div>
@@ -101,7 +101,7 @@ export default function ChatFAB() {
           height: 52,
           background: isOpen
             ? 'rgba(255,255,255,0.9)'
-            : 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)',
+            : 'linear-gradient(135deg, #3092bb 0%, #024F86 100%)',
           border: isOpen ? '2px solid rgba(56,177,228,0.4)' : (!isOpen && hasPriorityMessage ? '2px solid rgba(56,177,228,0.7)' : 'none'),
           boxShadow: !isOpen && hasPriorityMessage
             ? '0 8px 32px rgba(56,177,228,0.55)'
@@ -110,7 +110,7 @@ export default function ChatFAB() {
         aria-label={isOpen ? 'Fechar Cloudinha' : 'Abrir Cloudinha'}
       >
         {isOpen ? (
-          <X size={22} style={{ color: '#38B1E4' }} />
+          <X size={22} style={{ color: '#3092bb' }} />
         ) : (
           <div className="relative w-full h-full rounded-full overflow-hidden">
             <Image

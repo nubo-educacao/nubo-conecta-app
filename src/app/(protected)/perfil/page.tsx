@@ -41,7 +41,7 @@ function resizeImage(file: File, size: number): Promise<Blob> {
 
       // Fill with the blue gradient background (matches the avatar circle)
       const gradient = ctx.createLinearGradient(0, 0, size, size);
-      gradient.addColorStop(0, "#38B1E4");
+      gradient.addColorStop(0, "#3092bb");
       gradient.addColorStop(1, "#024F86");
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, size, size);
@@ -171,7 +171,7 @@ function PerfilContent() {
           <div 
             className="h-48 w-full rounded-none md:rounded-t-3xl overflow-hidden relative flex items-center px-6 md:px-10"
             style={{ 
-              background: "linear-gradient(163deg, #3092BB 0%, #1E5E7A 85%, #15465C 100%)",
+              background: "linear-gradient(163deg, #3092bb 0%, #1E5E7A 85%, #15465C 100%)",
               boxShadow: "0px 4px 4px rgba(0,0,0,0.15)"
             }}
           >

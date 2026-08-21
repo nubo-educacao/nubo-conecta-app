@@ -107,10 +107,10 @@ export default function IncomeCalculatorField({
 
     const borderCls = hasError
         ? 'border-red-400 ring-2 ring-red-100'
-        : 'border-gray-200 focus-within:border-[#38B1E4] focus-within:ring-2 focus-within:ring-[#38B1E4]/20';
+        : 'border-gray-200 focus-within:border-[#3092bb] focus-within:ring-2 focus-within:ring-[#3092bb]/20';
 
     const inputCls = `w-full outline-none bg-white/60 text-[#3A424E] text-sm py-2 px-3 rounded-xl border-2 border-gray-200
-        focus:border-[#38B1E4] focus:ring-2 focus:ring-[#38B1E4]/20 transition-all duration-200`;
+        focus:border-[#3092bb] focus:ring-2 focus:ring-[#3092bb]/20 transition-all duration-200`;
 
     return (
         <div className={`relative rounded-2xl border-2 bg-white/60 backdrop-blur-sm p-4 space-y-4 transition-all duration-200 ${borderCls}`}>
@@ -184,7 +184,7 @@ export default function IncomeCalculatorField({
                                     type="number"
                                     min={0}
                                     placeholder="R$ 0,00"
-                                    className="w-full bg-white border-2 border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[#38B1E4] transition-colors"
+                                    className="w-full bg-white border-2 border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[#3092bb] transition-colors"
                                     value={inc}
                                     onChange={e => {
                                         const arr = [...memberIncomes];
@@ -200,7 +200,7 @@ export default function IncomeCalculatorField({
 
             {/* Result card */}
             {familyCount && perCapitaIncome > 0 && (
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-[#024F86] to-[#38B1E4] rounded-2xl text-white shadow-lg animate-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-[#024F86] to-[#3092bb] rounded-2xl text-white shadow-lg animate-in slide-in-from-top-2 duration-300">
                     <div className="flex flex-col gap-0.5">
                         <span className="text-[10px] font-bold opacity-80 uppercase">Renda Per Capita Calculada</span>
                         <span className="text-xl font-black">{formatCurrency(perCapitaIncome)}</span>

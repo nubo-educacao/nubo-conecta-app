@@ -36,7 +36,7 @@ export default function MatchOnboarding({ onGenerate, isLoading }: MatchOnboardi
       <div className="text-center">
         <div
           className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3"
-          style={{ background: 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)' }}
+          style={{ background: 'linear-gradient(135deg, #3092bb 0%, #024F86 100%)' }}
         >
           <Sparkles size={26} color="white" />
         </div>
@@ -63,7 +63,7 @@ export default function MatchOnboarding({ onGenerate, isLoading }: MatchOnboardi
               className="mt-0.5 flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-lg"
               style={{ background: 'rgba(56, 177, 228, 0.15)' }}
             >
-              <Icon size={16} style={{ color: '#38B1E4' }} />
+              <Icon size={16} style={{ color: '#3092bb' }} />
             </span>
             <div>
               <p
@@ -91,7 +91,7 @@ export default function MatchOnboarding({ onGenerate, isLoading }: MatchOnboardi
         style={{
           background: isLoading
             ? '#94a3b8'
-            : 'linear-gradient(135deg, #38B1E4 0%, #024F86 100%)',
+            : 'linear-gradient(135deg, #3092bb 0%, #024F86 100%)',
           fontFamily: 'Montserrat, sans-serif',
         }}
       >

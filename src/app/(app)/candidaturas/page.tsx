@@ -266,7 +266,7 @@ export default function CandidaturasPage() {
                 onClick={() => router.push("/oportunidades")}
                 className="w-full flex items-center justify-center gap-2 py-2.5 px-6 rounded-full bg-gradient-to-r from-[#3092bb] to-[#247c9f] hover:from-[#359fcb] hover:to-[#2a8bb3] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all duration-200 relative z-10"
               >
-                <Compass size={13} className="animate-spin" style={{ animationDuration: '8s' }} />
+                <Compass size={13} />
                 Explorar oportunidades
               </motion.button>
             </div>

@@ -195,7 +195,7 @@ export default function AddDependentSheet({ open, onClose }: AddDependentSheetPr
                 disabled={loading}
                 className="w-full rounded-xl py-3 text-sm font-bold transition-opacity disabled:opacity-60"
                 style={{
-                  background: "linear-gradient(135deg, #38B1E4 0%, #024F86 100%)",
+                  background: "linear-gradient(135deg, #3092bb 0%, #024F86 100%)",
                   color: "#fff",
                   fontFamily: "Montserrat, sans-serif",
                 }}

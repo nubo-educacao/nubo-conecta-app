@@ -412,7 +412,7 @@ export default function PartnerFormEngine({
                     <button
                         onClick={handleSubmit(submitFinalForm as Parameters<typeof handleSubmit>[0])}
                         disabled={submitting || isSubmitted}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-gradient-to-r from-[#024F86] to-[#38B1E4] text-white text-[11px] font-black uppercase tracking-wider shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                        className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-gradient-to-r from-[#024F86] to-[#3092bb] text-white text-[11px] font-black uppercase tracking-wider shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
                     >
                         {submitting
                             ? <Loader2 className="animate-spin" size={14} />
@@ -482,7 +482,7 @@ export default function PartnerFormEngine({
                     {totalSteps > 1 && (
                         <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
                             <motion.div
-                                className="h-full bg-gradient-to-r from-[#024F86] to-[#38B1E4] rounded-full"
+                                className="h-full bg-gradient-to-r from-[#024F86] to-[#3092bb] rounded-full"
                                 initial={{ width: 0 }}
                                 animate={{ width: `${progress}%` }}
                                 transition={{ duration: 0.3 }}
@@ -546,9 +546,9 @@ export default function PartnerFormEngine({
                             (!currentStep.repeat_limit || currentIteration + 1 < currentStep.repeat_limit) && (
                                 <button
                                     onClick={handleAddIteration}
-                                    className="flex-1 md:flex-none flex items-center justify-center gap-1 md:gap-2 px-4 md:px-6 py-2.5 md:py-3 rounded-full border-2 border-[#38B1E4] text-[#024F86] text-[11px] md:text-sm font-bold hover:bg-[#38B1E4]/5 transition-all"
+                                    className="flex-1 md:flex-none flex items-center justify-center gap-1 md:gap-2 px-4 md:px-6 py-2.5 md:py-3 rounded-full border-2 border-[#3092bb] text-[#024F86] text-[11px] md:text-sm font-bold hover:bg-[#3092bb]/5 transition-all"
                                 >
-                                    <Plus size={16} className="text-[#38B1E4]" />
+                                    <Plus size={16} className="text-[#3092bb]" />
                                     <span className="md:hidden">Outro</span>
                                     <span className="hidden md:inline">Responder mais 1 vez</span>
                                 </button>
@@ -557,7 +557,7 @@ export default function PartnerFormEngine({
 
                     <button
                         onClick={handleNext}
-                        className="flex-[2] md:flex-none w-full md:w-auto flex items-center justify-center gap-1 md:gap-2 px-4 md:px-8 py-2.5 md:py-3.5 rounded-full bg-gradient-to-r from-[#024F86] to-[#38B1E4] text-white text-[11px] md:text-sm font-black uppercase tracking-wider shadow-md hover:shadow-lg transition-all"
+                        className="flex-[2] md:flex-none w-full md:w-auto flex items-center justify-center gap-1 md:gap-2 px-4 md:px-8 py-2.5 md:py-3.5 rounded-full bg-gradient-to-r from-[#024F86] to-[#3092bb] text-white text-[11px] md:text-sm font-black uppercase tracking-wider shadow-md hover:shadow-lg transition-all"
                     >
                         {isLastStep ? (
                             <>

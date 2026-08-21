@@ -59,12 +59,13 @@ const QUOTA_OPTIONS = [
   { id: 'ESCOLA_PRIVADA_BOLSA_INTEGRAL', label: 'Escola Privada com Bolsa Integral', description: 'Cursou o ensino médio com bolsa integral em escola privada.' },
 ];
 
-function Chip({ label, active, onClick, showX }: { label: string; active: boolean; onClick: () => void; showX?: boolean }) {
+function Chip({ label, active, onClick, showX, interactive = true }: { label: string; active: boolean; onClick: () => void; showX?: boolean; interactive?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1.5 ${active ? "shadow-sm" : ""}`}
+      disabled={!interactive}
+      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1.5 ${interactive ? "hover:opacity-80 active:scale-95 cursor-pointer" : "cursor-default"} ${active ? "shadow-sm" : ""}`}
       style={{
         fontFamily: "Montserrat, sans-serif",
         background: active ? "#3092bb" : "transparent",
@@ -95,7 +96,7 @@ function Section({ title, editing, onEdit, onSave, onCancel, saving, children, r
           {title}
         </h3>
         {!editing ? (
-          <button onClick={onEdit} className="flex items-center gap-1 text-xs font-semibold" style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}>
+          <button onClick={onEdit} className="flex items-center gap-1 text-xs font-semibold hover:opacity-70 active:scale-95 transition-all" style={{ color: "#3092bb", fontFamily: "Montserrat, sans-serif" }}>
             <Pencil size={12} /> Editar
           </button>
         ) : (
@@ -353,6 +354,7 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
                 label={course} 
                 active={true} 
                 showX={true}
+                interactive={true}
                 onClick={() => setCourseInterest(courseInterest.filter(x => x !== course))} 
               />
             ))}
@@ -374,7 +376,7 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
             <div className="flex flex-wrap gap-2">
               {quotaTypes.length ? quotaTypes.map(qId => {
                 const q = QUOTA_OPTIONS.find(opt => opt.id === qId);
-                return <Chip key={qId} label={q?.label || qId} active={true} onClick={() => {}} />;
+                return <Chip key={qId} label={q?.label || qId} active={true} onClick={() => {}} interactive={false} />;
               }) : <p className="text-sm text-[#707A7E]">Nenhuma cota selecionada</p>}
             </div>
           }
@@ -418,13 +420,13 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
           saving={saving}
           readOnlyView={
             <div className="flex flex-wrap gap-2">
-              {preferredShifts.length ? preferredShifts.map(s => <Chip key={s} label={s} active={true} onClick={() => {}} />) : <p className="text-sm text-[#707A7E]">Nenhum turno selecionado</p>}
+              {preferredShifts.length ? preferredShifts.map(s => <Chip key={s} label={s} active={true} onClick={() => {}} interactive={false} />) : <p className="text-sm text-[#707A7E]">Nenhum turno selecionado</p>}
             </div>
           }
         >
           <div className="flex flex-wrap gap-2">
             {SHIFTS_OPTIONS.map((s) => (
-              <Chip key={s} label={s} active={preferredShifts.includes(s)} onClick={() => toggleArr(preferredShifts, s, setPreferredShifts, editingShift)} />
+              <Chip key={s} label={s} active={preferredShifts.includes(s)} onClick={() => toggleArr(preferredShifts, s, setPreferredShifts, editingShift)} interactive={editingShift} />
             ))}
           </div>
         </Section>
@@ -442,13 +444,13 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
           saving={saving}
           readOnlyView={
             <div className="flex flex-wrap gap-2">
-              <Chip label={PROGRAMS.find(p => p.value === programPref)?.label || programPref} active={true} onClick={() => {}} />
+              <Chip label={PROGRAMS.find(p => p.value === programPref)?.label || programPref} active={true} onClick={() => {}} interactive={false} />
             </div>
           }
         >
           <div className="flex gap-2 flex-wrap">
             {PROGRAMS.map((p) => (
-              <Chip key={p.value} label={p.label} active={programPref === p.value} onClick={() => setProgramPref(p.value)} />
+              <Chip key={p.value} label={p.label} active={programPref === p.value} onClick={() => editingProgram && setProgramPref(p.value)} interactive={editingProgram} />
             ))}
           </div>
         </Section>
@@ -466,13 +468,13 @@ export default function PreferenciasTab({ userId, data, onRefresh }: Preferencia
           saving={saving}
           readOnlyView={
             <div className="flex flex-wrap gap-2">
-              <Chip label={UNIVERSITY_TYPES.find(p => p.value === universityPref)?.label || universityPref} active={true} onClick={() => {}} />
+              <Chip label={UNIVERSITY_TYPES.find(p => p.value === universityPref)?.label || universityPref} active={true} onClick={() => {}} interactive={false} />
             </div>
           }
         >
           <div className="flex gap-2 flex-wrap">
             {UNIVERSITY_TYPES.map((u) => (
-              <Chip key={u.value} label={u.label} active={universityPref === u.value} onClick={() => setUniversityPref(u.value)} />
+              <Chip key={u.value} label={u.label} active={universityPref === u.value} onClick={() => editingUniv && setUniversityPref(u.value)} interactive={editingUniv} />
             ))}
           </div>
         </Section>

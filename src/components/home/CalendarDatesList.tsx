@@ -85,7 +85,7 @@ export default function CalendarDatesList({ dates, selectedMonth }: CalendarDate
                       {typeLabel}
                     </span>
                   </div>
-                  <p className="text-[11px] font-bold text-[#38B1E4]">
+                  <p className="text-[11px] font-bold text-[#3092bb]">
                     {formatDateRange(date.date, date.endDate)}
                   </p>
                   {date.description && (

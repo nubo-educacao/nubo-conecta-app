@@ -28,20 +28,20 @@ export default function SmartSearch() {
           boxShadow: '0px 4px 20px rgba(56,177,228,0.1)',
         }}
       >
-        <Search size={18} style={{ color: '#38B1E4', flexShrink: 0 }} />
+        <Search size={18} style={{ color: '#3092bb', flexShrink: 0 }} />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar cursos, bolsas, universidades..."
-          className="flex-1 bg-transparent outline-none text-sm placeholder:text-gray-400"
+          className="flex-1 bg-transparent outline-none text-sm placeholder:text-gray-400 focus:placeholder-transparent"
           style={{ color: '#3a424e', fontFamily: 'Montserrat, sans-serif' }}
         />
         {query.trim() && (
           <button
             type="submit"
             className="flex-shrink-0 px-3 py-1 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-90"
-            style={{ background: '#38B1E4', fontFamily: 'Montserrat, sans-serif' }}
+            style={{ background: '#3092bb', fontFamily: 'Montserrat, sans-serif' }}
           >
             Buscar
           </button>

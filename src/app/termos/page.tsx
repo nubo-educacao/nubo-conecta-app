@@ -14,7 +14,7 @@ export default function TermosPage() {
         <Link
           href="/"
           className="flex items-center gap-2 text-sm font-semibold w-fit"
-          style={{ color: '#38B1E4', fontFamily: 'Montserrat, sans-serif' }}
+          style={{ color: '#3092bb', fontFamily: 'Montserrat, sans-serif' }}
         >
           <ArrowLeft size={16} />
           Voltar
@@ -47,7 +47,7 @@ export default function TermosPage() {
               className="text-[14px] leading-relaxed mt-4"
               style={{ color: '#636e7c', fontFamily: 'Montserrat, sans-serif' }}
             >
-              Para dúvidas, entre em contato: <span style={{ color: '#38B1E4' }}>contato@nuboconecta.com.br</span>
+              Para dúvidas, entre em contato: <span style={{ color: '#3092bb' }}>contato@nuboconecta.com.br</span>
             </p>
           </div>
         </div>

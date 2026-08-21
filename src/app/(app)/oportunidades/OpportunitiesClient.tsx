@@ -90,7 +90,7 @@ export default function OpportunitiesClient({
             height:     39,
             background: activeTab === 'para-voce' ? '#3092bb' : 'transparent',
             boxShadow:  activeTab === 'para-voce'
-              ? '0px 4px 10px 0px rgba(48,146,187,0.3)'
+              ? '0px 4px 10px 0px rgba(56,177,228,0.3)'
               : 'none',
             color:      activeTab === 'para-voce' ? '#ffffff' : '#636e7c',
             fontFamily: 'Montserrat, sans-serif',
@@ -110,7 +110,7 @@ export default function OpportunitiesClient({
             height:     39,
             background: activeTab === 'explore' ? '#3092bb' : 'transparent',
             boxShadow:  activeTab === 'explore'
-              ? '0px 4px 10px 0px rgba(48,146,187,0.3)'
+              ? '0px 4px 10px 0px rgba(56,177,228,0.3)'
               : 'none',
             color:      activeTab === 'explore' ? '#ffffff' : '#636e7c',
             fontFamily: 'Montserrat, sans-serif',

@@ -62,7 +62,7 @@ export default function FormFieldRenderer({
         md:rounded-xl md:border-2 md:bg-white/60 md:backdrop-blur-sm md:transition-all md:duration-200
         ${hasError
             ? 'md:border-red-400 md:ring-2 md:ring-red-100'
-            : 'md:border-gray-200 md:focus:border-[#38B1E4] md:focus:ring-2 md:focus:ring-[#38B1E4]/20'
+            : 'md:border-gray-200 md:focus:border-[#3092bb] md:focus:ring-2 md:focus:ring-[#3092bb]/20'
         }`;
 
     return (
@@ -199,14 +199,14 @@ export default function FormFieldRenderer({
                             ${isButtonField ? 'border-0 p-0 mt-0' : 'border-2 rounded-xl px-3 pb-1 pt-0 mt-3 bg-white/60 backdrop-blur-sm'}
                             ${hasError
                                 ? isButtonField ? '' : 'border-red-400 focus-within:ring-2 focus-within:ring-red-100'
-                                : isButtonField ? '' : 'border-gray-200 focus-within:border-[#38B1E4] focus-within:ring-2 focus-within:ring-[#38B1E4]/20'
+                                : isButtonField ? '' : 'border-gray-200 focus-within:border-[#3092bb] focus-within:ring-2 focus-within:ring-[#3092bb]/20'
                             }
                             md:border-0 md:p-0 md:mt-0 md:bg-transparent md:backdrop-blur-none
                             md:focus-within:ring-0 md:focus-within:border-transparent`}
                     >
                         <legend className={`
                             px-1 text-[11px] md:text-sm font-bold transition-all duration-200
-                            ${hasError ? 'text-red-500' : 'text-[#024F86] group-focus-within:text-[#38B1E4] md:group-focus-within:text-[#024F86]'}
+                            text-[#024F86] group-focus-within:text-[#3092bb] md:group-focus-within:text-[#024F86]
                             ${isButtonField ? 'bg-transparent mb-1' : 'bg-[#fcfdfe]'}
                             max-w-full whitespace-normal leading-tight rounded-sm
                             md:px-0 md:bg-transparent md:mb-2 md:block`}
@@ -290,7 +290,7 @@ export default function FormFieldRenderer({
                                                             <div
                                                                 key={i}
                                                                 onClick={() => { onChange(opt); setIsDropdownOpen(false); }}
-                                                                className="px-4 py-3 md:py-4 text-sm md:text-base text-[#3A424E] hover:bg-[#38B1E4]/5 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
+                                                                className="px-4 py-3 md:py-4 text-sm md:text-base text-[#3A424E] hover:bg-[#3092bb]/5 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
                                                             >
                                                                 {opt}
                                                             </div>
@@ -330,14 +330,14 @@ export default function FormFieldRenderer({
                                             <label
                                                 key={i}
                                                 className={`flex items-center gap-3 px-4 py-2.5 md:py-3.5 rounded-xl border-2 cursor-pointer transition-all duration-200
-                                                    ${selected ? 'border-[#38B1E4] bg-[#38B1E4]/5' : 'border-gray-200 bg-white/60 hover:border-gray-300'}`}
+                                                    ${selected ? 'border-[#3092bb] bg-[#3092bb]/5' : 'border-gray-200 bg-white/60 hover:border-gray-300'}`}
                                             >
                                                 <input
                                                     type="checkbox"
                                                     checked={selected}
                                                     onChange={(e) => handleMultiSelectToggle(opt, e.target.checked)}
                                                     onBlur={onBlur}
-                                                    className="w-4 h-4 text-[#38B1E4] rounded border-gray-300 focus:ring-[#38B1E4]"
+                                                    className="w-4 h-4 text-[#3092bb] rounded border-gray-300 focus:ring-[#3092bb]"
                                                 />
                                                 <span className="text-xs md:text-sm font-medium text-[#3A424E]">{opt}</span>
                                             </label>
@@ -355,7 +355,7 @@ export default function FormFieldRenderer({
                                             onClick={() => onChange(opt)}
                                             className={`flex-1 px-4 py-2.5 md:py-3.5 rounded-xl border-2 text-xs md:text-sm font-bold transition-all duration-200
                                                 ${parentStringValue === opt
-                                                    ? 'border-[#38B1E4] bg-[#38B1E4]/10 text-[#024F86]'
+                                                    ? 'border-[#3092bb] bg-[#3092bb]/10 text-[#024F86]'
                                                     : 'border-gray-200 bg-white/60 text-[#3A424E] hover:border-gray-300'
                                                 }`}
                                         >
@@ -413,7 +413,7 @@ export default function FormFieldRenderer({
                                                                                 name={isMulti ? undefined : `grid_${fieldName}_row_${ri}`}
                                                                                 checked={isMulti ? selectedValues.includes(col) : selectedSingle === col}
                                                                                 onChange={() => handleGridToggle(ri, col, isMulti)}
-                                                                                className="w-4 h-4 md:w-5 md:h-5 text-[#38B1E4] border-gray-300 focus:ring-[#38B1E4] cursor-pointer"
+                                                                                className="w-4 h-4 md:w-5 md:h-5 text-[#3092bb] border-gray-300 focus:ring-[#3092bb] cursor-pointer"
                                                                             />
                                                                         </label>
                                                                     </td>

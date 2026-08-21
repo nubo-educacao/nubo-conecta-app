@@ -75,7 +75,7 @@ export default function SisuProuniCard({
   total_vacancies
 }: SisuProuniCardProps) {
   const isSisu = opportunity_type.toLowerCase() === 'sisu';
-  const accentColor = isSisu ? '#3092BB' : '#7030C2';
+  const accentColor = isSisu ? '#3092bb' : '#7030C2';
 
   const { title, description } = useProgram(opportunity_type, cycle_year, cycle_semester);
 
@@ -134,7 +134,7 @@ export default function SisuProuniCard({
               {/* Inscritos / Aprovados (SiSU Only) */}
               {isSisu && hasInscritosOrAprovados && (
                 <div className="bg-[#F9FAFB] p-4 rounded-2xl flex flex-col gap-2 h-full">
-                  <div className="size-8 rounded-full bg-blue-50 flex items-center justify-center text-[#3092BB]">
+                  <div className="size-8 rounded-full bg-blue-50 flex items-center justify-center text-[#3092bb]">
                     <Users size={16} />
                   </div>
                   <div>
@@ -176,7 +176,7 @@ export default function SisuProuniCard({
               {!isSisu && (
                 <>
                   <div className="bg-[#F9FAFB] p-4 rounded-2xl flex items-center gap-4 h-full">
-                    <div className="size-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#3092BB] shrink-0">
+                    <div className="size-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#3092bb] shrink-0">
                       <GraduationCap size={20} />
                     </div>
                     <div>

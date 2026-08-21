@@ -58,10 +58,10 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs md:text-sm font-medium opacity-75">
           <p>© 2026 Nubo Educação. Todos os direitos reservados.</p>
           <div className="flex items-center gap-6">
-            <Link href="/politica-de-privacidade.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-[#38B1E4] transition-colors">
+            <Link href="/politica-de-privacidade.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-[#3092bb] transition-colors">
               Política de Privacidade
             </Link>
-            <Link href="/termos-de-uso.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-[#38B1E4] transition-colors">
+            <Link href="/termos-de-uso.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-[#3092bb] transition-colors">
               Termos de uso
             </Link>
           </div>

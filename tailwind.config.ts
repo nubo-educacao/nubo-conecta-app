@@ -12,25 +12,26 @@ const config: Config = {
       // Design tokens — extraídos do Figma (node 32:6814) em 2026-04-01
       colors: {
         nubo: {
-          primary:       "#3092bb",   // Novo Azul MEC
-          "primary-light": "#60c6f2", 
-          "primary-dark":  "#024F86", // Logo / Dark
-          "nav-active":  "#3092bb",   // Alinhado com MEC
-          "nav-inactive":"#707A7E",   
-          "text-head":   "#3A424E",   
-          "text-body":   "rgba(58,66,78,0.9)",
-          "text-secondary":"rgba(58,66,78,0.5)",
-          background:    "#FFFFFF",
-          "line":        "#DADADA",
-          "border":      "#E6E6E6",
-          success:       "#12B937",
-          warning:       "#FFB800",
-          danger:        "#FF445D",
-          yellow:        "#FFCC00",
-          orange:        "#FF9900",
-          brick:         "#F65834",
-          purple:        "#9747FF",
-          cyan:          "#3092bb",
+          primary: "#3092bb",   // Novo Azul MEC
+          secondary: "#E6F4F9",
+          "primary-light": "#60c6f2",
+          "primary-dark": "#024F86", // Logo / Dark
+          "nav-active": "#3092bb",   // Alinhado com MEC
+          "nav-inactive": "#707A7E",
+          "text-head": "#3A424E",
+          "text-body": "rgba(58,66,78,0.9)",
+          "text-secondary": "rgba(58,66,78,0.5)",
+          background: "#FFFFFF",
+          "line": "#DADADA",
+          "border": "#E6E6E6",
+          success: "#12B937",
+          warning: "#FFB800",
+          danger: "#FF445D",
+          yellow: "#FFCC00",
+          orange: "#FF9900",
+          brick: "#F65834",
+          purple: "#9747FF",
+          cyan: "#3092bb",
         },
       },
       fontFamily: {

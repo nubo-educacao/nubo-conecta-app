@@ -132,7 +132,7 @@ export default function TopBar({ title }: TopBarProps) {
               {/* Avatar */}
               <span
                 className="flex items-center justify-center rounded-full h-8 w-8 shrink-0 text-white text-sm font-bold overflow-hidden"
-                style={{ background: "linear-gradient(135deg, #38B1E4 0%, #024F86 100%)" }}
+                style={{ background: "linear-gradient(135deg, #3092bb 0%, #024F86 100%)" }}
               >
                 {user ? (
                   activeProfile?.avatar_url ? (
@@ -239,7 +239,7 @@ export default function TopBar({ title }: TopBarProps) {
                           >
                             <span
                               className="flex items-center justify-center w-6 h-6 rounded-full text-white text-[10px] font-bold shrink-0 overflow-hidden"
-                              style={{ background: "linear-gradient(135deg, #38B1E4 0%, #024F86 100%)" }}
+                              style={{ background: "linear-gradient(135deg, #3092bb 0%, #024F86 100%)" }}
                             >
                               {p.avatar_url ? (
                                 <img 

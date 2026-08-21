@@ -234,7 +234,7 @@ function ModalContent({
         <div className="p-6 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6 border-t border-nubo-line">
           <button
             onClick={handleApply}
-            className="w-full rounded-[12px] h-[52px] font-sans font-semibold text-[16px] text-white bg-nubo-primary hover:bg-nubo-primary/90 active:scale-[0.98] transition-all shadow-lg shadow-nubo-primary/20"
+            className="w-full rounded-full h-[52px] font-sans font-semibold text-[16px] text-white bg-nubo-primary hover:bg-nubo-primary/90 active:scale-[0.98] transition-all shadow-lg shadow-nubo-primary/20"
           >
             Aplicar filtros
           </button>

@@ -58,7 +58,7 @@ export default function HeroSearch() {
       <div
         className="rounded-2xl px-5 pt-7 pb-7 flex flex-col gap-5"
         style={{
-          background: 'linear-gradient(145deg, #38B1E4 0%, #024F86 100%)',
+          background: 'linear-gradient(145deg, #3092bb 0%, #024F86 100%)',
         }}
       >
         {/* Textos */}
@@ -95,7 +95,7 @@ export default function HeroSearch() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Ex: Medicina em São Paulo..."
-              className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-white/50"
+              className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-white/50 focus:placeholder-transparent"
               style={{ fontFamily: 'Montserrat, sans-serif' }}
             />
             {/* Botão: círculo perfeito com ArrowRight */}
@@ -123,7 +123,7 @@ export default function HeroSearch() {
                 key={label}
                 type="button"
                 onClick={() => handlePillClick(category)}
-                className="px-4 py-1.5 rounded-full text-sm font-medium transition-all hover:bg-white/25 active:scale-[0.97]"
+                className="px-4 py-1.5 rounded-full text-sm font-medium transition-all hover:bg-white/25 active:scale-[0.97] hover:opacity-80"
                 style={{
                   background: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.16)',
                   color: isSelected ? '#024F86' : 'white',

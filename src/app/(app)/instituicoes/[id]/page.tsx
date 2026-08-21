@@ -175,7 +175,7 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
           <div className="absolute bottom-4 left-4 right-4 flex gap-3 items-end z-10">
             <div
               className="flex items-center justify-center w-[56px] h-[56px] rounded-[16px] text-white text-lg font-bold shadow-lg border border-white"
-              style={{ background: isPartner && institution.brand_color ? institution.brand_color : '#3092bb' }}
+              style={{ background: isPartner && institution.brand_color ? institution.brand_color : '#38B1E4' }}
             >
               {isPartner && institution.logo_url ? (
                 <img
@@ -215,7 +215,7 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
             {institution.opp_types && institution.opp_types.length > 0 && (
               <span
                 className="px-3 py-1 rounded-full text-[11px] font-semibold"
-                style={{ background: 'rgba(48,146,187,0.1)', color: '#3092bb', fontFamily: 'Montserrat, sans-serif' }}
+                style={{ background: 'rgba(48,146,187,0.1)', color: '#38B1E4', fontFamily: 'Montserrat, sans-serif' }}
               >
                 {institution.opp_types.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(', ')}
               </span>
@@ -266,7 +266,7 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
                 {institution.igc && (
                   <div className="bg-white p-3 rounded-xl border border-gray-100 flex flex-col gap-1 shadow-sm">
                     <span className="text-[10px] uppercase font-bold text-gray-400">IGC</span>
-                    <span className="text-[16px] font-extrabold text-[#3092bb]">{institution.igc}</span>
+                    <span className="text-[16px] font-extrabold text-[#38B1E4]">{institution.igc}</span>
                     <span className="text-[9px] text-gray-500">Índice Geral de Cursos</span>
                   </div>
                 )}
@@ -298,7 +298,7 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl text-white transition-all hover:scale-[1.02] shadow-sm hover:shadow-md active:scale-95 duration-150"
                 style={{
-                  background: institution.brand_color || '#3092bb',
+                  background: institution.brand_color || '#38B1E4',
                   fontFamily: 'Montserrat, sans-serif'
                 }}
               >
