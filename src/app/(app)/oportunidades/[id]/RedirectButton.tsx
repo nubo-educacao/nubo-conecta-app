@@ -53,6 +53,9 @@ export default function RedirectButton({
         partnerId,
         redirectUrl,
         'opportunity_detail',
+        // Identifica a oportunidade quando não há parceiro (caso MEC) e dá
+        // granularidade ao evento quando há.
+        opportunityId,
       );
       setShowModal(false);
       window.open(url, '_blank', 'noopener,noreferrer');

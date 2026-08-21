@@ -9,6 +9,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import InstitutionCard from '@/components/InstitutionCard';
+import BecomePartnerCTA from '@/components/forms/BecomePartnerCTA';
 import type { UnifiedInstitution } from '@/types/institutions';
 
 type FilterTab = 'all' | 'partner' | 'other';
@@ -116,6 +117,11 @@ export default function InstitutionsClient({
         })}
       </div>
 
+      {/* CTA de parceria — só na aba Parceiras (TP-5 5b).
+          Quem chegou nesta aba já demonstrou interesse no assunto; nas outras o
+          convite seria ruído. */}
+      {activeTab === 'partner' && <BecomePartnerCTA variant="banner" />}
+
       {/* Cards grid */}
       {institutions.length === 0 ? (
         <div
@@ -138,7 +144,7 @@ export default function InstitutionsClient({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {institutions.map((inst) => (
-            <InstitutionCard key={inst.id} institution={inst} />
+            <InstitutionCard surface="instituicoes_lista" key={inst.id} institution={inst} />
           ))}
         </div>
       )}

@@ -92,7 +92,7 @@ export default function InstitutionCarousel({
             className="flex-shrink-0 snap-start"
             style={{ width: 'min(361px, 85vw)' }}
           >
-            <InstitutionCard institution={inst} />
+            <InstitutionCard surface="home_carrossel_instituicoes" institution={inst} />
           </div>
         ))}
       </div>

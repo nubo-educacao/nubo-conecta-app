@@ -367,7 +367,7 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
               <div className="flex flex-col items-center w-full">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full justify-items-center">
                   {opportunities.map((opp) => (
-                    <OpportunityCard key={opp.id} opportunity={opp} />
+                    <OpportunityCard surface="instituicao_detalhe" key={opp.id} opportunity={opp} />
                   ))}
                 </div>
 

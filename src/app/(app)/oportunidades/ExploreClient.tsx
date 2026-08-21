@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useRef, useCallback } from 'react';
 import { Search, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
+import BecomePartnerCTA from '@/components/forms/BecomePartnerCTA';
 import FilterModal from './FilterModal';
 import type { IUnifiedOpportunity, ExploreFilters } from '@/types/opportunities';
 import { useState } from 'react';
@@ -158,6 +159,14 @@ export default function ExploreClient({
         })}
       </div>
 
+      {/* CTA de parceria — só nas categorias de oferta institucional (TP-5 5b).
+          Nas categorias MEC (Sisu/Prouni) não aparece: quem filtra por elas
+          está procurando vaga pública, não fechando parceria. */}
+      {(activeCategory === 'programa de bolsa' ||
+        activeCategory === 'programa educacional') && (
+        <BecomePartnerCTA variant="banner" />
+      )}
+
       {/* Results grid */}
       {opportunities.length === 0 ? (
         <p
@@ -170,7 +179,7 @@ export default function ExploreClient({
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
             {opportunities.map((opp) => (
-              <OpportunityCard key={opp.id} opportunity={opp} />
+              <OpportunityCard key={opp.id} opportunity={opp} surface="oportunidades_explorar" />
             ))}
           </div>
 

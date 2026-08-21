@@ -95,7 +95,7 @@ export default function OpportunityCarousel({
             className="flex-shrink-0 snap-start"
             style={{ width: 'min(361px, 85vw)' }}
           >
-            <OpportunityCard opportunity={opp} />
+            <OpportunityCard surface="home_carrossel_oportunidades" opportunity={opp} />
           </div>
         ))}
       </div>

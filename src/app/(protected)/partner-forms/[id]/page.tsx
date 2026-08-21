@@ -575,7 +575,12 @@ export default function PartnerFormsPage() {
             userId,
             application.partner_id,
             application.external_redirect.url,
-            'partner_application'
+            'partner_application',
+            // Este fluxo é sempre de parceiro (vem de partner_forms), mas o id
+            // unificado é gravado do mesmo jeito: é ele que permite cruzar o
+            // evento com v_unified_opportunities sem depender de qual das
+            // duas origens preencheu entity_id.
+            application.partner_id ? `partner_${application.partner_id}` : null,
           );
           if (redirectWindow) {
             redirectWindow.location.href = url;

@@ -20,15 +20,20 @@ interface TrackAndRedirectResult {
  * and show an appropriate error state rather than silently redirecting.
  *
  * @param userId     - Authenticated user's UUID
- * @param partnerId  - Institution UUID (nullable for non-partner opportunities)
+ * @param partnerId  - Institution UUID. NULO para oportunidade MEC — e agora
+ *                     isso deixa de significar "não rastrear".
  * @param redirectUrl - The destination URL
  * @param source     - Context identifier (e.g. 'catalog_card', 'opportunity_detail')
+ * @param unifiedOpportunityId - id sintético de v_unified_opportunities
+ *                     ('mec_<uuid>' / 'partner_<uuid>'). É o que identifica a
+ *                     oportunidade MEC, que não tem partner_id.
  */
 export async function trackAndRedirect(
   userId: string,
   partnerId: string | null,
   redirectUrl: string,
   source: string,
+  unifiedOpportunityId?: string | null,
 ): Promise<TrackAndRedirectResult> {
   const cookieStore = await cookies();
 
@@ -43,26 +48,55 @@ export async function trackAndRedirect(
     },
   );
 
-  // Defensive guard: partner_id is NOT NULL in the DB schema.
-  // If partnerId is missing, skip tracking and return the URL directly (graceful degradation).
-  if (!partnerId) {
-    console.warn(`trackAndRedirect: partnerId is null for source=${source}, skipping tracking`);
-    return { url: redirectUrl };
-  }
+  // ── Fonte nova: engagement_events (TP-2 2a / ADR-0022) ────────────────────
+  //
+  // O guard que existia aqui pulava o tracking inteiro quando partnerId era
+  // null — e era exatamente por isso que oportunidade MEC nunca foi rastreada.
+  // A tabela nova é agnóstica: não exige parceiro, então o redirect de MEC
+  // passa a existir como dado pela primeira vez.
+  const isPartner = Boolean(partnerId);
 
-  // INSERT FIRST — this must complete before the URL is returned
-  const { error } = await supabase
-    .from('external_redirect_clicks')
+  const { error: eventError } = await supabase
+    .from('engagement_events')
     .insert({
-      user_id:      userId,
-      partner_id:   partnerId,
-      redirect_url: redirectUrl,
+      // Idempotente por usuário + destino + minuto: duplo clique no botão não
+      // vira dois redirects, mas voltar depois vira.
+      event_id: `redirect:${userId}:${redirectUrl}:${new Date().toISOString().slice(0, 16)}`,
+      event_type: 'redirect',
+      user_id: userId,
+      entity_type: isPartner ? 'partner_opportunity' : 'mec_opportunity',
+      entity_id: partnerId,
+      unified_opportunity_id: unifiedOpportunityId ?? null,
+      destination_url: redirectUrl,
       source,
     });
 
-  if (error) {
-    // Fail Fast, Fail Loud (PLAYBOOK § 1)
-    throw new Error(`trackAndRedirect: failed to record click [source=${source}]: ${error.message}`);
+  // O contrato duro continua valendo: sem registro confirmado, a URL não é
+  // devolvida. É o que impede alguém contornar o tracking (requisito de
+  // segurança do TDD da Sprint 02).
+  if (eventError && eventError.code !== '23505') {
+    throw new Error(`trackAndRedirect: failed to record event [source=${source}]: ${eventError.message}`);
+  }
+
+  // ── Fonte antiga: dual-write durante o expand/contract ─────────────────────
+  // vw_partner_funnel, get_admin_funnel_users, get_partner_redirect_users e
+  // get_student_details_v2 ainda leem daqui. Só para de escrever quando todos
+  // tiverem migrado. A FK exige parceiro, então MEC não entra — e não precisa:
+  // o evento já foi registrado acima.
+  if (isPartner) {
+    const { error } = await supabase
+      .from('external_redirect_clicks')
+      .insert({
+        user_id:      userId,
+        partner_id:   partnerId,
+        redirect_url: redirectUrl,
+        source,
+      });
+
+    if (error) {
+      // Fail Fast, Fail Loud (PLAYBOOK § 1)
+      throw new Error(`trackAndRedirect: failed to record click [source=${source}]: ${error.message}`);
+    }
   }
 
   // Only return URL after confirmed INSERT
