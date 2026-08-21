@@ -126,7 +126,7 @@ function FieldLabel({ icon: Icon, label, error, required, htmlFor }: { icon?: Re
       {Icon && <Icon size={14} className="text-[#1BBBCD]" />}
       {label}
       {required && <span className="text-red-500">*</span>}
-      {error && <AlertCircle size={12} className="text-red-500 animate-pulse ml-auto" title="Campo com erro/obrigatório" />}
+      {error && <AlertCircle size={12} className="text-red-500 animate-pulse ml-auto" />}
     </label>
   );
 }
