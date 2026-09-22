@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, ChevronRight, LogIn, Compass } from "lucide-react";
+import { Plus, ChevronRight, LogIn, Compass, Lock } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import ApplicationStepper from "@/components/ApplicationStepper";
 import { OpportunityPhaseStepper } from "@/components/OpportunityPhaseStepper";
@@ -16,6 +16,7 @@ interface ApplicationCard {
   id: string;
   partner_id: string;
   status: string;
+  opportunity_status: string | null;
   created_at: string;
   updated_at: string;
   opportunity_name: string | null;
@@ -69,6 +70,7 @@ export default function CandidaturasPage() {
         opportunity_phases:phase_id ( name ),
         partner_opportunities:partner_id (
           name,
+          status,
           institutions:institution_id (
             name,
             partner_institutions ( logo_url )
@@ -90,6 +92,7 @@ export default function CandidaturasPage() {
             id: row.id as string,
             partner_id: row.partner_id as string,
             status: row.status as string,
+            opportunity_status: (opp.status as string) ?? null,
             created_at: row.created_at as string,
             updated_at: row.updated_at as string,
             opportunity_name: (opp.name as string) ?? null,
@@ -106,6 +109,11 @@ export default function CandidaturasPage() {
   }, [user, activeProfileId]);
 
   const handleCardClick = (app: ApplicationCard) => {
+    // Drafts for closed opportunities cannot be continued — send user to explore instead
+    if (app.status === 'DRAFT' && app.opportunity_status === 'closed') {
+      router.push('/oportunidades');
+      return;
+    }
     router.push(`/partner-forms/${app.id}`);
   };
 
@@ -320,6 +328,13 @@ export default function CandidaturasPage() {
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${cfg.bgColor} ${cfg.textColor}`}>
                           {cfg.label}
                         </span>
+                        {/* Badge for closed-opportunity drafts */}
+                        {app.status === 'DRAFT' && app.opportunity_status === 'closed' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">
+                            <Lock size={9} strokeWidth={2.5} />
+                            Encerrada
+                          </span>
+                        )}
                         {app.phase_name && status !== "redirected" && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#eaeaff] text-[#635bff]">
                             Fase: {app.phase_name}

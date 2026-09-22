@@ -30,7 +30,7 @@ interface ApplicationSummary {
   partner_id: string;
   answers: Record<string, unknown>;
   opportunity_phases: { name: string } | null;
-  partner_opportunities: { name: string } | null;
+  partner_opportunities: { name: string; status: string | null } | null;
 }
 
 export default function HomeClient({ sections }: HomeClientProps) {
@@ -98,7 +98,7 @@ export default function HomeClient({ sections }: HomeClientProps) {
       .select(`
         id, status, phase_id, dismissed_phase_id, partner_id, answers,
         opportunity_phases ( name ),
-        partner_opportunities ( name )
+        partner_opportunities ( name, status )
       `)
       .eq('user_id', user.id)
       .then(({ data }: { data: any[] | null }) => {
@@ -180,7 +180,8 @@ export default function HomeClient({ sections }: HomeClientProps) {
       ctaState = 'no-profile';
     } else {
       const activePhaseApps = applications.filter(a => a.phase_id && a.status !== 'DRAFT' && a.phase_id !== a.dismissed_phase_id);
-      const drafts = applications.filter(a => a.status === 'DRAFT');
+      // Exclude drafts for closed opportunities — the opportunity is no longer accepting applications
+      const drafts = applications.filter(a => a.status === 'DRAFT' && (a.partner_opportunities as any)?.status !== 'closed');
       const submitted = applications.filter(a => a.status !== 'DRAFT');
 
       countInProgress = drafts.length;
