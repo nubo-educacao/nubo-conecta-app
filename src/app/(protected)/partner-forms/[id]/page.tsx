@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, ArrowLeft, CheckCircle2, User, Users, ExternalLink } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle2, User, Users, ExternalLink, Lock } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import PartnerFormEngine, { type PartnerStep } from "@/components/forms/PartnerFormEngine";
 import { type PartnerFormField } from "@/components/forms/FormFieldRenderer";
@@ -69,7 +69,7 @@ interface ApplicationState {
   phase_id?: string | null;
 }
 
-type PagePhase = "loading" | "form" | "submitting" | "submitted" | "error";
+type PagePhase = "loading" | "form" | "submitting" | "submitted" | "error" | "opportunity-closed";
 
 interface UserProfile {
   id: string;
@@ -127,7 +127,7 @@ export default function PartnerFormsPage() {
         .from("student_applications")
         .select(`
           id, status, answers, partner_id, user_id, phase_id,
-          partner_opportunities:partner_id ( name, external_redirect_config )
+          partner_opportunities:partner_id ( name, external_redirect_config, status )
         `)
         .eq("id", applicationId)
         .single();
@@ -151,6 +151,13 @@ export default function PartnerFormsPage() {
       };
 
       setApplication(appState);
+
+      // If the opportunity has been closed, block access to the form for DRAFT applications
+      const opportunityStatus = (opp as any)?.status;
+      if (appState.status === 'DRAFT' && opportunityStatus === 'closed') {
+        setPhase("opportunity-closed");
+        return;
+      }
 
       // Fetch phases regardless, since we need them in both form and submitted states
       const { data: phasesData } = await supabase
@@ -651,6 +658,40 @@ export default function PartnerFormsPage() {
 
   if (phase === "submitting") {
     return <AppShell>{CloudinhaSpinner}</AppShell>;
+  }
+
+  if (phase === "opportunity-closed") {
+    return (
+      <AppShell title="Oportunidade Encerrada">
+        <div className="flex flex-col items-center justify-center py-20 text-center px-6 gap-6">
+          <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center">
+            <Lock size={36} className="text-gray-400" />
+          </div>
+          <div className="flex flex-col gap-2 max-w-xs">
+            <h2 className="text-lg font-black text-[#3A424E] tracking-tight">
+              Oportunidade Encerrada
+            </h2>
+            <p className="text-sm text-[#3A424E]/70 leading-relaxed">
+              As inscrições para <strong className="text-[#024F86]">{application?.partner_name}</strong> já foram encerradas. Você não pode mais continuar esta candidatura.
+            </p>
+          </div>
+          <div className="flex flex-col w-full max-w-xs gap-3">
+            <button
+              onClick={() => router.push("/oportunidades")}
+              className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#024F86] to-[#38B1E4] text-white text-sm font-bold shadow-lg shadow-blue-900/20 hover:shadow-xl hover:scale-[1.02] transition-all"
+            >
+              Ver outras oportunidades
+            </button>
+            <button
+              onClick={() => router.push("/candidaturas")}
+              className="w-full py-3.5 rounded-full bg-gray-50 text-[#3A424E] border border-gray-200 text-sm font-bold hover:bg-gray-100 transition-all"
+            >
+              Ver minhas candidaturas
+            </button>
+          </div>
+        </div>
+      </AppShell>
+    );
   }
 
   if (phase === "error") {
