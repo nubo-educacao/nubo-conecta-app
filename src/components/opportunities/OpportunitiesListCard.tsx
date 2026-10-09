@@ -57,6 +57,23 @@ function oppMatchesBestConcurrency(opp: Opportunity, best: string): boolean {
   );
 }
 
+// ProUni: uma opportunity por modalidade (concurrency_type AMPLA / COTA_PPI / COTA_PCD;
+// legado: PPI / PCD). As tags vêm de concurrency_tag_rules no ETL; se faltarem, deriva
+// do concurrency_type. Retorna null quando não dá para saber a modalidade.
+const PROUNI_MODALITY_TAGS: Record<string, string[][]> = {
+  AMPLA: [['AMPLA_CONCORRENCIA']],
+  COTA_PPI: [['PPI']],
+  PPI: [['PPI']],
+  COTA_PCD: [['PCD']],
+  PCD: [['PCD']],
+};
+
+function prouniModalityTags(opp: Opportunity): string[][] | null {
+  if (opp.concurrency_tags && opp.concurrency_tags.length > 0) return opp.concurrency_tags;
+  const type = (opp.concurrency_type || '').toUpperCase().trim();
+  return PROUNI_MODALITY_TAGS[type] ?? null;
+}
+
 interface OpportunitiesListCardProps {
   opportunities: Opportunity[];
   highlightedOpportunityId?: string;
@@ -235,7 +252,17 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      {isProuni ? (
+                      {isProuni && prouniModalityTags(opp) ? (
+                        <>
+                          {/* Modalidade (Ampla / PPI / PcD) com os mesmos chips do SiSU */}
+                          {renderTags(prouniModalityTags(opp))}
+                          {scholarshipTagStyle && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${scholarshipTagStyle.bg} ${scholarshipTagStyle.text} ${scholarshipTagStyle.border} whitespace-nowrap`}>
+                              {scholarshipTagStyle.label}
+                            </span>
+                          )}
+                        </>
+                      ) : isProuni ? (
                         <>
                           {opp.vacancies && (opp.vacancies.broad_competition_offered ?? 0) > 0 && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-100 whitespace-nowrap">

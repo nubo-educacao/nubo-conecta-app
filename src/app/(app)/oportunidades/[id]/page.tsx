@@ -14,6 +14,7 @@ import AppShell from '@/components/layout/AppShell';
 import ViewContentTracker from '@/components/analytics/ViewContentTracker';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 import type { Opportunity } from '@/components/opportunities/OpportunitiesListCard';
+import { prouniVacancies as computeProuniVacancies } from '@/lib/prouniVacancies';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -279,12 +280,7 @@ async function getRelatedOpportunities(unifiedId: string): Promise<Opportunity[]
          concurrency_type = String(sisuVac.tp_cota ?? sisuVac.ds_mod_concorrencia);
        }
     } else if (prouniVac.length > 0) {
-       const ampla = prouniVac.reduce((sum: number, v: any) => sum + (v.bolsas_ampla_ofertada || 0), 0);
-       const cota = prouniVac.reduce((sum: number, v: any) => sum + (v.bolsas_cota_ofertada || 0), 0);
-       vacancies = {
-         broad_competition_offered: ampla,
-         quotas_offered: cota,
-       };
+       vacancies = computeProuniVacancies(prouniVac, r.concurrency_type);
     } else {
        vacancies = r.vacancies; // fallback to jsonb if not normalized yet
     }
