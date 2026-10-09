@@ -81,6 +81,18 @@ export default function SisuProuniCard({
 
   const [isExpanded, setIsExpanded] = React.useState(false);
 
+  const hasCutoff = !!(min_cutoff_score || max_cutoff_score);
+  const cutoffLabel = (() => {
+    if (min_cutoff_score && max_cutoff_score) {
+      return min_cutoff_score === max_cutoff_score
+        ? min_cutoff_score.toFixed(1)
+        : `${min_cutoff_score.toFixed(1)} a ${max_cutoff_score.toFixed(1)}`;
+    }
+    if (max_cutoff_score) return max_cutoff_score.toFixed(1);
+    if (min_cutoff_score) return min_cutoff_score.toFixed(1);
+    return '---';
+  })();
+
   const badgeText = cycle_year
     ? `${opportunity_type} ${cycle_year}${cycle_semester && !isSisu ? `.${cycle_semester}` : ''}`.toUpperCase()
     : `${opportunity_type} 2025`.toUpperCase();
@@ -157,16 +169,7 @@ export default function SisuProuniCard({
                   <div>
                     <p className="text-[10px] text-[#636E7C] font-bold uppercase">Nota de Corte</p>
                     <p className={`${hasInscritosOrAprovados ? 'text-xl' : 'text-sm'} font-black text-[#3A424E]`}>
-                      {(() => {
-                        if (min_cutoff_score && max_cutoff_score) {
-                          return min_cutoff_score === max_cutoff_score
-                            ? min_cutoff_score.toFixed(1)
-                            : `${min_cutoff_score.toFixed(1)} a ${max_cutoff_score.toFixed(1)}`;
-                        }
-                        if (max_cutoff_score) return max_cutoff_score.toFixed(1);
-                        if (min_cutoff_score) return min_cutoff_score.toFixed(1);
-                        return '---';
-                      })()}
+                      {cutoffLabel}
                     </p>
                   </div>
                 </div>
@@ -186,6 +189,19 @@ export default function SisuProuniCard({
                       </p>
                     </div>
                   </div>
+
+                  {/* Nota de Corte (ProUni) — só quando o MEC publicou nota para o curso */}
+                  {hasCutoff && (
+                    <div className="bg-[#F9FAFB] p-4 rounded-2xl flex items-center gap-4 h-full">
+                      <div className="size-10 rounded-xl bg-orange-50 flex items-center justify-center text-[#FF9900] shrink-0">
+                        <Award size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-[#636E7C] font-bold uppercase">Nota de Corte</p>
+                        <p className="text-xl font-black text-[#3A424E]">{cutoffLabel}</p>
+                      </div>
+                    </div>
+                  )}
 
                   {vagas_ociosas_prev === true && (
                     <div className="bg-[#F9FAFB] p-4 rounded-2xl flex items-center gap-4 h-full">

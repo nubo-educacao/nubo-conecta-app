@@ -115,6 +115,8 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
   const isSisu = opportunities[0]?.opportunity_type?.toLowerCase() === 'sisu';
   const isProuni = opportunities[0]?.opportunity_type?.toLowerCase() === 'prouni';
   const accentColor = isSisu ? '#3092bb' : '#7030C2';
+  // ProUni só exibe a coluna quando ao menos uma modalidade tem nota de corte publicada
+  const showCutoffColumn = !isProuni || opportunities.some(o => o.cutoff_score != null);
 
   const renderTags = (tags: any) => {
     if (!tags || tags.length === 0) return null;
@@ -180,7 +182,7 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
               <th className="px-6 py-4 w-[80px]">Turno</th>
               <th className="px-6 py-4">Modalidade e Cotas</th>
               <th className="px-4 py-4 text-right w-[90px]">Vagas{vacanciesCycleLabel ? '*' : ''}</th>
-              {!isProuni && <th className="px-6 py-4 text-right w-[140px]">Nota de Corte</th>}
+              {showCutoffColumn && <th className="px-6 py-4 text-right w-[140px]">Nota de Corte</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -285,7 +287,7 @@ export default function OpportunitiesListCard({ opportunities, highlightedOpport
                         : '---'}
                     </span>
                   </td>
-                  {!isProuni && (
+                  {showCutoffColumn && (
                     <td className="px-6 py-4 text-right">
                       <div className="flex flex-col items-end">
                         <div className="flex items-center gap-1.5">

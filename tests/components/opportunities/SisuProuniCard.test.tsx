@@ -75,7 +75,30 @@ describe('SisuProuniCard', () => {
     expect(linkEl).toHaveStyle({ color: '#7030C2' }); // ProUni color
   });
 
-  it('oculta nota de corte e exibe vagas ofertadas e ociosas para prouni', () => {
+  it('oculta nota de corte do prouni quando o curso não tem nota publicada', () => {
+    (useProgram as any).mockReturnValue({
+      title: 'ProUni Custom',
+      description: 'Descrição do ProUni',
+      status: 'active',
+      loading: false,
+    });
+
+    render(
+      <SisuProuniCard
+        opportunity_type="prouni"
+        cycle_year={2025}
+        cycle_semester="1"
+        min_cutoff_score={null}
+        max_cutoff_score={null}
+        total_vacancies={15}
+      />
+    );
+
+    expect(screen.queryByText('Nota de Corte')).not.toBeInTheDocument();
+    expect(screen.getByText('Vagas Ofertadas')).toBeInTheDocument();
+  });
+
+  it('exibe nota de corte, vagas ofertadas e ociosas para prouni', () => {
     (useProgram as any).mockReturnValue({
       title: 'ProUni Custom',
       description: 'Descrição do ProUni',
@@ -95,10 +118,9 @@ describe('SisuProuniCard', () => {
       />
     );
 
-    // Verify cutoff score is NOT in the document
-    expect(screen.queryByText('Nota de Corte')).not.toBeInTheDocument();
-    expect(screen.queryByText('450.0')).not.toBeInTheDocument();
-    expect(screen.queryByText('450.0 a 600.0')).not.toBeInTheDocument();
+    // Verify cutoff score range is displayed
+    expect(screen.getByText('Nota de Corte')).toBeInTheDocument();
+    expect(screen.getByText('450.0 a 600.0')).toBeInTheDocument();
 
     // Verify total vacancies are displayed
     expect(screen.getByText('Vagas Ofertadas')).toBeInTheDocument();

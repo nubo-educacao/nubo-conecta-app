@@ -623,11 +623,11 @@ export default function DetailsLayout({
               cycle_year={relatedOpportunities[0]?.year}
               cycle_semester={relatedOpportunities[0]?.semester}
               qt_inscricao_prev={opportunity.qt_inscricao_current ?? opportunity.qt_inscricao_prev}
-              min_cutoff_score={opportunity.opportunity_type?.toLowerCase() === 'prouni' ? null : (() => {
+              min_cutoff_score={(() => {
                 const validScores = relatedOpportunities.map(o => o.cutoff_score).filter((s): s is number => s != null);
                 return validScores.length > 0 ? Math.min(...validScores) : (opportunity.min_cutoff_score_current ?? opportunity.min_cutoff_score_prev ?? null);
               })()}
-              max_cutoff_score={opportunity.opportunity_type?.toLowerCase() === 'prouni' ? null : (() => {
+              max_cutoff_score={(() => {
                 const validScores = relatedOpportunities.map(o => o.cutoff_score).filter((s): s is number => s != null);
                 return validScores.length > 0 ? Math.max(...validScores) : (opportunity.max_cutoff_score_current ?? opportunity.max_cutoff_score_prev ?? null);
               })()}
