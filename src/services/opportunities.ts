@@ -335,31 +335,26 @@ export async function getUnifiedOpportunities(
   }
 
   // Escolha da query base:
-  //   1. Explorar + coords + busca → search_opportunities_by_distance
-  //      word_similarity fuzzy search + distance_km em uma única RPC
+  //   1. Busca → search_opportunities_v2: tolera acento, caixa, pontuação, ordem das
+  //      palavras, erros de digitação e apelidos; devolve search_rank (relevância) e,
+  //      com coords, distance_km
   //   2. Explorar + coords sem busca → get_unified_opportunities_by_distance
-  //   3. Busca sem coords → search_opportunities (word_similarity server-side)
-  //   4. Fallback → view direta
+  //   3. Fallback → view direta
   const useDistanceRpc = mode === 'explorar' && userLat !== null && userLong !== null;
+  const searchTerm = options.q?.trim();
 
   let query;
-  if (useDistanceRpc && options.q) {
-    // Busca fuzzy (word_similarity) + distância em uma única RPC
+  if (searchTerm) {
     query = supabase
-      .rpc('search_opportunities_by_distance', {
-        p_lat: userLat,
-        p_long: userLong,
-        p_q: options.q.trim(),
+      .rpc('search_opportunities_v2', {
+        p_q: searchTerm,
+        p_lat: useDistanceRpc ? userLat : null,
+        p_long: useDistanceRpc ? userLong : null,
       })
       .select('*');
   } else if (useDistanceRpc) {
     query = supabase
       .rpc('get_unified_opportunities_by_distance', { p_lat: userLat, p_long: userLong })
-      .select('*');
-  } else if (options.q) {
-    // Sem coords: usa RPC dedicada com word_similarity server-side
-    query = supabase
-      .rpc('search_opportunities', { p_q: options.q.trim() })
       .select('*');
   } else {
     query = supabase
@@ -426,7 +421,14 @@ export async function getUnifiedOpportunities(
   }
 
   // Ordenação
-  if (useDistanceRpc) {
+  if (searchTerm) {
+    // Busca: relevância primeiro; proximidade (quando houver) e recência desempatam
+    query = query.order('search_rank', { ascending: false });
+    if (useDistanceRpc) {
+      query = query.order('distance_km', { ascending: true, nullsFirst: false });
+    }
+    query = query.order('created_at', { ascending: false });
+  } else if (useDistanceRpc) {
     // get_unified_opportunities_by_distance sempre retorna distance_km
     // Parceiros primeiro (sem lat/long → distance_km NULL → ficam no final se nullsFirst:false),
     // depois por proximidade, depois por recência como desempate
@@ -435,7 +437,7 @@ export async function getUnifiedOpportunities(
       .order('distance_km', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
   } else {
-    // search_opportunities ou view direta — sem distance_km
+    // view direta — sem distance_km
     if (mode === 'para-voce') {
       query = query
         .order('is_partner', { ascending: false })
@@ -452,11 +454,11 @@ export async function getUnifiedOpportunities(
   const { data, error } = await query;
 
   if (error) {
-    // Se a RPC search_opportunities ainda não está no schema cache do PostgREST,
+    // Se a RPC search_opportunities_v2 ainda não está no schema cache do PostgREST,
     // cai silenciosamente para ilike (case-insensitive, sem acento — degradado mas funcional).
-    if (options.q && (error.message.includes('schema cache') || error.message.includes('Could not find the function'))) {
-      console.warn('[getUnifiedOpportunities] search_opportunities RPC não encontrada no schema cache — usando ilike fallback');
-      const fallbackTerm = options.q.trim().toLowerCase();
+    if (searchTerm && (error.message.includes('schema cache') || error.message.includes('Could not find the function'))) {
+      console.warn('[getUnifiedOpportunities] search_opportunities_v2 RPC não encontrada no schema cache — usando ilike fallback');
+      const fallbackTerm = searchTerm.toLowerCase();
       const { data: fd, error: fe } = await supabase
         .from('v_unified_opportunities')
         .select('*')
