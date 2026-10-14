@@ -45,12 +45,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # O repo usa pnpm (pnpm-lock v9 + pnpm-workspace com allowBuilds = pnpm 10):
+      # o `vercel build` instala com ele, como o build na própria Vercel.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-
-      - run: npm ci --no-audit --no-fund
+          cache: pnpm
 
       - name: Materializar configuração do Snaps (DEV)
         env:
