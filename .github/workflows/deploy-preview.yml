@@ -105,6 +105,11 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: npx --yes "$VERCEL_CLI" build --token="$VERCEL_TOKEN"
 
+      # Antes de publicar: a saída do build tem de carregar a config de DEV e nada
+      # de produção (ver scripts/ci/verify-build-output.sh).
+      - name: Verificar a saída do build (preview)
+        run: scripts/ci/verify-build-output.sh GTM-WKQW5RN9 GTM-WKRF5VCR yfgciamhzjvarwgzosto aifzkybxhmefbirujvdg
+
       - name: Deploy (preview)
         id: deploy
         env:

@@ -98,6 +98,13 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: npx --yes "$VERCEL_CLI" build --prod --token="$VERCEL_TOKEN"
 
+      # Antes de publicar: a saída do build tem de carregar a config de PRODUÇÃO
+      # e nada de DEV. O GTM é procurado em toda a saída (o id do outro ambiente
+      # nunca aparece em dado); o Supabase, só nos chunks JS, onde o Next embute
+      # as NEXT_PUBLIC_* — o HTML pode citar o storage de DEV por DADO de parceiro.
+      - name: Verificar a saída do build (produção)
+        run: scripts/ci/verify-build-output.sh GTM-WKRF5VCR GTM-WKQW5RN9 aifzkybxhmefbirujvdg yfgciamhzjvarwgzosto
+
       - name: Deploy (produção)
         id: deploy
         env:
@@ -108,19 +115,23 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deploy de produção: $url"
 
-      # Fumaça sobre o domínio público: o HTML servido tem de trazer o container
-      # GTM de produção e nunca o de DEV. Falhar aqui não desfaz o deploy; avisa.
-      - name: Verificar o domínio de produção
+      # Fumaça sobre o domínio público, só como AVISO: a proteção da Vercel pode
+      # responder com desafio a IPs de datacenter (o runner do GitHub), e foi o
+      # que fez esta checagem falhar no primeiro corte com o site correto. A
+      # garantia real é a verificação da saída do build, antes do deploy.
+      - name: Fumaça no domínio de produção (aviso)
+        continue-on-error: true
         run: |
-          set -euo pipefail
           for i in 1 2 3 4 5 6; do
-            html=$(curl -sS --max-time 20 "$PROD_DOMAIN/" || true)
-            if grep -q 'GTM-WKRF5VCR' <<<"$html" && ! grep -q 'GTM-WKQW5RN9' <<<"$html"; then
+            code=$(curl -sS --max-time 20 -o "$RUNNER_TEMP/home.html" -w '%{http_code}' "$PROD_DOMAIN/" || echo 000)
+            if [ "$code" = "200" ] && grep -q 'GTM-WKRF5VCR' "$RUNNER_TEMP/home.html" \
+               && ! grep -q 'GTM-WKQW5RN9' "$RUNNER_TEMP/home.html"; then
               echo "ok: $PROD_DOMAIN serve o GTM de produção"; exit 0
             fi
+            echo "tentativa $i: HTTP $code"
             sleep 10
           done
-          echo "::error::$PROD_DOMAIN não serve o GTM de produção esperado após o deploy"
+          echo "::warning::não foi possível confirmar o GTM em $PROD_DOMAIN a partir do runner (último HTTP $code)"
           exit 1
 
       - name: Limpar
