@@ -1,0 +1,128 @@
+# SNA-RD-207 / ADR-NUBO-DEPLOY-01 — produção do app com a configuração do Snaps.
+#
+# Fase 2 (corte): todo push em `main` publica em produção AUTOMATICAMENTE
+# (decisão humana de 14/10/2026), com a configuração do environment PROD do
+# Snaps resgatada por OIDC. Neste mesmo PR o `vercel.json` desliga a integração
+# Git da Vercel, então este workflow é o ÚNICO caminho de deploy (sem deploy duplo).
+#
+# Barreiras de produção:
+#   - GitHub Environment `production` restrito à branch `main`;
+#   - grant do Snaps para `production` com allowed_ref=refs/heads/main.
+# Rollback: reverter o PR que introduziu este arquivo e o vercel.json religa a
+# integração Git; ou `vercel rollback` / promover o deploy anterior.
+#
+# Pré-requisitos no GitHub Environment `production`:
+#   vars:    SNAPS_API_URL, SNAPS_PROJECT_ID, SNAPS_ENVIRONMENT_ID (PROD),
+#            VERCEL_ORG_ID, VERCEL_PROJECT_ID
+#   secrets: VERCEL_TOKEN
+name: deploy-production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+# Deploys de produção nunca se cancelam: o mais novo espera o anterior terminar.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_CLI: vercel@63.1.2
+      PROD_DOMAIN: https://conecta.nuboeducacao.org.br
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Materializar configuração do Snaps (PROD)
+        env:
+          SNAPS_API_URL: ${{ vars.SNAPS_API_URL }}
+          SNAPS_PROJECT_ID: ${{ vars.SNAPS_PROJECT_ID }}
+          SNAPS_ENVIRONMENT_ID: ${{ vars.SNAPS_ENVIRONMENT_ID }}
+        run: |
+          set -euo pipefail
+          umask 077
+          for v in SNAPS_API_URL SNAPS_PROJECT_ID SNAPS_ENVIRONMENT_ID VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            [ -n "${!v:-}" ] || { echo "::error::$v não definido no GitHub Environment 'production'"; exit 1; }
+          done
+
+          oidc=$(curl -sS --fail-with-body \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=snaps-api-materialize" | jq -r .value)
+          echo "::add-mask::$oidc"
+
+          ticket=$(curl -sS --fail-with-body -X POST "$SNAPS_API_URL/materialization/tickets" \
+            -H "Authorization: Bearer $oidc" -H 'Content-Type: application/json' \
+            -d "$(jq -cn --arg p "$SNAPS_PROJECT_ID" --arg e "$SNAPS_ENVIRONMENT_ID" \
+                  '{project_id: $p, environment_id: $e}')" | jq -r .ticket)
+          echo "::add-mask::$ticket"
+
+          curl -sS --fail-with-body -X POST "$SNAPS_API_URL/materialization/redeem" \
+            -H 'Accept: text/plain' -H 'Content-Type: application/json' \
+            -d "$(jq -cn --arg t "$ticket" '{ticket: $t}')" \
+            -D "$RUNNER_TEMP/snaps.headers" -o "$RUNNER_TEMP/snaps.env"
+
+          grep -i '^x-snaps-' "$RUNNER_TEMP/snaps.headers" || true
+          node scripts/ci/materialize-env.mjs "$RUNNER_TEMP/snaps.env"
+          rm -f "$RUNNER_TEMP/snaps.env" "$RUNNER_TEMP/snaps.headers"
+
+      - name: Projeto Vercel, sem as variáveis da Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          npx --yes "$VERCEL_CLI" pull --yes --environment=production --token="$VERCEL_TOKEN"
+          rm -f .vercel/.env.*.local
+
+      - name: Build (produção)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx --yes "$VERCEL_CLI" build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy (produção)
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          url=$(npx --yes "$VERCEL_CLI" deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deploy de produção: $url"
+
+      # Fumaça sobre o domínio público: o HTML servido tem de trazer o container
+      # GTM de produção e nunca o de DEV. Falhar aqui não desfaz o deploy; avisa.
+      - name: Verificar o domínio de produção
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5 6; do
+            html=$(curl -sS --max-time 20 "$PROD_DOMAIN/" || true)
+            if grep -q 'GTM-WKRF5VCR' <<<"$html" && ! grep -q 'GTM-WKQW5RN9' <<<"$html"; then
+              echo "ok: $PROD_DOMAIN serve o GTM de produção"; exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::$PROD_DOMAIN não serve o GTM de produção esperado após o deploy"
+          exit 1
+
+      - name: Limpar
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/snaps.env" "$RUNNER_TEMP/snaps.headers" .vercel/.env.*.local
