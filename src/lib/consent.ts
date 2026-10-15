@@ -125,6 +125,79 @@ export function parseConsent(raw: string | null | undefined): ConsentRecord | nu
 }
 
 /**
+ * Escolha VIGENTE no navegador: cookie presente, versão atual do texto. Sem
+ * cookie (nunca decidiu ou expirou) ou com versão antiga, devolve null.
+ *
+ * É a fonte única para quem decide fora do React (eventos de conversão): lida
+ * no momento do uso, nunca guardada, para que uma revogação valha na hora.
+ */
+export function readStoredConsent(): ConsentRecord | null {
+    if (typeof document === 'undefined') return null;
+    const match = document.cookie.match(
+        new RegExp('(?:^|; )' + CONSENT_COOKIE.replace(/[:.]/g, '\\$&') + '=([^;]*)'),
+    );
+    return parseConsent(match ? match[1] : null);
+}
+
+/**
+ * O container GTM só sobe com opt-in de alguma categoria que ele serve
+ * (doc f74d1cd9 §3.4, guard-rail 1; decisão humana de 12/10/2026). Ausência,
+ * recusa, expiração e versão antiga chegam aqui como DENIED.
+ *
+ * Dentro do container, cada tag continua condicionada ao sinal do Consent Mode
+ * da sua categoria — é o que mantém as categorias independentes.
+ */
+export function allowsTagManager(state: ConsentState): boolean {
+    return state.analytics || state.advertising;
+}
+
+/** Eventos de conversão (Lead, CompleteRegistration, ViewContent) são publicidade. */
+export function allowsAdvertising(state: ConsentState): boolean {
+    return state.advertising;
+}
+
+// ─── Autorização de publicidade por evento (NUB-RD-85, revisão 8e95e1f7 P1) ───
+//
+// Uma conversão é autorizada pelo consentimento VIGENTE NO INSTANTE em que
+// acontece — não pelo que vale quando a resposta da rede chega. A autorização
+// é capturada no evento e conferida de novo antes do push; qualquer nova
+// decisão no meio (aceitar, revogar, revogar e aceitar de novo, nesta aba ou
+// em outra) a invalida. Assim, um evento anterior ao opt-in nunca é emitido
+// por causa de um aceite posterior.
+
+/** Muda a cada decisão salva nesta aba. */
+let decisionEpoch = 0;
+
+/** Chamado pelo ConsentProvider sempre que a pessoa decide (inclusive revogar). */
+export function noteConsentDecision() {
+    decisionEpoch += 1;
+}
+
+export interface AdvertisingAuthorization {
+    readonly epoch: number;
+    /** Versão do texto + instante da decisão: muda se outra aba decidir. */
+    readonly decision: string;
+}
+
+function decisionKey(record: ConsentRecord): string {
+    return `${record.policyVersion}|${record.decidedAt}`;
+}
+
+/** Autorização de publicidade no instante do evento; null = não autorizado. */
+export function captureAdvertisingAuthorization(): AdvertisingAuthorization | null {
+    const record = readStoredConsent();
+    if (!record || !allowsAdvertising(record.state)) return null;
+    return { epoch: decisionEpoch, decision: decisionKey(record) };
+}
+
+/** A autorização capturada continua sendo a decisão vigente, sem mudança no meio? */
+export function isAdvertisingAuthorizationCurrent(auth: AdvertisingAuthorization | null): boolean {
+    if (!auth || auth.epoch !== decisionEpoch) return false;
+    const record = readStoredConsent();
+    return record !== null && allowsAdvertising(record.state) && decisionKey(record) === auth.decision;
+}
+
+/**
  * Traduz o estado para o vocabulário do Consent Mode v2 do Google.
  *
  * `functionality_storage` e `security_storage` ficam sempre concedidos: são

@@ -23,7 +23,7 @@ import {
   getUserOnboardingData
 } from '@/services/profileService';
 import { generateMatch, generateMatchAsync, getMatchStatus } from '@/services/matchService';
-import { trackCompleteRegistration } from '@/lib/analytics';
+import { captureAdvertisingAuthorization, trackCompleteRegistration } from '@/lib/analytics';
 import IncomeCalculatorField, { IncomeCalculatorValue } from '@/components/forms/ui-components/IncomeCalculatorField';
 import { fetchAvailableCategories, type AvailableCategory } from '@/lib/availableCategories';
 
@@ -609,6 +609,12 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
     setGlobalError(null);
 
     try {
+      // Estado ANTERIOR, lido no servidor (não no metadata em cache da
+      // sessão): "Refazer Match" reusa este formulário e não é uma nova
+      // conclusão (NUB-RD-85 R3). Na dúvida, trata como já concluído.
+      const { data: before, error: beforeError } = await supabase.auth.getUser();
+      const firstCompletion = !beforeError && before?.user?.user_metadata?.onboarding_completed !== true;
+
       // 1. Save User Profile
       await saveUserData(userId, {
         full_name: fullName,
@@ -739,7 +745,15 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
       // define "onboarding completo" para o resto do produto. Disparar no
       // início do submit contaria como completo quem abandonou no meio — que é
       // exatamente a métrica que este evento existe para separar do Lead.
-      trackCompleteRegistration(userId);
+      // Se o write falha, lança e nada é emitido. O servidor ainda confere a
+      // persistência e concede uma vez por conta (outra aba, retry). O
+      // consentimento vale o deste instante (a conclusão), capturado antes da
+      // espera pela RPC.
+      if (firstCompletion) {
+        trackCompleteRegistration(captureAdvertisingAuthorization()).catch((err) =>
+          console.error('[onboarding] falha ao avaliar CompleteRegistration', err),
+        );
+      }
 
       onComplete();
     } catch (err) {

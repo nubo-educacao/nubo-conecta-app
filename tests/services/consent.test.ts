@@ -14,7 +14,6 @@ import {
     toGoogleConsent,
     type ConsentRecord,
 } from '@/lib/consent';
-import { eventId } from '@/lib/analytics';
 
 const record = (over: Partial<ConsentRecord> = {}): ConsentRecord => ({
     state: GRANTED,
@@ -91,22 +90,12 @@ describe('persistência da escolha', () => {
     });
 });
 
-describe('event_id determinístico', () => {
-    it('produz o mesmo valor para o mesmo usuário', () => {
-        // É o que impede a Meta contar cada cadastro duas vezes quando o CAPI
-        // entrar: navegador e servidor precisam chegar ao mesmo id sem se falar.
-        expect(eventId('lead', 'user-1')).toBe(eventId('lead', 'user-1'));
-    });
-
-    it('não depende de tempo nem de aleatoriedade', () => {
-        const a = eventId('lead', 'user-1');
-        const b = eventId('lead', 'user-1');
-        expect(a).toBe(b);
-        expect(a).not.toMatch(/\d{13}/); // sem timestamp embutido
-    });
-
-    it('distingue usuários e tipos de evento', () => {
-        expect(eventId('lead', 'user-1')).not.toBe(eventId('lead', 'user-2'));
-        expect(eventId('lead', 'user-1')).not.toBe(eventId('complete_registration', 'user-1'));
-    });
-});
+// event_id: o antigo `eventId(kind, userId)` (= `lead:<uuid da pessoa>`) foi
+// SUBSTITUÍDO pela regra R4 de NUB-RD-85 (decisão humana de 12/10/2026): o
+// UUID da pessoa não vai mais ao terceiro. As invariantes que ele protegia
+// continuam testadas, agora onde moram:
+//   · mesmo id para o mesmo evento lógico, inclusive em retry, e o mesmo que
+//     o servidor (CAPI futuro) lerá → nubo-conecta-admin
+//     supabase/tests/conversion_event_claims/test.sql e
+//     tests/components/consent/ConversionEventsContract.test.tsx (R4);
+//   · distinto entre pessoas e entre tipos de evento → mesmos arquivos.

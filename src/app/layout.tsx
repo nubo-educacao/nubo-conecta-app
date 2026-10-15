@@ -11,7 +11,6 @@ import Script from "next/script";
 import Footer from "@/components/layout/Footer";
 import { ConsentProvider } from "@/components/consent/ConsentProvider";
 import ConsentBanner from "@/components/consent/ConsentBanner";
-import { GTM_CONTAINER_ID } from "@/lib/analytics";
 
 const montserrat = Montserrat({ subsets: ["latin"] });
 
@@ -125,24 +124,15 @@ export default function RootLayout({
         </Script>
 
         {/*
-          Google Tag Manager. O ID vem de variável de ambiente — foi hardcode
-          que transformou o pixel numa string presa no layout, impossível de
-          trocar sem deploy.
+          Google Tag Manager NÃO é carregado aqui (NUB-RD-85 R5; doc f74d1cd9
+          §3.4, guard-rail 1: container só após opt-in). Quem sobe o container
+          é o ConsentProvider, depois do `consent update` com a escolha da
+          pessoa e só se ela autorizou alguma categoria que o container serve.
+          O ID continua vindo de NEXT_PUBLIC_GTM_ID (src/lib/analytics.ts).
 
-          O Meta Pixel NÃO está mais aqui: passou a ser tag dentro do container,
-          com Additional Consent Check exigindo `ad_storage`.
+          O Meta Pixel também não está aqui: é tag dentro do container, com
+          Additional Consent Check exigindo `ad_storage`.
         */}
-        {GTM_CONTAINER_ID && (
-          <Script id="gtm" strategy="afterInteractive">
-            {`
-              (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-              'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-              })(window,document,'script','dataLayer','${GTM_CONTAINER_ID}');
-            `}
-          </Script>
-        )}
       </head>
       <body className={`${montserrat.className} relative min-h-screen overflow-x-hidden`}>
         <CloudBackground />
