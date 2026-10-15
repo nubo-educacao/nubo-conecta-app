@@ -12,8 +12,14 @@
 //     do opt-in seria processado pelo container ao subir depois — um replay
 //     retroativo de conversão pré-consentimento, que não tem contrato aprovado.
 
-import { allowsAdvertising, readStoredConsent } from '@/lib/consent';
+import {
+    captureAdvertisingAuthorization,
+    isAdvertisingAuthorizationCurrent,
+    type AdvertisingAuthorization,
+} from '@/lib/consent';
 import { claimConversionEvent, type ConversionKind } from '@/services/conversionEventService';
+
+export { captureAdvertisingAuthorization, type AdvertisingAuthorization };
 
 export const GTM_CONTAINER_ID = process.env.NEXT_PUBLIC_GTM_ID ?? '';
 
@@ -31,10 +37,6 @@ function push(payload: Record<string, unknown>) {
     window.dataLayer.push(payload);
 }
 
-function advertisingAllowedNow(): boolean {
-    const record = readStoredConsent();
-    return record !== null && allowsAdvertising(record.state);
-}
 
 /**
  * Sobe o container GTM uma única vez por página.
@@ -62,13 +64,20 @@ export function loadTagManager(containerId: string = GTM_CONTAINER_ID): boolean 
     return true;
 }
 
-async function trackClaimed(kind: ConversionKind, event: string) {
+async function trackClaimed(
+    kind: ConversionKind,
+    event: string,
+    authorization: AdvertisingAuthorization | null,
+) {
     // Reivindica SEMPRE, com ou sem consentimento: o evento lógico é consumido
     // no momento em que acontece. Quem recusou e aceita depois não recebe o
     // cadastro antigo "atrasado" num login futuro.
     const claim = await claimConversionEvent(kind);
     if (!claim?.shouldEmit) return;
-    if (!advertisingAllowedNow()) return;
+    // A autorização é a do INSTANTE do evento, conferida de novo agora: se a
+    // pessoa decidiu qualquer coisa enquanto a rede respondia (aceitou depois
+    // de ter recusado, revogou, revogou e aceitou de novo), o evento não sai.
+    if (!isAdvertisingAuthorizationCurrent(authorization)) return;
     push({ event, event_id: claim.eventId });
 }
 
@@ -76,9 +85,14 @@ async function trackClaimed(kind: ConversionKind, event: string) {
  * Cadastro efetivo (Lead). Chamado a cada SIGNED_IN; o servidor diz se este é
  * o primeiro cadastro confirmado da conta — login de conta existente, outra
  * aba, recarga e recuperação de sessão recebem "não".
+ *
+ * `authorization` deve ser capturada no instante do SIGNED_IN; sem argumento,
+ * vale o instante desta chamada.
  */
-export function trackLead(): Promise<void> {
-    return trackClaimed('lead', 'nubo_lead');
+export function trackLead(
+    authorization: AdvertisingAuthorization | null = captureAdvertisingAuthorization(),
+): Promise<void> {
+    return trackClaimed('lead', 'nubo_lead', authorization);
 }
 
 /**
@@ -86,84 +100,56 @@ export function trackLead(): Promise<void> {
  *
  * 52% dos cadastros nunca completam o onboarding. Sem separar este do `Lead`,
  * a Meta otimiza por cadastro raso. Chamar só DEPOIS de persistir
- * `onboarding_completed`: o servidor confere a persistência e concede uma vez
- * por conta.
+ * `onboarding_completed` (o instante do evento): o servidor confere a
+ * persistência e concede uma vez por conta.
  */
-export function trackCompleteRegistration(): Promise<void> {
-    return trackClaimed('complete_registration', 'nubo_complete_registration');
+export function trackCompleteRegistration(
+    authorization: AdvertisingAuthorization | null = captureAdvertisingAuthorization(),
+): Promise<void> {
+    return trackClaimed('complete_registration', 'nubo_complete_registration', authorization);
 }
 
-// ─── ViewContent ─────────────────────────────────────────────────────────────
+// ─── ViewContent = uma abertura real do detalhe (decisão humana 15/10/2026) ──
 //
-// Semântica preservada: o mesmo par (pessoa, oportunidade) repete o mesmo
-// event_id nas revisitas, para a Meta deduplicar dentro da janela dela.
-// O que MUDOU, e é declarado: o id deixou de ser `view_content:<opp>:<uuid da
-// pessoa>` e passou a ser aleatório, guardado neste navegador. Revisita em
-// OUTRO dispositivo, ou depois de limpar o armazenamento, gera id novo.
+// Cada abertura tem seu próprio event_id opaco (aleatório, sem relação com a
+// pessoa). Retries e efeitos/renderizações duplicados da MESMA abertura usam
+// o mesmo objeto — mesmo id, uma emissão. Revisita, recarga ou outra
+// navegação é outra abertura, com outro id. Nada é guardado no navegador.
 //
-// O sujeito (user.id ou id anônimo) fica só no armazenamento local, para não
-// misturar duas pessoas no mesmo navegador; nunca vai ao dataLayer.
+// A autorização de publicidade é a do instante da abertura: uma abertura feita
+// sem consentimento nunca é emitida, mesmo que a pessoa aceite em seguida.
 
-const VIEW_IDS_KEY = 'nubo:vc_ids';
-const VIEW_IDS_MAX = 300;
-
-interface ViewIds {
-    subject: string;
-    ids: Record<string, string>;
+export interface ViewContentOpening {
+    readonly eventId: string;
+    readonly unifiedOpportunityId: string;
+    readonly authorization: AdvertisingAuthorization | null;
+    emitted: boolean;
 }
 
-// Fallback quando o armazenamento não está disponível: estável na página.
-const memoryViewIds = new Map<string, string>();
-
-function readViewIds(subject: string): ViewIds {
-    try {
-        const parsed = JSON.parse(window.localStorage.getItem(VIEW_IDS_KEY) ?? 'null') as ViewIds | null;
-        if (parsed && parsed.subject === subject && parsed.ids && typeof parsed.ids === 'object') return parsed;
-    } catch {
-        /* armazenamento indisponível ou corrompido: recomeça */
-    }
-    return { subject, ids: {} };
+/** Registra uma nova abertura do detalhe (chamar uma vez por abertura). */
+export function openViewContent(unifiedOpportunityId: string): ViewContentOpening {
+    return {
+        eventId: globalThis.crypto.randomUUID(),
+        unifiedOpportunityId,
+        authorization: captureAdvertisingAuthorization(),
+        emitted: false,
+    };
 }
 
-function viewContentEventId(subject: string, opportunityId: string): string {
-    const memKey = `${subject}\u0000${opportunityId}`;
-    const stored = readViewIds(subject);
-    const existing = stored.ids[opportunityId] ?? memoryViewIds.get(memKey);
-    if (existing) return existing;
-
-    const id = globalThis.crypto.randomUUID();
-    memoryViewIds.set(memKey, id);
-    stored.ids[opportunityId] = id;
-    const keys = Object.keys(stored.ids);
-    for (const k of keys.slice(0, Math.max(0, keys.length - VIEW_IDS_MAX))) delete stored.ids[k];
-    try {
-        window.localStorage.setItem(VIEW_IDS_KEY, JSON.stringify(stored));
-    } catch {
-        /* sem armazenamento: vale o id em memória */
-    }
-    return id;
-}
-
-/** Apaga os ids de ViewContent deste navegador (revogação de publicidade). */
-export function clearAdvertisingStorage() {
-    memoryViewIds.clear();
-    try {
-        window.localStorage.removeItem(VIEW_IDS_KEY);
-    } catch {
-        /* nada a apagar */
-    }
-}
-
-/** Detalhe de oportunidade. */
-export function trackViewContent(opts: { unifiedOpportunityId: string; subjectId: string }) {
-    if (typeof window === 'undefined') return;
-    // Sem consentimento de publicidade, nem o id é criado/armazenado.
-    if (!advertisingAllowedNow()) return;
+/**
+ * Emite o ViewContent da abertura, no máximo uma vez. Chamar de novo para a
+ * mesma abertura (efeito repetido, retry) não gera segundo evento.
+ */
+export function trackViewContent(opening: ViewContentOpening): boolean {
+    if (typeof window === 'undefined' || opening.emitted) return false;
+    if (!isAdvertisingAuthorizationCurrent(opening.authorization)) return false;
+    opening.emitted = true;
     push({
         event: 'nubo_view_content',
-        event_id: viewContentEventId(opts.subjectId, opts.unifiedOpportunityId),
-        content_id: opts.unifiedOpportunityId,
+        event_id: opening.eventId,
+        content_id: opening.unifiedOpportunityId,
     });
+    return true;
 }
 
 // ⚠️ PII

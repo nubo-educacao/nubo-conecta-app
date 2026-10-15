@@ -111,7 +111,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ConsentProvider, useConsent } from '@/components/consent/ConsentProvider';
 import ConsentBanner from '@/components/consent/ConsentBanner';
 import MatchOnboardingForm from '@/components/match/MatchOnboardingForm';
-import { trackViewContent } from '@/lib/analytics';
+import ViewContentTracker from '@/components/analytics/ViewContentTracker';
 import { CONSENT_COOKIE, CONSENT_POLICY_VERSION, DENIED, GRANTED, serializeConsent, type ConsentState } from '@/lib/consent';
 import RootLayout from '@/app/layout';
 
@@ -472,24 +472,225 @@ describe('R4 — event_id opaco por evento lógico', () => {
         expect(new Set(ids).size).toBe(3);
     });
 
-    it('ViewContent: content_id preservado, sem UUID da pessoa, mesmo event_id na revisita, isolado por oportunidade e pessoa', () => {
-        const USER = '00000000-0000-4000-8000-00000000c001';
-        const OTHER = '00000000-0000-4000-8000-00000000c002';
-        trackViewContent({ unifiedOpportunityId: 'mec_123', subjectId: USER });
-        trackViewContent({ unifiedOpportunityId: 'mec_123', subjectId: USER }); // revisita
-        trackViewContent({ unifiedOpportunityId: 'partner_9', subjectId: USER });
-        trackViewContent({ unifiedOpportunityId: 'mec_123', subjectId: OTHER }); // outra pessoa, mesmo navegador
+});
 
-        const [first, revisit, otherOpp, otherPerson] = events('nubo_view_content');
-        expect(first.content_id).toBe('mec_123');
-        expect(otherOpp.content_id).toBe('partner_9');
-        expect(revisit.event_id).toBe(first.event_id);
-        expect(otherOpp.event_id).not.toBe(first.event_id);
-        expect(otherPerson.event_id).not.toBe(first.event_id);
+// ─── ViewContent = cada abertura real do detalhe (decisão humana 15/10) ──────
+//
+// Adendo 9b9f9b28: cada nova abertura tem event_id opaco próprio; retries e
+// efeitos/renderizações duplicados da MESMA abertura reutilizam o id;
+// revisita/recarga/outra navegação é outra abertura. Ciclo de vida REAL do
+// tracker, em StrictMode (que duplica efeitos de propósito).
+
+function openOpportunity(id: string) {
+    return render(
+        <React.StrictMode>
+            <ViewContentTracker unifiedOpportunityId={id} />
+        </React.StrictMode>,
+    );
+}
+
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+describe('ViewContent — um event_id opaco por abertura real', () => {
+    it('uma abertura em StrictMode (efeito duplicado) e rerenders emitem UMA vez, com content_id e id opaco', async () => {
+        const view = openOpportunity('mec_123');
+        await settle();
+        view.rerender(
+            <React.StrictMode>
+                <ViewContentTracker unifiedOpportunityId="mec_123" />
+            </React.StrictMode>,
+        );
+        await settle();
+
+        const sent = events('nubo_view_content');
+        expect(sent).toHaveLength(1);
+        expect(sent[0].content_id).toBe('mec_123');
+        expect(String(sent[0].event_id)).toMatch(UUID_V4);
+        expect(Object.keys(sent[0]).sort()).toEqual(['content_id', 'event', 'event_id']);
+    });
+
+    it('revisita/recarga (nova montagem) da MESMA oportunidade é outra abertura: outro event_id', async () => {
+        const first = openOpportunity('mec_123');
+        await settle();
+        first.unmount();
+        openOpportunity('mec_123');
+        await settle();
+
+        const [a, b] = events('nubo_view_content');
+        expect(events('nubo_view_content')).toHaveLength(2);
+        expect(a.content_id).toBe('mec_123');
+        expect(b.content_id).toBe('mec_123');
+        expect(a.event_id).not.toBe(b.event_id);
+    });
+
+    it('navegar para outra oportunidade (mesma instância) é outra abertura, isolada', async () => {
+        const view = openOpportunity('mec_123');
+        await settle();
+        view.rerender(
+            <React.StrictMode>
+                <ViewContentTracker unifiedOpportunityId="partner_9" />
+            </React.StrictMode>,
+        );
+        await settle();
+
+        const [a, b] = events('nubo_view_content');
+        expect(events('nubo_view_content')).toHaveLength(2);
+        expect([a.content_id, b.content_id]).toEqual(['mec_123', 'partner_9']);
+        expect(a.event_id).not.toBe(b.event_id);
+    });
+
+    it('não guarda identificador persistente no navegador nem envia identidade', async () => {
+        const tab = await openTab();
+        await signUpOrLogin(tab.client, '+5511900000035');
+        const user = [...backend.users.values()][0];
+        openOpportunity('mec_123');
+        await settle();
+
+        expect(window.localStorage.length).toBe(0);
         const payload = JSON.stringify(events('nubo_view_content'));
-        expect(payload).not.toContain(USER);
-        expect(payload).not.toContain(OTHER);
-        expect(String(first.event_id)).not.toContain('mec_123');
+        expect(payload).not.toContain(user.id);
+        expect(payload).not.toContain('5511900000035');
+    });
+});
+
+// ─── P1 — autorização vinculada ao instante do evento (revisão 8e95e1f7) ─────
+
+function ConsentControls() {
+    const { save, reopen } = useConsent();
+    return (
+        <>
+            <button onClick={() => save(GRANTED)}>aceitar-agora</button>
+            <button onClick={() => save(DENIED)}>recusar-agora</button>
+            <button onClick={reopen}>reabrir</button>
+        </>
+    );
+}
+
+async function openTabWithConsent() {
+    const client = newTabClient();
+    holder.current = client as unknown as Record<string, unknown>;
+    await act(async () => {
+        render(
+            <ConsentProvider>
+                <ConsentControls />
+                <AuthProvider>
+                    <div />
+                </AuthProvider>
+            </ConsentProvider>,
+        );
+    });
+    return { client };
+}
+
+async function clickNow(name: string) {
+    await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name }));
+    });
+}
+
+/** Cadastro com a resposta da RPC segurada; `during` roda com o pedido em voo. */
+async function signUpWhileClaimPending(client: SupabaseClient, phone: string, during: () => Promise<void>) {
+    const release = backend.holdClaims();
+    await signUpOrLogin(client, phone);
+    await waitFor(() => expect(backend.pendingClaims).toBe(1));
+    await during();
+    release();
+    await waitFor(() => expect(backend.claimCalls).toHaveLength(1));
+    await settle(80);
+}
+
+describe('P1 — consentimento vale no instante da conversão, não na chegada da resposta', () => {
+    it('negado no cadastro → aceito enquanto a RPC está pendente: NÃO emite, e login posterior não ressuscita', async () => {
+        clearAllCookies();
+        setConsentCookie(DENIED);
+        const { client } = await openTabWithConsent();
+        await signUpWhileClaimPending(client, '+5511900000050', () => clickNow('aceitar-agora'));
+
+        expect(backend.claimCalls[0].result[0].should_emit).toBe(true); // evento consumido no servidor
+        expect(events('nubo_lead')).toHaveLength(0);
+
+        await act(async () => {
+            await client.auth.signOut();
+        });
+        await signUpOrLogin(client, '+5511900000050');
+        await waitFor(() => expect(backend.claimCalls.length).toBeGreaterThanOrEqual(2));
+        await settle(80);
+        expect(events('nubo_lead')).toHaveLength(0);
+    });
+
+    it('aceito no cadastro → revogado enquanto a RPC está pendente: NÃO emite', async () => {
+        const { client } = await openTabWithConsent();
+        await signUpWhileClaimPending(client, '+5511900000051', () => clickNow('recusar-agora'));
+        expect(events('nubo_lead')).toHaveLength(0);
+    });
+
+    it('aceito → revogado → aceito de novo durante a RPC: a autorização antiga não ressuscita', async () => {
+        const { client } = await openTabWithConsent();
+        await signUpWhileClaimPending(client, '+5511900000052', async () => {
+            await clickNow('recusar-agora');
+            await clickNow('aceitar-agora');
+        });
+        expect(events('nubo_lead')).toHaveLength(0);
+    });
+
+    it('outra aba revoga e aceita de novo durante a RPC (só o cookie muda): NÃO emite', async () => {
+        const { client } = await openTabWithConsent();
+        await signUpWhileClaimPending(client, '+5511900000053', async () => {
+            document.cookie = `${CONSENT_COOKIE}=${serializeConsent({
+                state: GRANTED,
+                policyVersion: CONSENT_POLICY_VERSION,
+                decidedAt: '2026-10-15T23:59:59.000Z',
+            })}; path=/`;
+        });
+        expect(events('nubo_lead')).toHaveLength(0);
+    });
+
+    it('permitido do início ao fim, com a RPC lenta: emite uma vez, com o id do servidor', async () => {
+        const { client } = await openTabWithConsent();
+        await signUpWhileClaimPending(client, '+5511900000054', async () => {});
+        expect(events('nubo_lead')).toHaveLength(1);
+        expect(events('nubo_lead')[0].event_id).toBe(backend.claimCalls[0].result[0].event_id);
+    });
+
+    it('CompleteRegistration: negado na conclusão → aceito durante a RPC: NÃO emite', async () => {
+        const { user } = await signedInNewUser('+5511900000055');
+        cleanup();
+        // Só o consentimento muda; o cookie de sessão do Supabase fica.
+        setConsentCookie(DENIED);
+        await openTabWithConsent();
+        const release = backend.holdClaims();
+        const { onComplete } = await submitOnboarding(user.id);
+        await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(backend.pendingClaimKinds).toContain('complete_registration'));
+        await clickNow('aceitar-agora');
+        release();
+        await waitFor(() =>
+            expect(backend.claimCalls.some((c) => c.kind === 'complete_registration')).toBe(true),
+        );
+        await settle(80);
+
+        expect(events('nubo_complete_registration')).toHaveLength(0);
+    });
+
+    it('ViewContent: abertura com publicidade negada não é emitida depois do aceite; a próxima abertura é', async () => {
+        clearAllCookies();
+        setConsentCookie(DENIED);
+        await act(async () => {
+            render(
+                <ConsentProvider>
+                    <ConsentControls />
+                    <ViewContentTracker unifiedOpportunityId="mec_8" />
+                </ConsentProvider>,
+            );
+        });
+        await clickNow('aceitar-agora');
+        await settle();
+        expect(events('nubo_view_content')).toHaveLength(0);
+
+        cleanup();
+        openOpportunity('mec_8');
+        await settle();
+        expect(events('nubo_view_content')).toHaveLength(1);
     });
 });
 
@@ -532,10 +733,11 @@ describe('eventos de conversão respeitam o consentimento de publicidade vigente
         expect(events('nubo_lead')).toHaveLength(0);
     });
 
-    it('só análise de uso não autoriza eventos de publicidade (ViewContent) nem grava armazenamento local', () => {
+    it('só análise de uso não autoriza eventos de publicidade (ViewContent) nem grava armazenamento local', async () => {
         clearAllCookies();
         setConsentCookie({ essential: true, analytics: true, advertising: false });
-        trackViewContent({ unifiedOpportunityId: 'mec_1', subjectId: 'anon-1' });
+        openOpportunity('mec_1');
+        await settle();
         expect(events('nubo_view_content')).toHaveLength(0);
         expect(window.localStorage.length).toBe(0);
     });
@@ -647,7 +849,8 @@ describe('R5 — o container GTM só carrega após opt-in da categoria aplicáve
 
         const last = (window.dataLayer ?? []).filter(isConsentUpdate).at(-1) as unknown as ArrayLike<unknown>;
         expect(last[2]).toMatchObject({ ad_storage: 'denied', analytics_storage: 'denied' });
-        trackViewContent({ unifiedOpportunityId: 'mec_7', subjectId: 'anon-7' });
+        openOpportunity('mec_7');
+        await settle();
         expect(events('nubo_view_content')).toHaveLength(0);
 
         // O script já executado não é "descarregado" (nem é alegado): o efeito

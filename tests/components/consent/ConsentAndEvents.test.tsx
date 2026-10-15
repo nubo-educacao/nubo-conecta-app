@@ -56,7 +56,7 @@ import {
     parseConsent,
     serializeConsent,
 } from '@/lib/consent';
-import { trackViewContent } from '@/lib/analytics';
+import { openViewContent, trackViewContent } from '@/lib/analytics';
 
 const USER_ID = '00000000-0000-4000-8000-000000000001';
 
@@ -311,12 +311,16 @@ describe('Lead — eventos de auth que NÃO são entrada nova', () => {
 });
 
 describe('ViewContent — payload', () => {
-    it('content_id é o unified_opportunity_id e o event_id é estável', () => {
+    it('content_id é o unified_opportunity_id e o event_id é estável na mesma abertura', () => {
+        // Decisão de 15/10: uma abertura = um evento. Repetir a mesma abertura
+        // (retry/efeito duplicado) não gera outro evento nem outro id.
         grantAdvertising();
-        trackViewContent({ unifiedOpportunityId: 'mec_123', subjectId: 'anon-1' });
-        trackViewContent({ unifiedOpportunityId: 'mec_123', subjectId: 'anon-1' });
-        const [a, b] = dataLayerEvents('nubo_view_content');
-        expect(a.content_id).toBe('mec_123');
-        expect(a.event_id).toBe(b.event_id);
+        const opening = openViewContent('mec_123');
+        expect(trackViewContent(opening)).toBe(true);
+        expect(trackViewContent(opening)).toBe(false);
+        const sent = dataLayerEvents('nubo_view_content');
+        expect(sent).toHaveLength(1);
+        expect(sent[0].content_id).toBe('mec_123');
+        expect(sent[0].event_id).toBe(opening.eventId);
     });
 });

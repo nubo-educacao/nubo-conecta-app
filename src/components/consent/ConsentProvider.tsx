@@ -12,15 +12,15 @@ import {
     CONSENT_MAX_AGE,
     CONSENT_POLICY_VERSION,
     DENIED,
-    allowsAdvertising,
     allowsTagManager,
+    noteConsentDecision,
     readStoredConsent,
     serializeConsent,
     toGoogleConsent,
     type ConsentRecord,
     type ConsentState,
 } from '@/lib/consent';
-import { clearAdvertisingStorage, loadTagManager } from '@/lib/analytics';
+import { loadTagManager } from '@/lib/analytics';
 
 interface ConsentContextValue {
     state: ConsentState;
@@ -77,14 +77,16 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
             decidedAt: new Date().toISOString(),
         };
 
+        // Toda decisão (aceitar, revogar, mudar) invalida as autorizações de
+        // conversões ainda em voo: um evento só sai com a decisão vigente no
+        // instante em que aconteceu (NUB-RD-85 P1). O app não guarda outro
+        // estado de publicidade. Cookies que terceiros já gravaram (_fbp etc.)
+        // e o container já executado ficam como estão — tratar isso é decisão
+        // do encarregado.
+        noteConsentDecision();
         writeCookie(CONSENT_COOKIE, serializeConsent(next));
         setRecord(next);
         setIsOpen(false);
-
-        // Revogação de publicidade: apaga o que o PRÓPRIO app guardou para
-        // esse fim. Cookies que terceiros já gravaram (_fbp etc.) e o container
-        // já executado ficam como estão — tratar isso é decisão do encarregado.
-        if (!allowsAdvertising(state)) clearAdvertisingStorage();
         publish(state);
     }, []);
 

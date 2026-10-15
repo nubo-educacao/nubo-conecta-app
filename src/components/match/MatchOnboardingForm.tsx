@@ -23,7 +23,7 @@ import {
   getUserOnboardingData
 } from '@/services/profileService';
 import { generateMatch, generateMatchAsync, getMatchStatus } from '@/services/matchService';
-import { trackCompleteRegistration } from '@/lib/analytics';
+import { captureAdvertisingAuthorization, trackCompleteRegistration } from '@/lib/analytics';
 import IncomeCalculatorField, { IncomeCalculatorValue } from '@/components/forms/ui-components/IncomeCalculatorField';
 import { fetchAvailableCategories, type AvailableCategory } from '@/lib/availableCategories';
 
@@ -746,9 +746,11 @@ export default function MatchOnboardingForm({ userId, onComplete }: MatchOnboard
       // início do submit contaria como completo quem abandonou no meio — que é
       // exatamente a métrica que este evento existe para separar do Lead.
       // Se o write falha, lança e nada é emitido. O servidor ainda confere a
-      // persistência e concede uma vez por conta (outra aba, retry).
+      // persistência e concede uma vez por conta (outra aba, retry). O
+      // consentimento vale o deste instante (a conclusão), capturado antes da
+      // espera pela RPC.
       if (firstCompletion) {
-        trackCompleteRegistration().catch((err) =>
+        trackCompleteRegistration(captureAdvertisingAuthorization()).catch((err) =>
           console.error('[onboarding] falha ao avaliar CompleteRegistration', err),
         );
       }

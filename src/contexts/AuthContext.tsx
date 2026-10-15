@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { attachAttribution } from "@/services/attributionService";
-import { trackLead } from "@/lib/analytics";
+import { captureAdvertisingAuthorization, trackLead } from "@/lib/analytics";
 import type { Session, User } from "@supabase/supabase-js";
 
 interface AuthContextType {
@@ -73,13 +73,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // SIGNED_IN NÃO prova cadastro: sai também em login de conta
         // existente, em outra aba (BroadcastChannel) e ao recuperar a sessão
         // numa página nova. Quem decide é o servidor (claim_conversion_event),
-        // uma vez por conta; o consentimento de publicidade é conferido na
-        // hora de empurrar para o dataLayer.
+        // uma vez por conta.
+        //
+        // O consentimento vale o deste instante: capturado AQUI, antes de
+        // qualquer espera, e conferido de novo antes do push. Aceitar durante
+        // a espera não libera um cadastro feito sem consentimento.
         //
         // Fora do callback (setTimeout): chamar o Supabase de dentro de
         // onAuthStateChange pode travar no lock do auth-js.
+        const authorization = captureAdvertisingAuthorization();
         setTimeout(() => {
-          trackLead().catch((err) => console.error('[auth] falha ao avaliar Lead', err));
+          trackLead(authorization).catch((err) => console.error('[auth] falha ao avaliar Lead', err));
         }, 0);
       }
     });

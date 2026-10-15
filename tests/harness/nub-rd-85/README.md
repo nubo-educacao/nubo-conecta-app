@@ -1,11 +1,12 @@
 # NUB-RD-85: consentimento × terceiros e eventos de conversão
 
-Testes das regras R1–R5 do TP-7 (decisão humana de 12/10/2026), execução `c4ae9058`.
+Testes das regras R1–R5 do TP-7 (decisão humana de 12/10/2026), da revisão 8e95e1f7 (P1: consentimento no instante do evento) e da decisão de 15/10 (ViewContent por abertura), execução `c4ae9058`.
 Nenhum deles envia evento a Meta/Google, e nenhum é prova de recebimento no provedor (task 85d).
 
 | Onde | Prova | Não prova |
 |---|---|---|
-| `tests/components/consent/ConversionEventsContract.test.tsx` (suíte normal, CI) | R1–R5 com o auth-js real em duas "abas" (cookie compartilhado + BroadcastChannel), recarga, foco, submit real do onboarding, Refazer Match, falha de persistência, retry, isolamento, consentimento × eventos, GTM só após opt-in e revogação | Container real, consent checks das tags, recebimento |
+| `tests/components/consent/ConversionEventsContract.test.tsx` (suíte normal, CI) | R1–R5 com o auth-js real em duas "abas" (cookie compartilhado + BroadcastChannel), recarga, foco, submit real do onboarding, Refazer Match, falha de persistência, retry, isolamento, consentimento × eventos, GTM só após opt-in e revogação. P1: consentimento mudando com a RPC em voo (negado→aceito, aceito→negado, revogar→aceitar, outra aba). ViewContent: ciclo de vida real do tracker em StrictMode (uma abertura = um id; revisita/outra oportunidade = outro) | Container real, consent checks das tags, recebimento |
+| `tests/ci/compare-test-baseline.test.ts` (CI, passo bloqueante) | O gate de baseline reprova falha nova de asserção, de suíte/hook (inclusive `describe` aninhado), de coleta e erro não tratado, com relatórios controlados e com o vitest real sobre `tests/ci/fixtures/` | — |
 | `tests/components/consent/ConsentAndEvents.test.tsx` (suíte normal, CI) | As 16 guardas da auditoria (banner, cookie com versão e data, Consent Mode, revogação, expirado, versão nova, payload sem PII) | Idem |
 | `nubo-conecta-admin` `supabase/tests/conversion_event_claims/test.sql` (CI do admin) | A RPC `claim_conversion_event`: elegibilidade, confirmação, uma vez por conta, retry, outra aba, privilégios, RLS, `search_path` | Banco DEV/PROD (aplicação é gate humano) |
 | `consent-network.mjs` (CI, job `consent-network-harness`) | O que o NAVEGADOR pede, executa e grava em 9 estados de consentimento, com o app real servido localmente | Tags, triggers e consent checks do container real, e recebimento |

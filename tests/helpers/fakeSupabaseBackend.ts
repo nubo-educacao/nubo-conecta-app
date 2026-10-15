@@ -57,6 +57,10 @@ export function createFakeSupabaseBackend() {
     let dropClaimResponses = 0;
     /** Próximo updateUser falha (persistência do onboarding). */
     let failNextUpdateUser = false;
+    /** Enquanto houver portão, a RPC recebe o pedido e só responde ao liberar. */
+    let claimGate: Promise<void> | null = null;
+    let pendingClaims = 0;
+    const pendingKinds: string[] = [];
 
     function newUuid() {
         return globalThis.crypto.randomUUID();
@@ -183,6 +187,13 @@ export function createFakeSupabaseBackend() {
         if (path === '/rest/v1/rpc/claim_conversion_event' && req.method === 'POST') {
             const u = userFromAuth(req.headers);
             if (!u) return json(401, { code: '42501', message: 'requer sessão autenticada' });
+            if (claimGate) {
+                pendingClaims += 1;
+                pendingKinds.push(data.p_kind);
+                await claimGate;
+                pendingClaims -= 1;
+                pendingKinds.splice(pendingKinds.indexOf(data.p_kind), 1);
+            }
             const result = claim(u, data.p_kind, data.p_request_id);
             claimCalls.push({ userId: u.id, kind: data.p_kind, requestId: data.p_request_id, result });
             if (dropClaimResponses > 0) {
@@ -208,6 +219,25 @@ export function createFakeSupabaseBackend() {
         },
         failNextUpdateUser() {
             failNextUpdateUser = true;
+        },
+        /** Segura as respostas da RPC; devolve a função que libera. */
+        holdClaims() {
+            let release = () => {};
+            claimGate = new Promise<void>((r) => {
+                release = r;
+            });
+            return () => {
+                claimGate = null;
+                release();
+            };
+        },
+        /** Pedidos à RPC recebidos e ainda sem resposta. */
+        get pendingClaims() {
+            return pendingClaims;
+        },
+        /** Tipos (lead/complete_registration) dos pedidos em voo. */
+        get pendingClaimKinds() {
+            return [...pendingKinds];
         },
     };
 }

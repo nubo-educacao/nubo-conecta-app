@@ -156,6 +156,47 @@ export function allowsAdvertising(state: ConsentState): boolean {
     return state.advertising;
 }
 
+// ─── Autorização de publicidade por evento (NUB-RD-85, revisão 8e95e1f7 P1) ───
+//
+// Uma conversão é autorizada pelo consentimento VIGENTE NO INSTANTE em que
+// acontece — não pelo que vale quando a resposta da rede chega. A autorização
+// é capturada no evento e conferida de novo antes do push; qualquer nova
+// decisão no meio (aceitar, revogar, revogar e aceitar de novo, nesta aba ou
+// em outra) a invalida. Assim, um evento anterior ao opt-in nunca é emitido
+// por causa de um aceite posterior.
+
+/** Muda a cada decisão salva nesta aba. */
+let decisionEpoch = 0;
+
+/** Chamado pelo ConsentProvider sempre que a pessoa decide (inclusive revogar). */
+export function noteConsentDecision() {
+    decisionEpoch += 1;
+}
+
+export interface AdvertisingAuthorization {
+    readonly epoch: number;
+    /** Versão do texto + instante da decisão: muda se outra aba decidir. */
+    readonly decision: string;
+}
+
+function decisionKey(record: ConsentRecord): string {
+    return `${record.policyVersion}|${record.decidedAt}`;
+}
+
+/** Autorização de publicidade no instante do evento; null = não autorizado. */
+export function captureAdvertisingAuthorization(): AdvertisingAuthorization | null {
+    const record = readStoredConsent();
+    if (!record || !allowsAdvertising(record.state)) return null;
+    return { epoch: decisionEpoch, decision: decisionKey(record) };
+}
+
+/** A autorização capturada continua sendo a decisão vigente, sem mudança no meio? */
+export function isAdvertisingAuthorizationCurrent(auth: AdvertisingAuthorization | null): boolean {
+    if (!auth || auth.epoch !== decisionEpoch) return false;
+    const record = readStoredConsent();
+    return record !== null && allowsAdvertising(record.state) && decisionKey(record) === auth.decision;
+}
+
 /**
  * Traduz o estado para o vocabulário do Consent Mode v2 do Google.
  *

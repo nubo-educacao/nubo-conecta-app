@@ -51,13 +51,25 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # O gate abaixo só vale se o próprio comparador estiver certo: estas
+      # regressões (relatórios adversariais + vitest real com erro de hook,
+      # suíte aninhada e erro não tratado) bloqueiam antes da comparação.
+      - name: Regressões do comparador de baseline
+        run: pnpm exec vitest run tests/ci/compare-test-baseline.test.ts
       # A suíte de main já tem falhas antigas (fora deste escopo). Elas ficam
-      # listadas em tests/baseline-failures.txt; o job falha só com falha NOVA
-      # e avisa quando uma antiga passa a passar.
+      # listadas em tests/baseline-failures.txt; o job falha com QUALQUER falha
+      # fora da lista — asserção, erro de suíte/hook/coleta ou erro não tratado
+      # (scripts/ci/vitest-failure-reporter.mjs) — e avisa quando uma antiga
+      # passa a passar. O `|| true` só adia a decisão para o comparador, que
+      # falha fechado se algum relatório faltar.
       - name: Rodar a suíte inteira
-        run: pnpm exec vitest run --reporter=json --outputFile=vitest-report.json || true
+        env:
+          VITEST_FAILURE_REPORT: vitest-failures.json
+        run: >-
+          pnpm exec vitest run --reporter=default --reporter=json --outputFile.json=vitest-report.json
+          --reporter=./scripts/ci/vitest-failure-reporter.mjs || true
       - name: Comparar com a baseline
-        run: node scripts/ci/compare-test-baseline.mjs vitest-report.json tests/baseline-failures.txt
+        run: node scripts/ci/compare-test-baseline.mjs vitest-report.json vitest-failures.json tests/baseline-failures.txt
 
   consent-network-harness:
     name: Harness de rede — GTM só após opt-in (local, interceptado)
