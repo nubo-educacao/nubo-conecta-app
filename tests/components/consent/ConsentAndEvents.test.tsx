@@ -1,21 +1,26 @@
 // @vitest-environment jsdom
 //
-// NUB-RD-85 (TP-7) — guardas do mecanismo de consentimento e dos eventos que
-// JÁ estão corretos em main. São regressão, não aceite: nenhum destes testes
-// prova que o container GTM respeita a escolha nem que a Meta recebeu algo.
+// NUB-RD-85 (TP-7) — guardas do mecanismo de consentimento e dos eventos,
+// herdadas da auditoria 67b5deb8 (16 testes). São regressão, não aceite:
+// nenhum destes testes prova que o container GTM respeita a escolha nem que a
+// Meta recebeu algo.
 //
-// Os desvios encontrados na auditoria (Lead em login existente, GTM antes do
-// opt-in, UUID no event_id, CompleteRegistration ao refazer match) ficam em
-// tests/reproducers/nub_rd_85_gtm_consent.test.tsx, que FALHA de propósito
-// até haver decisão humana e correção autorizada.
+// Desde a correção R1–R5 o Lead depende do servidor (claim_conversion_event) e
+// do consentimento de publicidade; o mock abaixo responde como a RPC para a
+// conta da sessão. Os contratos R1–R5 completos, com o auth-js real, estão em
+// ConversionEventsContract.test.tsx.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 // ─── Supabase controlável ────────────────────────────────────────────────────
 // O harness emite eventos de auth à mão. Nenhuma requisição sai do processo.
 type AuthCallback = (event: string, session: unknown) => void;
-const auth = vi.hoisted(() => ({ callbacks: [] as AuthCallback[] }));
+const auth = vi.hoisted(() => ({
+    callbacks: [] as AuthCallback[],
+    // Uma conta nova elegível: a primeira reivindicação emite, as outras não.
+    claimedBy: null as string | null,
+}));
 
 vi.mock('@/lib/supabase', () => ({
     supabase: {
@@ -27,6 +32,13 @@ vi.mock('@/lib/supabase', () => ({
             }),
             signOut: vi.fn(),
         },
+        rpc: vi.fn((_fn: string, args: { p_request_id: string }) => {
+            auth.claimedBy ??= args.p_request_id;
+            return Promise.resolve({
+                data: [{ event_id: 'evt-opaco-1', should_emit: auth.claimedBy === args.p_request_id }],
+                error: null,
+            });
+        }),
     },
 }));
 
@@ -85,8 +97,23 @@ function readConsentCookie() {
 
 let gtag: ReturnType<typeof vi.fn>;
 
+function grantAdvertising() {
+    document.cookie = `${CONSENT_COOKIE}=${serializeConsent({
+        state: GRANTED,
+        policyVersion: CONSENT_POLICY_VERSION,
+        decidedAt: '2026-10-01T10:00:00.000Z',
+    })}; path=/`;
+}
+
+async function settle() {
+    await act(async () => {
+        await new Promise((r) => setTimeout(r, 20));
+    });
+}
+
 beforeEach(() => {
     auth.callbacks.length = 0;
+    auth.claimedBy = null;
     window.dataLayer = [];
     gtag = vi.fn();
     (window as unknown as { gtag: unknown }).gtag = gtag;
@@ -246,20 +273,26 @@ describe('Lead — eventos de auth que NÃO são entrada nova', () => {
     it.each(['INITIAL_SESSION', 'TOKEN_REFRESHED', 'USER_UPDATED'])(
         '%s não dispara nubo_lead',
         async (event) => {
+            grantAdvertising();
             await renderAuth();
             emit(event, session());
+            await settle();
             expect(dataLayerEvents('nubo_lead')).toHaveLength(0);
         },
     );
 
     it('SIGNED_IN repetido na mesma página dispara no máximo uma vez', async () => {
+        grantAdvertising();
         await renderAuth();
         emit('SIGNED_IN', session());
         emit('SIGNED_IN', session());
+        await waitFor(() => expect(dataLayerEvents('nubo_lead')).toHaveLength(1));
+        await settle();
         expect(dataLayerEvents('nubo_lead')).toHaveLength(1);
     });
 
     it('o payload do Lead não leva e-mail, telefone nem nome', async () => {
+        grantAdvertising();
         await renderAuth();
         emit('SIGNED_IN', {
             user: {
@@ -269,6 +302,7 @@ describe('Lead — eventos de auth que NÃO são entrada nova', () => {
                 user_metadata: { full_name: 'Pessoa Teste' },
             },
         });
+        await waitFor(() => expect(dataLayerEvents('nubo_lead')).toHaveLength(1));
         const payload = JSON.stringify(dataLayerEvents('nubo_lead'));
         expect(payload).not.toContain('pessoa@example.com');
         expect(payload).not.toContain('5511999999999');
@@ -278,6 +312,7 @@ describe('Lead — eventos de auth que NÃO são entrada nova', () => {
 
 describe('ViewContent — payload', () => {
     it('content_id é o unified_opportunity_id e o event_id é estável', () => {
+        grantAdvertising();
         trackViewContent({ unifiedOpportunityId: 'mec_123', subjectId: 'anon-1' });
         trackViewContent({ unifiedOpportunityId: 'mec_123', subjectId: 'anon-1' });
         const [a, b] = dataLayerEvents('nubo_view_content');

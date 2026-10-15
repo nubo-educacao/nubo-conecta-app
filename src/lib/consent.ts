@@ -125,6 +125,38 @@ export function parseConsent(raw: string | null | undefined): ConsentRecord | nu
 }
 
 /**
+ * Escolha VIGENTE no navegador: cookie presente, versão atual do texto. Sem
+ * cookie (nunca decidiu ou expirou) ou com versão antiga, devolve null.
+ *
+ * É a fonte única para quem decide fora do React (eventos de conversão): lida
+ * no momento do uso, nunca guardada, para que uma revogação valha na hora.
+ */
+export function readStoredConsent(): ConsentRecord | null {
+    if (typeof document === 'undefined') return null;
+    const match = document.cookie.match(
+        new RegExp('(?:^|; )' + CONSENT_COOKIE.replace(/[:.]/g, '\\$&') + '=([^;]*)'),
+    );
+    return parseConsent(match ? match[1] : null);
+}
+
+/**
+ * O container GTM só sobe com opt-in de alguma categoria que ele serve
+ * (doc f74d1cd9 §3.4, guard-rail 1; decisão humana de 12/10/2026). Ausência,
+ * recusa, expiração e versão antiga chegam aqui como DENIED.
+ *
+ * Dentro do container, cada tag continua condicionada ao sinal do Consent Mode
+ * da sua categoria — é o que mantém as categorias independentes.
+ */
+export function allowsTagManager(state: ConsentState): boolean {
+    return state.analytics || state.advertising;
+}
+
+/** Eventos de conversão (Lead, CompleteRegistration, ViewContent) são publicidade. */
+export function allowsAdvertising(state: ConsentState): boolean {
+    return state.advertising;
+}
+
+/**
  * Traduz o estado para o vocabulário do Consent Mode v2 do Google.
  *
  * `functionality_storage` e `security_storage` ficam sempre concedidos: são

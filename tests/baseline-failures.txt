@@ -1,0 +1,28 @@
+# Falhas JÁ existentes em main 551ee7e (reconfirmadas em 2026-10-15, execução c4ae9058,
+# antes de qualquer mudança de produto). Fora do escopo NUB-RD-85; NÃO é licença para
+# falha nova: o CI só aceita falhas desta lista. Remover a linha quando o teste for corrigido.
+# Formato: <arquivo> :: <nome completo do teste>  |  <arquivo> :: [suite error]
+tests/ci/materialize-env.test.ts :: [suite error]
+tests/components/InstitutionCard.test.tsx :: InstitutionCard — contrato de tipo aceita onClick como prop opcional e chama ao clicar
+tests/components/InstitutionCard.test.tsx :: InstitutionCard — contrato de tipo usa variante correta baseada no campo type=mec
+tests/components/InstitutionCard.test.tsx :: InstitutionCard — contrato de tipo usa variante correta baseada no campo type=partner
+tests/components/InstitutionCard.test.tsx :: InstitutionCard — variante MEC NÃO exibe chip "Instituição parceira"
+tests/components/InstitutionCard.test.tsx :: InstitutionCard — variante MEC exibe botão "Ver detalhes" linkando para /instituicoes/:id
+tests/components/InstitutionCard.test.tsx :: InstitutionCard — variante MEC exibe nome da instituição
+tests/components/InstitutionCard.test.tsx :: InstitutionCard — variante MEC exibe ícone de livro no lugar do logo
+tests/components/InstitutionCard.test.tsx :: InstitutionCard — variante parceira chip usa brand_color como fundo
+tests/components/InstitutionCard.test.tsx :: InstitutionCard — variante parceira exibe botão "Ver detalhes" linkando para /instituicoes/:id
+tests/components/InstitutionCard.test.tsx :: InstitutionCard — variante parceira exibe chip "Instituição parceira"
+tests/components/InstitutionCard.test.tsx :: InstitutionCard — variante parceira exibe localização quando presente
+tests/components/InstitutionCard.test.tsx :: InstitutionCard — variante parceira exibe nome da instituição
+tests/components/InstitutionCard.test.tsx :: InstitutionCard — variante parceira exibe o logo circular quando logo_url está presente
+tests/components/match/MatchOnboardingForm.test.tsx :: MatchOnboardingForm — Fluxo de 3 Passos avança para o Passo 2 após preencher Passo 1 corretamente
+tests/components/match/MatchOnboardingForm.test.tsx :: MatchOnboardingForm — Fluxo de 3 Passos executa todas as chamadas de salvamento ao finalizar o Passo 3
+tests/components/navigation/TopBar.test.tsx :: TopBar — desktop navigation exibe "Nubo Conecta" como logo padrão
+tests/components/navigation/TopBar.test.tsx :: TopBar — desktop navigation exibe título customizado quando prop title é fornecida
+tests/components/navigation/TopBar.test.tsx :: TopBar — desktop navigation link ativo usa cor Nav Active #048FAD
+tests/services/partnersClickService.test.ts :: registerPartnerClick REGISTRA card_click de oportunidade MEC — antes era ignorado
+tests/services/partnersClickService.test.ts :: registerPartnerClick event_id duplicado não é tratado como erro
+tests/services/partnersClickService.test.ts :: registerPartnerClick não registra sem usuário nem identidade anônima
+tests/services/partnersClickService.test.ts :: registerPartnerClick registra card_click de PARCEIRO nas duas fontes (dual-write)
+tests/services/partnersClickService.test.ts :: registerPartnerClick registra clique anônimo usando a identidade estável do cookie

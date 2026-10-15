@@ -1,0 +1,100 @@
+# Testes funcionais do app no CI (NUB-RD-85). Antes só havia gitleaks, que não
+# valida comportamento.
+#
+# Nenhum job usa configuração real: sem Snaps, sem segredo, sem Vercel. GTM e
+# Supabase são valores fictícios em loopback; o harness intercepta todo
+# terceiro antes da navegação. Nada sai para Meta/Google.
+name: tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  consent-contracts:
+    name: Contratos de consentimento e eventos (NUB-RD-85)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Contratos R1–R5 e guardas
+        run: pnpm exec vitest run tests/components/consent
+
+  full-suite:
+    name: Suíte completa × baseline de falhas conhecidas
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # A suíte de main já tem falhas antigas (fora deste escopo). Elas ficam
+      # listadas em tests/baseline-failures.txt; o job falha só com falha NOVA
+      # e avisa quando uma antiga passa a passar.
+      - name: Rodar a suíte inteira
+        run: pnpm exec vitest run --reporter=json --outputFile=vitest-report.json || true
+      - name: Comparar com a baseline
+        run: node scripts/ci/compare-test-baseline.mjs vitest-report.json tests/baseline-failures.txt
+
+  consent-network-harness:
+    name: Harness de rede — GTM só após opt-in (local, interceptado)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_GTM_ID: GTM-TESTE00
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54399
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: harness-fake-key
+      NEXT_PUBLIC_CLOUDINHA_URL: http://127.0.0.1:54398
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: playwright-core fora do projeto
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null && npm i --no-audit --no-fund playwright-core@1.56.1
+      - name: Subir o app local
+        run: |
+          pnpm exec next dev -p 3123 -H 127.0.0.1 > "$RUNNER_TEMP/next.log" 2>&1 &
+          for i in $(seq 1 90); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 http://127.0.0.1:3123/ || true)
+            [ "$code" = "200" ] && exit 0
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/next.log"; exit 1
+      - name: Harness
+        env:
+          PW_DIR: ${{ runner.temp }}/pw
+          CHROME: /usr/bin/google-chrome
+          BASE_URL: http://127.0.0.1:3123
+        run: node tests/harness/nub-rd-85/consent-network.mjs

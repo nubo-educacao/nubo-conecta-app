@@ -12,12 +12,15 @@ import {
     CONSENT_MAX_AGE,
     CONSENT_POLICY_VERSION,
     DENIED,
-    parseConsent,
+    allowsAdvertising,
+    allowsTagManager,
+    readStoredConsent,
     serializeConsent,
     toGoogleConsent,
     type ConsentRecord,
     type ConsentState,
 } from '@/lib/consent';
+import { clearAdvertisingStorage, loadTagManager } from '@/lib/analytics';
 
 interface ConsentContextValue {
     state: ConsentState;
@@ -32,12 +35,13 @@ interface ConsentContextValue {
 
 const ConsentContext = createContext<ConsentContextValue | undefined>(undefined);
 
-function readCookie(name: string): string | null {
-    if (typeof document === 'undefined') return null;
-    const match = document.cookie.match(
-        new RegExp('(?:^|; )' + name.replace(/[:.]/g, '\\$&') + '=([^;]*)'),
-    );
-    return match ? match[1] : null;
+function publish(state: ConsentState) {
+    const w = window as unknown as { gtag?: (...args: unknown[]) => void };
+    w.gtag?.('consent', 'update', toGoogleConsent(state));
+
+    // Só DEPOIS do update: o container sobe já sabendo a escolha. Sem opt-in
+    // de categoria que ele serve, não sobe (NUB-RD-85 R5; f74d1cd9 §3.4).
+    if (allowsTagManager(state)) loadTagManager();
 }
 
 function writeCookie(name: string, value: string) {
@@ -50,20 +54,18 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
 
     useEffect(() => {
-        const stored = parseConsent(readCookie(CONSENT_COOKIE));
+        const stored = readStoredConsent();
         setRecord(stored);
-        // Sem decisão registrada, o banner abre. `parseConsent` devolve null
-        // também quando a versão do texto mudou — nesse caso repergunta, porque
-        // a pessoa concordou com outra redação.
+        // Sem decisão registrada, o banner abre. Devolve null também quando a
+        // versão do texto mudou — nesse caso repergunta, porque a pessoa
+        // concordou com outra redação — e quando o cookie expirou.
         setIsOpen(stored === null);
 
         // Republicar a escolha no carregamento: o bloco `default` do <head>
         // roda antes deste componente existir, então sem isto uma pessoa que
-        // já aceitou ficaria negada até interagir de novo.
-        if (stored && typeof window !== 'undefined') {
-            const w = window as unknown as { gtag?: (...args: unknown[]) => void };
-            w.gtag?.('consent', 'update', toGoogleConsent(stored.state));
-        }
+        // já aceitou ficaria negada até interagir de novo — e o container,
+        // que agora só sobe depois desta escolha, nunca subiria.
+        if (stored) publish(stored.state);
     }, []);
 
     const save = useCallback((state: ConsentState) => {
@@ -79,8 +81,11 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
         setRecord(next);
         setIsOpen(false);
 
-        const w = window as unknown as { gtag?: (...args: unknown[]) => void };
-        w.gtag?.('consent', 'update', toGoogleConsent(state));
+        // Revogação de publicidade: apaga o que o PRÓPRIO app guardou para
+        // esse fim. Cookies que terceiros já gravaram (_fbp etc.) e o container
+        // já executado ficam como estão — tratar isso é decisão do encarregado.
+        if (!allowsAdvertising(state)) clearAdvertisingStorage();
+        publish(state);
     }, []);
 
     // Revogar precisa ser tão fácil quanto aceitar (LGPD, Art. 8º §5º:
