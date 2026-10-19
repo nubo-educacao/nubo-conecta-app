@@ -25,6 +25,8 @@ import { useProfile } from '@/contexts/ProfileContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { createApplication, getExistingApplication } from '@/app/(app)/oportunidades/[id]/actions';
+import { trackRedirectFailOpen, navigateToDestination } from '@/services/mecRedirect';
+import { SURFACES, applySource } from '@/lib/surfaces';
 
 type SisuVacancyRow = Record<string, unknown>;
 type ProuniVacancyRow = Record<string, unknown>;
@@ -46,6 +48,12 @@ interface DetailsLayoutProps {
   bestOpportunityId?: string;
   /** true se o score do match veio com cota_bonus — destaca a linha Cotas (ProUni) */
   bestIsCota?: boolean;
+  /**
+   * Superfície do card que levou até aqui (`?from=`, já validada por whitelist
+   * em page.tsx). Vira `source = 'apply:<surface>'` no redirect MEC; ausente →
+   * `apply:oportunidade_detalhe`.
+   */
+  sourceSurface?: string;
 }
 
 export default function DetailsLayout({
@@ -57,6 +65,7 @@ export default function DetailsLayout({
   bestConcurrencyType,
   bestOpportunityId,
   bestIsCota,
+  sourceSurface,
 }: DetailsLayoutProps) {
   const router = useRouter();
   const { activeProfileId } = useProfile();
@@ -64,6 +73,7 @@ export default function DetailsLayout({
   const { isFavorited: isFavoritedContext, toggleFavorite } = useFavorites();
   const isActuallyFavorited = isFavorited !== undefined ? isFavorited : isFavoritedContext(opportunity.id);
   const [pendingApply, setPendingApply] = React.useState(false);
+  const redirectingRef = React.useRef(false);
   const [isRegistrationOpen, setIsRegistrationOpen] = React.useState<boolean | null>(null);
   const [registrationDates, setRegistrationDates] = React.useState<{ start: string; end: string } | null>(null);
   const [mecImportantDates, setMecImportantDates] = React.useState<{ title: string; start_date: string; end_date: string | null }[]>([]);
@@ -261,8 +271,39 @@ export default function DetailsLayout({
     }
 
     if (!opportunity.is_partner) {
-      if (opportunity.external_redirect?.enabled && opportunity.external_redirect?.url) {
-        window.open(opportunity.external_redirect.url, '_blank');
+      const redirectUrl = opportunity.external_redirect?.url;
+      if (opportunity.external_redirect?.enabled && redirectUrl) {
+        // Duplo clique durante a espera do tracking abriria duas janelas em branco.
+        if (redirectingRef.current) return;
+        redirectingRef.current = true;
+
+        // Redirect MEC rastreado e fail-open (NUB-RD-96).
+        //
+        // 1. A janela é pré-aberta AQUI, ainda dentro do gesto do clique e antes
+        //    de qualquer await: abrir só depois do tracking seria bloqueado como
+        //    pop-up. (No re-run pós-login não há gesto; `w` vem null e
+        //    navigateToDestination cai no fallback.)
+        // 2. O evento é gravado ANTES de a janela ir ao portal oficial.
+        // 3. Erro ou demora do tracking (teto de 1500 ms) nunca impede a
+        //    navegação: trackRedirectFailOpen não rejeita.
+        const popup = window.open('about:blank', '_blank');
+        if (popup) {
+          try { popup.opener = null; } catch { /* cross-origin guard: ignorar */ }
+        }
+
+        try {
+          await trackRedirectFailOpen({
+            // auth.uid(), não activeProfileId: o RLS de engagement_events exige
+            // user_id = auth.uid(). Um perfil dependente faria o insert falhar.
+            userId: user.id,
+            unifiedOpportunityId: opportunity.id,
+            destinationUrl: redirectUrl,
+            source: applySource(sourceSurface),
+          });
+        } finally {
+          navigateToDestination(popup, redirectUrl);
+          redirectingRef.current = false;
+        }
       }
       return;
     }
@@ -280,6 +321,9 @@ export default function DetailsLayout({
         return;
       }
       if (existingApplication.status === 'redirected') {
+        // Reabrir o link NÃO grava novo redirect: o partner-forms já registrou o
+        // encaminhamento (source 'partner_application') ao submeter. Revisitar
+        // não é nova conversão — duplicaria a NSM e o conversion_match_links.
         if (existingApplication.redirect_url) {
           window.open(existingApplication.redirect_url, '_blank');
         } else if (opportunity.external_redirect?.url) {
@@ -858,6 +902,7 @@ export default function DetailsLayout({
             title="Outras Oportunidades para Você"
             opportunities={similarOpps}
             seeAllHref="/oportunidades"
+            surface={SURFACES.DETALHE_SIMILARES}
           />
         </div>
       )}

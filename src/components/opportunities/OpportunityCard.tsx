@@ -96,12 +96,17 @@ export default function OpportunityCard({
     const partnerId = opportunity.is_partner
       ? opportunity.id.replace('partner_', '')
       : null;
+    // `surface` é a mesma do card_view acima: o admin cruza view × clique por ela.
     registerPartnerClick(partnerId, {
       unifiedOpportunityId: opportunity.id,
+      surface,
     }).catch(console.error);
 
     if (!isAuthenticated) { setShowAuthModal(true); return; }
-    router.push(`/oportunidades/${opportunity.id}`);
+    // `?from=` leva a superfície de origem até o detalhe, onde o redirect MEC
+    // vira `apply:<surface>`. Sem superfície conhecida a rota fica limpa.
+    const from = surface !== 'unknown' ? `?from=${encodeURIComponent(surface)}` : '';
+    router.push(`/oportunidades/${opportunity.id}${from}`);
   };
 
   const isPartner = opportunity.is_partner;

@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import MatchOnboardingForm from '@/components/match/MatchOnboardingForm';
 import ExploreClient from './ExploreClient';
+import { SURFACES } from '@/lib/surfaces';
 import type { IUnifiedOpportunity, ExploreFilters } from '@/types/opportunities';
 
 interface OpportunitiesClientProps {
@@ -195,7 +196,7 @@ export default function OpportunitiesClient({
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
                     {opportunities.map((opp) => (
-                      <OpportunityCard surface="oportunidades_lista" key={opp.id} opportunity={opp} />
+                      <OpportunityCard surface={SURFACES.OPORTUNIDADES_PARA_VOCE} key={opp.id} opportunity={opp} />
                     ))}
                   </div>
 

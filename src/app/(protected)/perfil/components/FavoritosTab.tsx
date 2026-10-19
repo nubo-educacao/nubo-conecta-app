@@ -6,6 +6,7 @@ import { Heart } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import OpportunityCarousel from "@/components/home/OpportunityCarousel";
 import InstitutionCarousel from "@/components/home/InstitutionCarousel";
+import { SURFACES } from "@/lib/surfaces";
 import type { IUnifiedOpportunity } from "@/types/opportunities";
 import type { UnifiedInstitution } from "@/types/institutions";
 import { useFavorites } from "@/contexts/FavoritesContext";
@@ -162,6 +163,7 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
           opportunities={activeOpportunities}
           seeAllHref="/oportunidades"
           desktopGridMode={false}
+          surface={SURFACES.PERFIL_FAVORITOS}
         />
       ) : (
         <div className="px-4 py-6 text-center border border-dashed border-gray-100 rounded-2xl bg-gray-50/50">
@@ -184,6 +186,7 @@ export default function FavoritosTab({ userId }: FavoritosTabProps) {
           institutions={activeInstitutions}
           seeAllHref="/instituicoes"
           desktopGridMode={false}
+          surface={SURFACES.PERFIL_FAVORITOS}
         />
       ) : (
         <div className="px-4 py-6 text-center border border-dashed border-gray-100 rounded-2xl bg-gray-50/50">
