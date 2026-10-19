@@ -23,8 +23,8 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/components/opportunities/OpportunityCard', () => ({
-  default: ({ opportunity }: { opportunity: { title: string } }) => (
-    <div data-testid="opportunity-card">{opportunity.title}</div>
+  default: ({ opportunity, surface }: { opportunity: { title: string }; surface?: string }) => (
+    <div data-testid="opportunity-card" data-surface={surface}>{opportunity.title}</div>
   ),
 }));
 
@@ -170,6 +170,18 @@ describe('OpportunitiesClient', () => {
     );
     expect(screen.getByTestId('opportunity-card')).toBeDefined();
     expect(screen.getByText('Direito UFMG')).toBeDefined();
+  });
+
+  it('aba "para-voce" usa a superfície própria oportunidades_para_voce (NUB-RD-96)', () => {
+    // Antes era `oportunidades_lista`; o histórico dessa superfície = Para Você.
+    render(
+      <OpportunitiesClient
+        opportunities={[makeOpp()]}
+        activeTab="para-voce"
+        filters={emptyFilters}
+      />,
+    );
+    expect(screen.getByTestId('opportunity-card').getAttribute('data-surface')).toBe('oportunidades_para_voce');
   });
 
   it('aba "para-voce" renderiza OpportunityCard para parceiros', () => {

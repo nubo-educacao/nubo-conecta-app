@@ -1,5 +1,7 @@
+// @vitest-environment jsdom
 // TP-2 2b — clique em card sobre engagement_events (ADR-0022).
 // Card eeb42964.
+// NUB-RD-96: `p_source` carrega `click:<surface>` (mesma surface do card_view).
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -95,6 +97,44 @@ describe('registerPartnerClick', () => {
       p_entity_type: 'mec_opportunity',
     }));
     expect(mockFrom).not.toHaveBeenCalledWith('partners_click');
+  });
+
+  it('com surface: p_source = click:<surface>', async () => {
+    await registerPartnerClick(null, {
+      unifiedOpportunityId: 'mec_abc-123',
+      surface: 'home_para_voce',
+    });
+
+    expect(mockRpc).toHaveBeenCalledWith('record_card_click', expect.objectContaining({
+      p_source: 'click:home_para_voce',
+    }));
+  });
+
+  it('com surface, clique de parceiro também leva click:<surface>', async () => {
+    await registerPartnerClick('partner-uuid-1', {
+      unifiedOpportunityId: 'partner_partner-uuid-1',
+      surface: 'oportunidades_para_voce',
+    });
+
+    expect(mockRpc).toHaveBeenCalledWith('record_card_click', expect.objectContaining({
+      p_source: 'click:oportunidades_para_voce',
+    }));
+  });
+
+  it('sem surface: mantém o literal legado "card"', async () => {
+    await registerPartnerClick(null, { unifiedOpportunityId: 'mec_abc-123' });
+
+    expect(mockRpc).toHaveBeenCalledWith('record_card_click', expect.objectContaining({
+      p_source: 'card',
+    }));
+  });
+
+  it('event_id não muda com a surface (idempotência por usuário + entidade + minuto)', async () => {
+    await registerPartnerClick(null, { unifiedOpportunityId: 'mec_abc-123' });
+    await registerPartnerClick(null, { unifiedOpportunityId: 'mec_abc-123', surface: 'home_para_voce' });
+
+    const [a, b] = mockRpc.mock.calls.map((c) => (c[1] as { p_event_id: string }).p_event_id);
+    expect(a).toBe(b);
   });
 
   it('não registra sem usuário nem identidade anônima', async () => {

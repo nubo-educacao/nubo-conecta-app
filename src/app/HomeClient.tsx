@@ -11,6 +11,7 @@ import DynamicCTA, { type CTAState } from '@/components/home/DynamicCTA';
 import HeroSearch from '@/components/home/HeroSearch';
 import OpportunityCarousel from '@/components/home/OpportunityCarousel';
 import InstitutionCarousel from '@/components/home/InstitutionCarousel';
+import { SURFACES } from '@/lib/surfaces';
 import ImportantDates from '@/components/home/ImportantDates';
 import { supabase } from '@/lib/supabase';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -294,6 +295,7 @@ function SectionRenderer({
             opportunities={opps}
             seeAllHref={(config.see_all_href as string) ?? '/oportunidades?tab=para-voce'}
             desktopGridMode={(config.desktop_grid_mode as boolean) ?? false}
+            surface={SURFACES.HOME_PARA_VOCE}
           />
         </div>
       );
@@ -309,6 +311,7 @@ function SectionRenderer({
             opportunities={opps}
             seeAllHref={(config.see_all_href as string) ?? '/oportunidades'}
             desktopGridMode={(config.desktop_grid_mode as boolean) ?? false}
+            surface={SURFACES.HOME_CARROSSEL_OPORTUNIDADES}
           />
         </div>
       );
@@ -322,6 +325,7 @@ function SectionRenderer({
           <InstitutionCarousel
             institutions={insts}
             seeAllHref={(config.see_all_href as string) ?? '/instituicoes'}
+            surface={SURFACES.HOME_CARROSSEL_INSTITUICOES}
           />
         </div>
       );

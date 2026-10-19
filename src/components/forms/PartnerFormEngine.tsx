@@ -11,6 +11,7 @@ import { evaluateJsonLogic } from '@/utils/jsonLogic';
 import { calculateDraftProgress } from '@/utils/calculateDraftProgress';
 import FormFieldRenderer, { type PartnerFormField } from './FormFieldRenderer';
 import OpportunityCarousel from '@/components/home/OpportunityCarousel';
+import { SURFACES } from '@/lib/surfaces';
 
 export interface PartnerStep {
     id: string;
@@ -431,6 +432,7 @@ export default function PartnerFormEngine({
                     <OpportunityCarousel
                         title="Melhores opções para você"
                         opportunities={betterOpportunities}
+                        surface={SURFACES.PARTNER_FORMS_SUGESTOES}
                     />
                     <p className="text-[10px] text-center text-[#3A424E]/50 mt-2 font-medium">
                         Talvez essas oportunidades se encaixem melhor no seu perfil

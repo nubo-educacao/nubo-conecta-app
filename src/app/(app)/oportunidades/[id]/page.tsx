@@ -15,9 +15,12 @@ import ViewContentTracker from '@/components/analytics/ViewContentTracker';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
 import type { Opportunity } from '@/components/opportunities/OpportunitiesListCard';
 import { prouniVacancies as computeProuniVacancies } from '@/lib/prouniVacancies';
+import { sanitizeOriginSurface } from '@/lib/surfaces';
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  /** `?from=<surface>` — superfície do card clicado; validado por whitelist. */
+  searchParams?: Promise<{ from?: string | string[] }>;
 }
 
 /**
@@ -421,9 +424,12 @@ async function getApprovalStats(unifiedId: string): Promise<ApprovalRow[] | null
   return latestApprovals as ApprovalRow[];
 }
 
-export default async function OpportunityDetailPage({ params }: PageProps) {
+export default async function OpportunityDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params;
   const unifiedId = decodeURIComponent(id);
+  // Origem do clique → `source = 'apply:<surface>'` do redirect MEC. A página já
+  // é force-dynamic, então ler o query param não custa cache nem muda rota/SEO.
+  const sourceSurface = sanitizeOriginSurface((await searchParams)?.from);
   const [opportunityResult, relatedOpportunities, approvalStats] = await Promise.all([
     getOpportunity(unifiedId),
     getRelatedOpportunities(unifiedId),
@@ -448,6 +454,7 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
         bestConcurrencyType={bestConcurrencyType}
         bestOpportunityId={bestMatch.bestOpportunityId}
         bestIsCota={bestMatch.bestIsCota}
+        sourceSurface={sourceSurface}
       />
     </AppShell>
   );

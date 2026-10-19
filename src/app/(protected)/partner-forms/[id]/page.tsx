@@ -15,6 +15,7 @@ import { trackAndRedirect } from "@/services/redirectService";
 import { OpportunityPhaseStepper } from "@/components/OpportunityPhaseStepper";
 import { generateMatch } from "@/services/matchService";
 import OpportunityCarousel from "@/components/home/OpportunityCarousel";
+import { SURFACES } from "@/lib/surfaces";
 import type { IUnifiedOpportunity, OpportunityCategory, OpportunitySourceType } from "@/types/opportunities";
 
 function mapRowToUnifiedOpportunity(row: any): IUnifiedOpportunity {
@@ -811,6 +812,7 @@ export default function PartnerFormsPage() {
               <OpportunityCarousel
                 title="Melhores opções para você"
                 opportunities={betterOpportunities}
+                surface={SURFACES.PARTNER_FORMS_SUGESTOES}
               />
               <p className="text-[10px] text-center text-[#3A424E]/50 mt-1.5 font-medium">
                 Matches mais prováveis
