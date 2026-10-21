@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { ATTR_COOKIES } from '@/lib/attribution';
+import { clickSource } from '@/lib/surfaces';
 
 // Clique em card — TP-2 2b / ADR-0022.
 //
@@ -14,6 +15,11 @@ import { ATTR_COOKIES } from '@/lib/attribution';
 interface RegisterClickOptions {
   /** id sintético de v_unified_opportunities ('mec_<uuid>' / 'partner_<uuid>'). */
   unifiedOpportunityId?: string | null;
+  /**
+   * Superfície onde o card foi clicado — a MESMA do card_view do mesmo card.
+   * Vira `p_source = 'click:<surface>'`; sem ela, mantém o literal legado 'card'.
+   */
+  surface?: string;
 }
 
 function readCookie(name: string): string | null {
@@ -50,7 +56,7 @@ export async function registerPartnerClick(
         p_entity_type: isPartner ? 'partner_opportunity' : 'mec_opportunity',
         p_entity_id: partnerId,
         p_unified_opportunity_id: options.unifiedOpportunityId ?? null,
-        p_source: 'card',
+        p_source: options.surface ? clickSource(options.surface) : 'card',
         p_anonymous_id: anonymousId,
       });
 

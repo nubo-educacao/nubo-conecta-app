@@ -15,6 +15,11 @@ interface OpportunityCarouselProps {
   seeAllHref?: string;
   /** Se true, limita a 3 itens no desktop e renderiza como grid (Regra Grid-3). */
   desktopGridMode?: boolean;
+  /**
+   * Superfície do card_view/card_click — obrigatória e aplicada ao strip E ao
+   * grid desktop, para nenhum dos dois cair em `unknown`.
+   */
+  surface: string;
 }
 
 export default function OpportunityCarousel({
@@ -22,6 +27,7 @@ export default function OpportunityCarousel({
   opportunities,
   seeAllHref = '/oportunidades',
   desktopGridMode = false,
+  surface,
 }: OpportunityCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -95,7 +101,7 @@ export default function OpportunityCarousel({
             className="flex-shrink-0 snap-start"
             style={{ width: 'min(361px, 85vw)' }}
           >
-            <OpportunityCard surface="home_carrossel_oportunidades" opportunity={opp} />
+            <OpportunityCard surface={surface} opportunity={opp} />
           </div>
         ))}
       </div>
@@ -104,7 +110,7 @@ export default function OpportunityCarousel({
       {desktopGridMode && (
         <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6 px-4">
           {desktopItems.map((opp) => (
-            <OpportunityCard key={opp.id} opportunity={opp} />
+            <OpportunityCard key={opp.id} surface={surface} opportunity={opp} />
           ))}
         </div>
       )}

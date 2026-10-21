@@ -13,12 +13,18 @@ interface InstitutionCarouselProps {
   institutions: UnifiedInstitution[];
   seeAllHref?: string;
   desktopGridMode?: boolean;
+  /**
+   * Superfície do card_view — obrigatória e aplicada ao strip E ao grid
+   * desktop, para nenhum dos dois cair em `unknown`.
+   */
+  surface: string;
 }
 
 export default function InstitutionCarousel({
   institutions,
   seeAllHref = '/instituicoes',
   desktopGridMode = false,
+  surface,
 }: InstitutionCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -92,7 +98,7 @@ export default function InstitutionCarousel({
             className="flex-shrink-0 snap-start"
             style={{ width: 'min(361px, 85vw)' }}
           >
-            <InstitutionCard surface="home_carrossel_instituicoes" institution={inst} />
+            <InstitutionCard surface={surface} institution={inst} />
           </div>
         ))}
       </div>
@@ -101,7 +107,7 @@ export default function InstitutionCarousel({
       {desktopGridMode && (
         <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6 px-4">
           {desktopItems.map((inst) => (
-            <InstitutionCard key={inst.id} institution={inst} />
+            <InstitutionCard key={inst.id} surface={surface} institution={inst} />
           ))}
         </div>
       )}
