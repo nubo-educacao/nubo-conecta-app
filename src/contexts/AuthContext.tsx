@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { attachAttribution } from "@/services/attributionService";
-import { trackLead } from "@/lib/analytics";
+import { captureAdvertisingAuthorization, trackLead } from "@/lib/analytics";
 import type { Session, User } from "@supabase/supabase-js";
 
 interface AuthContextType {
@@ -54,6 +54,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       //
       // SIGNED_IN só: TOKEN_REFRESHED e INITIAL_SESSION disparam neste mesmo
       // callback e não representam uma entrada nova.
+      //
+      // A trava abaixo é só economia de chamadas na mesma página. Depois de um
+      // logout, o próximo SIGNED_IN é uma entrada nova e precisa ser avaliado.
+      if (_event === 'SIGNED_OUT') attributed.current.clear();
       const userId = session?.user?.id;
       if (_event === 'SIGNED_IN' && userId && !attributed.current.has(userId)) {
         attributed.current.add(userId);
@@ -64,11 +68,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('[auth] falha ao costurar atribuição', err);
         });
 
-        // Evento de conversão `Lead` (TP-7 7A t4). Mesmo gancho da atribuição
-        // pela mesma razão: é por onde todo login passa. O GTM só dispara o
-        // pixel se houver consentimento — quem recusou empurra para o
-        // dataLayer e nada sai daqui.
-        trackLead(userId);
+        // Evento de conversão `Lead` (TP-7 7A t4; NUB-RD-85 R1/R2). Mesmo
+        // gancho da atribuição porque todo cadastro passa por aqui — mas
+        // SIGNED_IN NÃO prova cadastro: sai também em login de conta
+        // existente, em outra aba (BroadcastChannel) e ao recuperar a sessão
+        // numa página nova. Quem decide é o servidor (claim_conversion_event),
+        // uma vez por conta.
+        //
+        // O consentimento vale o deste instante: capturado AQUI, antes de
+        // qualquer espera, e conferido de novo antes do push. Aceitar durante
+        // a espera não libera um cadastro feito sem consentimento.
+        //
+        // Fora do callback (setTimeout): chamar o Supabase de dentro de
+        // onAuthStateChange pode travar no lock do auth-js.
+        const authorization = captureAdvertisingAuthorization();
+        setTimeout(() => {
+          trackLead(authorization).catch((err) => console.error('[auth] falha ao avaliar Lead', err));
+        }, 0);
       }
     });
 
