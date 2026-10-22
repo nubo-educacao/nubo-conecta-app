@@ -1,0 +1,1748 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nubo:sprint9.2:contract:1.0.0-rc.2",
+  "$defs": {
+    "admin": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "1.0.0-rc.2"
+        },
+        "resolution_state": {
+          "enum": [
+            "unique",
+            "not_found",
+            "ambiguous",
+            "invalid_phone",
+            "not_checked",
+            "error"
+          ]
+        },
+        "official_situation": {
+          "enum": [
+            "aluno",
+            "ex_aluno",
+            "processo_seletivo",
+            "aprovado_sem_matricula",
+            "rejeitado",
+            "indeterminada",
+            null
+          ]
+        },
+        "compatible_is_nubo_student": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "source_label": {
+          "const": "Cursinho Nubo"
+        },
+        "rule_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checked_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_attempt_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_success_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "freshness": {
+          "enum": [
+            "fresh",
+            "stale",
+            "unknown"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "phone_changed",
+            null
+          ]
+        },
+        "last_success_summary": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "official_situation": {
+                  "enum": [
+                    "aluno",
+                    "ex_aluno",
+                    "processo_seletivo",
+                    "aprovado_sem_matricula",
+                    "rejeitado",
+                    "indeterminada"
+                  ]
+                },
+                "compatible_is_nubo_student": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "checked_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "evidence_version": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "rule_version": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "official_situation",
+                "compatible_is_nubo_student",
+                "checked_at",
+                "evidence_version",
+                "rule_version"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "contract_version",
+        "resolution_state",
+        "official_situation",
+        "compatible_is_nubo_student",
+        "source_label",
+        "rule_version",
+        "evidence_version",
+        "checked_at",
+        "last_attempt_at",
+        "last_success_at",
+        "freshness",
+        "reason",
+        "last_success_summary"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "resolution_state": {
+                "const": "unique"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "official_situation": {
+                "enum": [
+                  "aluno",
+                  "ex_aluno",
+                  "processo_seletivo",
+                  "aprovado_sem_matricula",
+                  "rejeitado",
+                  "indeterminada"
+                ]
+              },
+              "checked_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "evidence_version": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "official_situation": {
+                "type": "null"
+              },
+              "compatible_is_nubo_student": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "resolution_state": {
+                "const": "unique"
+              },
+              "official_situation": {
+                "enum": [
+                  "aluno",
+                  "ex_aluno"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "compatible_is_nubo_student": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "resolution_state": {
+                "const": "unique"
+              },
+              "official_situation": {
+                "enum": [
+                  "processo_seletivo",
+                  "aprovado_sem_matricula",
+                  "rejeitado"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "compatible_is_nubo_student": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "official_situation": {
+                "const": "indeterminada"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "compatible_is_nubo_student": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "const": "phone_changed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "resolution_state": {
+                "const": "not_checked"
+              },
+              "official_situation": {
+                "type": "null"
+              },
+              "compatible_is_nubo_student": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "candidate": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "const": "full_name"
+            },
+            "tier": {
+              "const": "T1"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1
+            },
+            "partial": {
+              "type": "boolean"
+            },
+            "candidate_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "const": "cursinho_nubo"
+            },
+            "checked_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "rule_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "offer_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin_proof": {
+              "type": "object",
+              "properties": {
+                "token": {
+                  "type": "string",
+                  "pattern": "^p1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]{43}$"
+                },
+                "issued_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "expires_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "partial": {
+                  "type": "boolean"
+                },
+                "checked_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "token",
+                "issued_at",
+                "expires_at",
+                "partial",
+                "checked_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "field",
+            "tier",
+            "value",
+            "partial",
+            "candidate_id",
+            "source",
+            "checked_at",
+            "rule_version",
+            "offer_version",
+            "origin_proof"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "const": "social_name"
+            },
+            "tier": {
+              "const": "T1"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1
+            },
+            "partial": {
+              "type": "boolean"
+            },
+            "candidate_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "const": "cursinho_nubo"
+            },
+            "checked_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "rule_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "offer_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin_proof": {
+              "type": "object",
+              "properties": {
+                "token": {
+                  "type": "string",
+                  "pattern": "^p1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]{43}$"
+                },
+                "issued_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "expires_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "partial": {
+                  "type": "boolean"
+                },
+                "checked_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "token",
+                "issued_at",
+                "expires_at",
+                "partial",
+                "checked_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "field",
+            "tier",
+            "value",
+            "partial",
+            "candidate_id",
+            "source",
+            "checked_at",
+            "rule_version",
+            "offer_version",
+            "origin_proof"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "const": "birth_date"
+            },
+            "tier": {
+              "const": "T1"
+            },
+            "value": {
+              "type": "string",
+              "format": "date"
+            },
+            "partial": {
+              "type": "boolean"
+            },
+            "candidate_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "const": "cursinho_nubo"
+            },
+            "checked_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "rule_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "offer_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin_proof": {
+              "type": "object",
+              "properties": {
+                "token": {
+                  "type": "string",
+                  "pattern": "^p1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]{43}$"
+                },
+                "issued_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "expires_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "partial": {
+                  "type": "boolean"
+                },
+                "checked_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "token",
+                "issued_at",
+                "expires_at",
+                "partial",
+                "checked_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "field",
+            "tier",
+            "value",
+            "partial",
+            "candidate_id",
+            "source",
+            "checked_at",
+            "rule_version",
+            "offer_version",
+            "origin_proof"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "const": "education"
+            },
+            "tier": {
+              "const": "T1"
+            },
+            "value": {
+              "enum": [
+                "Ensino Médio Completo",
+                "Ensino Médio Incompleto",
+                "Ensino Fundamental",
+                "Ensino Superior Incompleto",
+                "Ensino Superior Completo",
+                "Pós-Gradução"
+              ]
+            },
+            "partial": {
+              "type": "boolean"
+            },
+            "candidate_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "const": "cursinho_nubo"
+            },
+            "checked_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "rule_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "offer_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin_proof": {
+              "type": "object",
+              "properties": {
+                "token": {
+                  "type": "string",
+                  "pattern": "^p1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]{43}$"
+                },
+                "issued_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "expires_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "partial": {
+                  "type": "boolean"
+                },
+                "checked_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "token",
+                "issued_at",
+                "expires_at",
+                "partial",
+                "checked_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "field",
+            "tier",
+            "value",
+            "partial",
+            "candidate_id",
+            "source",
+            "checked_at",
+            "rule_version",
+            "offer_version",
+            "origin_proof"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "const": "school_type"
+            },
+            "tier": {
+              "const": "T1"
+            },
+            "value": {
+              "enum": [
+                "Escola pública",
+                "Escola particular sem bolsa"
+              ]
+            },
+            "partial": {
+              "type": "boolean"
+            },
+            "candidate_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "const": "cursinho_nubo"
+            },
+            "checked_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "rule_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "offer_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin_proof": {
+              "type": "object",
+              "properties": {
+                "token": {
+                  "type": "string",
+                  "pattern": "^p1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]{43}$"
+                },
+                "issued_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "expires_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "partial": {
+                  "type": "boolean"
+                },
+                "checked_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "token",
+                "issued_at",
+                "expires_at",
+                "partial",
+                "checked_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "field",
+            "tier",
+            "value",
+            "partial",
+            "candidate_id",
+            "source",
+            "checked_at",
+            "rule_version",
+            "offer_version",
+            "origin_proof"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "const": "cpf"
+            },
+            "tier": {
+              "const": "T2"
+            },
+            "value": {
+              "type": "string",
+              "pattern": "^[0-9]{3}\\.[0-9]{3}\\.[0-9]{3}-[0-9]{2}$"
+            },
+            "partial": {
+              "type": "boolean"
+            },
+            "candidate_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "const": "cursinho_nubo"
+            },
+            "checked_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "rule_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "offer_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin_proof": {
+              "type": "object",
+              "properties": {
+                "token": {
+                  "type": "string",
+                  "pattern": "^p1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]{43}$"
+                },
+                "issued_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "expires_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "partial": {
+                  "type": "boolean"
+                },
+                "checked_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "token",
+                "issued_at",
+                "expires_at",
+                "partial",
+                "checked_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "field",
+            "tier",
+            "value",
+            "partial",
+            "candidate_id",
+            "source",
+            "checked_at",
+            "rule_version",
+            "offer_version",
+            "origin_proof"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "const": "race"
+            },
+            "tier": {
+              "const": "T2"
+            },
+            "value": {
+              "enum": [
+                "Parda",
+                "Branca",
+                "Preta",
+                "Amarela",
+                "Indígena",
+                "Prefiro não informar"
+              ]
+            },
+            "partial": {
+              "type": "boolean"
+            },
+            "candidate_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "const": "cursinho_nubo"
+            },
+            "checked_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "rule_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "offer_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin_proof": {
+              "type": "object",
+              "properties": {
+                "token": {
+                  "type": "string",
+                  "pattern": "^p1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]{43}$"
+                },
+                "issued_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "expires_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "partial": {
+                  "type": "boolean"
+                },
+                "checked_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "token",
+                "issued_at",
+                "expires_at",
+                "partial",
+                "checked_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "field",
+            "tier",
+            "value",
+            "partial",
+            "candidate_id",
+            "source",
+            "checked_at",
+            "rule_version",
+            "offer_version",
+            "origin_proof"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "const": "gender"
+            },
+            "tier": {
+              "const": "T2"
+            },
+            "value": {
+              "enum": [
+                "mulher_cis",
+                "homem_cis",
+                "pessoa_nao_binaria",
+                "mulher_transgenero",
+                "homem_transgenero",
+                "prefiro_nao_declarar"
+              ]
+            },
+            "partial": {
+              "type": "boolean"
+            },
+            "candidate_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "const": "cursinho_nubo"
+            },
+            "checked_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "rule_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "offer_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin_proof": {
+              "type": "object",
+              "properties": {
+                "token": {
+                  "type": "string",
+                  "pattern": "^p1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]{43}$"
+                },
+                "issued_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "expires_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "partial": {
+                  "type": "boolean"
+                },
+                "checked_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "token",
+                "issued_at",
+                "expires_at",
+                "partial",
+                "checked_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "field",
+            "tier",
+            "value",
+            "partial",
+            "candidate_id",
+            "source",
+            "checked_at",
+            "rule_version",
+            "offer_version",
+            "origin_proof"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "const": "family_count"
+            },
+            "tier": {
+              "const": "T2"
+            },
+            "value": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "partial": {
+              "type": "boolean"
+            },
+            "candidate_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "const": "cursinho_nubo"
+            },
+            "checked_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "rule_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "offer_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin_proof": {
+              "type": "object",
+              "properties": {
+                "token": {
+                  "type": "string",
+                  "pattern": "^p1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]{43}$"
+                },
+                "issued_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "expires_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "partial": {
+                  "type": "boolean"
+                },
+                "checked_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "token",
+                "issued_at",
+                "expires_at",
+                "partial",
+                "checked_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "field",
+            "tier",
+            "value",
+            "partial",
+            "candidate_id",
+            "source",
+            "checked_at",
+            "rule_version",
+            "offer_version",
+            "origin_proof"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "event": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "contract_version": {
+              "const": "1.0.0-rc.2"
+            },
+            "operation_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "seq": {
+              "const": 0
+            },
+            "event": {
+              "const": "checking"
+            }
+          },
+          "required": [
+            "contract_version",
+            "operation_id",
+            "seq",
+            "event"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contract_version": {
+              "const": "1.0.0-rc.2"
+            },
+            "operation_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "seq": {
+              "const": 1
+            },
+            "event": {
+              "const": "matched"
+            },
+            "cursinho_situation": {
+              "enum": [
+                "aluno",
+                "ex_aluno",
+                "em_processo",
+                "aprovado_sem_matricula",
+                "nao_aprovado",
+                "indeterminada"
+              ]
+            }
+          },
+          "required": [
+            "contract_version",
+            "operation_id",
+            "seq",
+            "event",
+            "cursinho_situation"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contract_version": {
+              "const": "1.0.0-rc.2"
+            },
+            "operation_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "seq": {
+              "const": 2
+            },
+            "event": {
+              "const": "ready"
+            },
+            "verified_adult": {
+              "type": "boolean"
+            },
+            "candidates": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/candidate"
+              }
+            }
+          },
+          "required": [
+            "contract_version",
+            "operation_id",
+            "seq",
+            "event",
+            "verified_adult",
+            "candidates"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "verified_adult": {
+                    "const": false
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "candidates": {
+                    "items": {
+                      "properties": {
+                        "tier": {
+                          "const": "T1"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contract_version": {
+              "const": "1.0.0-rc.2"
+            },
+            "operation_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "seq": {
+              "enum": [
+                0,
+                1,
+                2
+              ]
+            },
+            "event": {
+              "const": "manual_required"
+            },
+            "reason": {
+              "enum": [
+                "consent_required",
+                "manual_entry"
+              ]
+            }
+          },
+          "required": [
+            "contract_version",
+            "operation_id",
+            "seq",
+            "event",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "consent": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "enum": [
+            "grant",
+            "decline",
+            "revoke"
+          ]
+        },
+        "purpose": {
+          "const": "cursinho_prefill"
+        },
+        "requested_tiers": {
+          "enum": [
+            [],
+            [
+              "T1"
+            ],
+            [
+              "T1",
+              "T2"
+            ]
+          ]
+        },
+        "text_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_consent_revision": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "action",
+        "purpose",
+        "requested_tiers",
+        "text_version",
+        "policy_version",
+        "expected_consent_revision"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "grant"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "requested_tiers": {
+                "enum": [
+                  [
+                    "T1"
+                  ],
+                  [
+                    "T1",
+                    "T2"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "decline",
+                  "revoke"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "requested_tiers": {
+                "const": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    "selfRequest": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "commit": {
+      "type": "object",
+      "properties": {
+        "commit_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_profile_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "operation_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decisions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "enum": [
+                  "full_name",
+                  "social_name",
+                  "birth_date",
+                  "education",
+                  "school_type",
+                  "cpf",
+                  "race",
+                  "gender",
+                  "family_count"
+                ]
+              },
+              "offer_version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "decision": {
+                "enum": [
+                  "accepted",
+                  "rejected",
+                  "user_declared"
+                ]
+              },
+              "candidate_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "value": {},
+              "origin_proof": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "token": {
+                        "type": "string",
+                        "pattern": "^p1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]{43}$"
+                      },
+                      "issued_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "expires_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "partial": {
+                        "type": "boolean"
+                      },
+                      "checked_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "token",
+                      "issued_at",
+                      "expires_at",
+                      "partial",
+                      "checked_at"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "field",
+              "offer_version",
+              "decision"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "decision": {
+                      "const": "accepted"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "candidate_id",
+                    "value",
+                    "origin_proof"
+                  ],
+                  "properties": {
+                    "candidate_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "origin_proof": {
+                      "type": "object",
+                      "properties": {
+                        "token": {
+                          "type": "string",
+                          "pattern": "^p1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]{43}$"
+                        },
+                        "issued_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "expires_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "partial": {
+                          "type": "boolean"
+                        },
+                        "checked_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "token",
+                        "issued_at",
+                        "expires_at",
+                        "partial",
+                        "checked_at"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "decision": {
+                      "const": "rejected"
+                    }
+                  }
+                },
+                "then": {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "value"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "origin_proof"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "decision": {
+                      "const": "user_declared"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "value"
+                  ],
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "origin_proof"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "candidate_id"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "field": {
+                      "const": "full_name"
+                    },
+                    "decision": {
+                      "const": "accepted"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "field": {
+                      "const": "social_name"
+                    },
+                    "decision": {
+                      "const": "accepted"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "field": {
+                      "const": "birth_date"
+                    },
+                    "decision": {
+                      "const": "accepted"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "type": "string",
+                      "format": "date"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "field": {
+                      "const": "education"
+                    },
+                    "decision": {
+                      "const": "accepted"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "enum": [
+                        "Ensino Médio Completo",
+                        "Ensino Médio Incompleto",
+                        "Ensino Fundamental",
+                        "Ensino Superior Incompleto",
+                        "Ensino Superior Completo",
+                        "Pós-Gradução"
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "field": {
+                      "const": "school_type"
+                    },
+                    "decision": {
+                      "const": "accepted"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "enum": [
+                        "Escola pública",
+                        "Escola particular sem bolsa"
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "field": {
+                      "const": "cpf"
+                    },
+                    "decision": {
+                      "const": "accepted"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "type": "string",
+                      "pattern": "^[0-9]{3}\\.[0-9]{3}\\.[0-9]{3}-[0-9]{2}$"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "field": {
+                      "const": "race"
+                    },
+                    "decision": {
+                      "const": "accepted"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "enum": [
+                        "Parda",
+                        "Branca",
+                        "Preta",
+                        "Amarela",
+                        "Indígena",
+                        "Prefiro não informar"
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "field": {
+                      "const": "gender"
+                    },
+                    "decision": {
+                      "const": "accepted"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "enum": [
+                        "mulher_cis",
+                        "homem_cis",
+                        "pessoa_nao_binaria",
+                        "mulher_transgenero",
+                        "homem_transgenero",
+                        "prefiro_nao_declarar"
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "field": {
+                      "const": "family_count"
+                    },
+                    "decision": {
+                      "const": "accepted"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "commit_id",
+        "expected_profile_revision",
+        "operation_id",
+        "decisions"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
+
