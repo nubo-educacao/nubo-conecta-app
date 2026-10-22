@@ -39,3 +39,17 @@ const declinedT1:ConsentRequest={action:'decline',purpose:'cursinho_prefill',req
 const spoofSelf:SelfRequest={user_id:'other'};
 void [rejectedValue,editedProof,declinedT1,spoofSelf];
 
+
+it('D99-R1 includes Outra only in manual race declarations',()=>{
+ const declaration={field:'race' as const,value:'Outra' as const,decision:'user_declared' as const,offer_version:'manual-v1'};
+ expectTypeOf(declaration).toMatchTypeOf<FieldDecision>();
+ expect(declaration.value).toBe('Outra');
+ const raceSchema=schema.$defs.candidate.oneOf.find(candidate=>candidate.properties.field.const==='race');
+ expect(raceSchema?.properties.value.enum).toEqual(['Parda','Branca','Preta','Amarela','Indígena','Prefiro não informar']);
+ type CandidateRace=Extract<import('./types').Candidate,{field:'race'}>['value'];
+ type AcceptedRace=Extract<FieldDecision,{field:'race';decision:'accepted'}>['value'];
+ expectTypeOf<'Outra'>().not.toMatchTypeOf<CandidateRace>();
+ expectTypeOf<'Outra'>().not.toMatchTypeOf<AcceptedRace>();
+ type ManualRace=Extract<FieldDecision,{field:'race';decision:'user_declared'}>['value'];
+ expectTypeOf<'Desconhecida'>().not.toMatchTypeOf<ManualRace>();
+});

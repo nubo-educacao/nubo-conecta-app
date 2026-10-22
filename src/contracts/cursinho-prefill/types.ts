@@ -16,7 +16,7 @@ export interface FieldValues {
  family_count: number;
 }
 export type Field = keyof FieldValues;
-export type ManualFieldValues=Omit<FieldValues,'school_type'> & {school_type:FieldValues['school_type']|'Escola particular com bolsa 100%'|'Escola particular com bolsa parcial'};
+export type ManualFieldValues=Omit<FieldValues,'school_type'|'race'> & {school_type:FieldValues['school_type']|'Escola particular com bolsa 100%'|'Escola particular com bolsa parcial';race:FieldValues['race']|'Outra'};
 type FieldTier<F extends Field> = F extends 'cpf'|'race'|'gender'|'family_count' ? 'T2' : 'T1';
 export interface OriginProof {
  token: string; checked_at: string; partial: boolean; issued_at: string; expires_at: string;
