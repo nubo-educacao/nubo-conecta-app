@@ -17,6 +17,8 @@ interface SisuProuniCardProps {
   cycle_semester?: string;
   nu_media_minima_enem?: number | null;
   total_vacancies?: number | null;
+  /** Ciclo de origem (ex.: "2026.1") quando os dados são herdados de um ciclo anterior. */
+  source_cycle_label?: string;
 }
 
 function renderMarkdown(text: string, accentColor: string): React.ReactNode {
@@ -72,7 +74,8 @@ export default function SisuProuniCard({
   cycle_year,
   cycle_semester,
   nu_media_minima_enem,
-  total_vacancies
+  total_vacancies,
+  source_cycle_label
 }: SisuProuniCardProps) {
   const isSisu = opportunity_type.toLowerCase() === 'sisu';
   const accentColor = isSisu ? '#3092bb' : '#7030C2';
@@ -93,9 +96,10 @@ export default function SisuProuniCard({
     return '---';
   })();
 
+  // Mesmo rótulo das Opções Disponíveis (OpportunitiesListCard): TIPO ano.semestre.
   const badgeText = cycle_year
-    ? `${opportunity_type} ${cycle_year}${cycle_semester && !isSisu ? `.${cycle_semester}` : ''}`.toUpperCase()
-    : `${opportunity_type} 2025`.toUpperCase();
+    ? `${opportunity_type} ${cycle_year}${cycle_semester ? `.${cycle_semester}` : ''}`.toUpperCase()
+    : null;
 
   return (
     <div className="space-y-6">
@@ -131,12 +135,14 @@ export default function SisuProuniCard({
       >
         <div className="flex items-center justify-between">
           <h3 className="text-[#3A424E] font-bold text-lg">Métricas do Curso</h3>
-          <div
-            className="px-3 py-1 rounded-full text-[10px] font-black tracking-wider text-white"
-            style={{ backgroundColor: accentColor }}
-          >
-            {badgeText}
-          </div>
+          {badgeText && (
+            <div
+              className="px-3 py-1 rounded-full text-[10px] font-black tracking-wider text-white"
+              style={{ backgroundColor: accentColor }}
+            >
+              {badgeText}
+            </div>
+          )}
         </div>
 
         {(() => {
@@ -237,12 +243,14 @@ export default function SisuProuniCard({
           );
         })()}
 
-        {/* Progress / Context */}
-        <div className="pt-2">
-          <p className="text-[11px] text-[#636E7C] leading-tight">
-            * Dados baseados no ciclo anterior do MEC. A concorrência pode variar conforme a demanda atual.
-          </p>
-        </div>
+        {/* Só quando os dados vêm de um ciclo anterior (ciclo clonado / herdado) */}
+        {source_cycle_label && (
+          <div className="pt-2">
+            <p className="text-[11px] text-[#636E7C] leading-tight">
+              * Dados baseados no ciclo {source_cycle_label} do MEC. A concorrência pode variar conforme a demanda atual.
+            </p>
+          </div>
+        )}
       </motion.section>
     </div>
   );
