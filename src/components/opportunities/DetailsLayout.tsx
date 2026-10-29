@@ -686,6 +686,7 @@ export default function DetailsLayout({
                 }, 0);
                 return totalVagas > 0 ? totalVagas : (Number(opportunity.nu_vagas_autorizadas) || null);
               })()}
+              source_cycle_label={opportunity.vacancies_source_cycle}
             />
 
             {(opportunity.weights || opportunity.opportunity_type === 'prouni') && (
