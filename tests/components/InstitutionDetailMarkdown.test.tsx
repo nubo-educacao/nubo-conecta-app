@@ -5,6 +5,7 @@ import InstitutionDetailPage from '@/app/(app)/instituicoes/[id]/page';
 import { getUnifiedInstitutionById } from '@/services/institutions';
 
 vi.mock('@/services/institutions', () => ({ getUnifiedInstitutionById: vi.fn() }));
+vi.mock('@/lib/supabase', () => ({ supabase: null }));
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [] }) }));
 vi.mock('@supabase/ssr', () => ({
   createServerClient: () => {
