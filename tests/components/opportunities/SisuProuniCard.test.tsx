@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import SisuProuniCard from '@/components/opportunities/SisuProuniCard';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import * as jestDomMatchers from '@testing-library/jest-dom/matchers';
@@ -72,6 +72,7 @@ describe('SisuProuniCard', () => {
     const linkEl = screen.getByRole('link', { name: 'site do MEC' });
     expect(linkEl).toHaveAttribute('href', 'https://mec.gov.br');
     expect(linkEl).toHaveAttribute('target', '_blank');
+    expect(linkEl).toHaveAttribute('rel', 'noopener noreferrer');
     expect(linkEl).toHaveStyle({ color: '#7030C2' }); // ProUni color
   });
 
@@ -149,5 +150,10 @@ describe('SisuProuniCard', () => {
 
     const descriptionParagraph = container.querySelector('p');
     expect(descriptionParagraph).toHaveClass('whitespace-pre-line');
+    expect(descriptionParagraph).toHaveClass('line-clamp-4');
+    expect(descriptionParagraph?.textContent).toBe('Primeira linha.\nSegunda linha.');
+    fireEvent.click(screen.getByRole('button', { name: 'Ver mais' }));
+    expect(descriptionParagraph).not.toHaveClass('line-clamp-4');
+    expect(screen.getByRole('button', { name: 'Ver menos' })).toBeInTheDocument();
   });
 });
