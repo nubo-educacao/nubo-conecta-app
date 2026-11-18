@@ -3,54 +3,12 @@
 import React from 'react';
 import { BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
+import DescriptionMarkdown from '@/components/DescriptionMarkdown';
 
 interface PartnerDescriptionCardProps {
   title?: string;
   description: string;
   brandColor?: string;
-}
-
-function renderMarkdown(text: string, accentColor: string): React.ReactNode {
-  if (!text) return null;
-
-  const regex = /(\*\*.*?\*\*|\*.*?\*|\[.*?\]\(.*?\))/g;
-  const parts = text.split(regex);
-
-  return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <strong key={index} className="font-bold text-[#3A424E]">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith('*') && part.endsWith('*')) {
-      return (
-        <em key={index} className="italic">
-          {part.slice(1, -1)}
-        </em>
-      );
-    }
-    if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
-      const match = part.match(/\[(.*?)\]\((.*?)\)/);
-      if (match) {
-        const [, linkText, url] = match;
-        return (
-          <a
-            key={index}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-bold underline hover:opacity-80 transition-opacity"
-            style={{ color: accentColor }}
-          >
-            {linkText}
-          </a>
-        );
-      }
-    }
-    return part;
-  });
 }
 
 export default function PartnerDescriptionCard({
@@ -71,7 +29,7 @@ export default function PartnerDescriptionCard({
         {title}
       </h3>
       <p className={`text-sm text-[#636E7C] leading-relaxed whitespace-pre-wrap ${isExpanded ? '' : 'line-clamp-4 md:line-clamp-none'}`}>
-        {renderMarkdown(description, brandColor)}
+        <DescriptionMarkdown text={description} variant="opportunity" accentColor={brandColor} />
       </p>
       {description && description.split('\n').length > 4 && (
         <button

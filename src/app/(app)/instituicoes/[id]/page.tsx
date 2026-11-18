@@ -13,6 +13,7 @@ import { notFound } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import { ArrowLeft, BookOpen, MapPin } from 'lucide-react';
 import Link from 'next/link';
+import DescriptionMarkdown from '@/components/DescriptionMarkdown';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import { getUnifiedInstitutionById } from '@/services/institutions';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
@@ -248,12 +249,12 @@ export default async function InstitutionDetailPage({ params, searchParams }: Pa
 
           {/* Descrição */}
           {institution.description && (
-            <p
+            <div
               className="text-[14px] leading-relaxed"
               style={{ color: '#636e7c', fontFamily: 'Montserrat, sans-serif' }}
             >
-              {institution.description}
-            </p>
+              <DescriptionMarkdown text={institution.description} variant="institution" />
+            </div>
           )}
 
           {/* Indicadores de Qualidade MEC */}

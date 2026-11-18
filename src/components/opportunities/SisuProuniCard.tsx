@@ -5,6 +5,7 @@ import { Users, Award, GraduationCap, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import { useProgram } from '@/hooks/useProgram';
+import DescriptionMarkdown from '@/components/DescriptionMarkdown';
 
 interface SisuProuniCardProps {
   qt_inscricao_prev?: string | number | null;
@@ -19,49 +20,6 @@ interface SisuProuniCardProps {
   total_vacancies?: number | null;
   /** Ciclo de origem (ex.: "2026.1") quando os dados são herdados de um ciclo anterior. */
   source_cycle_label?: string;
-}
-
-function renderMarkdown(text: string, accentColor: string): React.ReactNode {
-  if (!text) return null;
-
-  const regex = /(\*\*.*?\*\*|\*.*?\*|\[.*?\]\(.*?\))/g;
-  const parts = text.split(regex);
-
-  return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <strong key={index} className="font-bold text-[#3A424E]">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith('*') && part.endsWith('*')) {
-      return (
-        <em key={index} className="italic">
-          {part.slice(1, -1)}
-        </em>
-      );
-    }
-    if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
-      const match = part.match(/\[(.*?)\]\((.*?)\)/);
-      if (match) {
-        const [, linkText, url] = match;
-        return (
-          <a
-            key={index}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-bold underline hover:opacity-80 transition-opacity"
-            style={{ color: accentColor }}
-          >
-            {linkText}
-          </a>
-        );
-      }
-    }
-    return part;
-  });
 }
 
 export default function SisuProuniCard({
@@ -113,7 +71,7 @@ export default function SisuProuniCard({
           {title}
         </h3>
         <p className={`text-sm text-[#636E7C] leading-relaxed whitespace-pre-line ${isExpanded ? '' : 'line-clamp-4 md:line-clamp-none'}`}>
-          {renderMarkdown(description, accentColor)}
+          <DescriptionMarkdown text={description} variant="opportunity" accentColor={accentColor} />
         </p>
         {description && (
           <button
