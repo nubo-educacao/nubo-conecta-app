@@ -33,6 +33,19 @@ type SisuVacancyRow = Record<string, unknown>;
 type ProuniVacancyRow = Record<string, unknown>;
 type ApprovalRow = Record<string, unknown>;
 
+function subscribeToDesktopBreakpoint(onChange: () => void) {
+  window.addEventListener('resize', onChange, { passive: true });
+  return () => window.removeEventListener('resize', onChange);
+}
+
+function getDesktopBreakpointSnapshot() {
+  return window.innerWidth >= 768;
+}
+
+function getDesktopBreakpointServerSnapshot() {
+  return false;
+}
+
 type VacancyDetails =
   | { type: 'sisu'; rows: SisuVacancyRow[] }
   | { type: 'prouni'; rows: ProuniVacancyRow[] }
@@ -88,8 +101,14 @@ export default function DetailsLayout({
   const [portalTarget, setPortalTarget] = React.useState<HTMLElement | null>(null);
   const [floatingCtaPosition, setFloatingCtaPosition] = React.useState({ bottom: 24, visible: true });
   const floatingCtaRef = React.useRef<HTMLDivElement>(null);
+  const isDesktop = React.useSyncExternalStore(
+    subscribeToDesktopBreakpoint,
+    getDesktopBreakpointSnapshot,
+    getDesktopBreakpointServerSnapshot,
+  );
 
   const isPartner = opportunity.is_partner;
+  const shouldPortalCta = isDesktop && portalTarget !== null;
 
   React.useEffect(() => {
     setPortalTarget(document.body);
@@ -434,14 +453,14 @@ export default function DetailsLayout({
 
   React.useEffect(() => {
     const cta = floatingCtaRef.current;
-    if (!isOpen || !portalTarget || !cta) return;
+    if (!isOpen || !shouldPortalCta || !cta) return;
 
     const footer = document.querySelector('footer');
     let frame = 0;
     const updatePosition = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        if (window.innerWidth < 768 || !footer) {
+        if (!footer) {
           setFloatingCtaPosition({ bottom: 24, visible: true });
           return;
         }
@@ -471,7 +490,7 @@ export default function DetailsLayout({
       window.removeEventListener('resize', updatePosition);
       resizeObserver?.disconnect();
     };
-  }, [isOpen, portalTarget]);
+  }, [isOpen, shouldPortalCta]);
 
   return (
     <>
@@ -1002,7 +1021,7 @@ export default function DetailsLayout({
     </div>
 
     {/* ══ Floating CTA — only when registrations are OPEN ══ */}
-    {isOpen && portalTarget && createPortal((() => {
+    {isOpen && (() => {
       const floatShell = "fixed left-4 right-4 bottom-6 md:left-1/2 md:right-auto md:w-[calc(100%-3rem)] md:max-w-[1200px] md:-translate-x-1/2 z-[200] flex flex-col items-stretch gap-2";
       const btnBase = "w-full h-14 rounded-full font-black text-base flex items-center justify-center gap-2 transition-all duration-200";
       const shadow = isPartner ? 'shadow-[#7030C2]/40' : 'shadow-[#3092bb]/40';
@@ -1024,15 +1043,15 @@ export default function DetailsLayout({
         }
       }
 
-      return (
+      const cta = (
         <div
           ref={floatingCtaRef}
           data-testid="floating-apply-cta"
-          className={floatShell}
-          style={{
+          className={`${floatShell} ${shouldPortalCta ? 'md:visible' : 'md:invisible'}`}
+          style={shouldPortalCta ? {
             bottom: floatingCtaPosition.bottom,
             visibility: floatingCtaPosition.visible ? 'visible' : 'hidden',
-          }}
+          } : undefined}
         >
           {applyError && <p className="text-center text-xs text-red-500 font-medium bg-white px-3 py-1 rounded-full shadow-md">{applyError}</p>}
           <button
@@ -1047,7 +1066,8 @@ export default function DetailsLayout({
           </button>
         </div>
       );
-    })(), portalTarget)}
+      return shouldPortalCta && portalTarget ? createPortal(cta, portalTarget) : cta;
+    })()}
     </>
   );
 }

@@ -152,17 +152,67 @@ async function renderAndClick(opp: IUnifiedOpportunity, props: { sourceSurface?:
 
 describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
   it('renders the single floating CTA through a body portal with the desktop content width', async () => {
-    render(<DetailsLayout opportunity={mecOpp()} />);
-    await act(async () => {});
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
+    try {
+      render(<DetailsLayout opportunity={mecOpp()} />);
+      await act(async () => {});
 
-    const cta = screen.getByTestId('floating-apply-cta');
-    expect(cta.parentElement).toBe(document.body);
-    expect(cta.className).toContain('md:max-w-[1200px]');
-    expect(cta.className).toContain('md:left-1/2');
-    expect(screen.getByRole('button', { name: /Quero me Candidatar/ })).toBeInTheDocument();
+      const cta = screen.getByTestId('floating-apply-cta');
+      expect(cta.parentElement).toBe(document.body);
+      expect(document.querySelectorAll('[data-testid="floating-apply-cta"]')).toHaveLength(1);
+      expect(cta.className).toContain('md:max-w-[1200px]');
+      expect(cta.className).toContain('md:left-1/2');
+      expect(screen.getByRole('button', { name: /Quero me Candidatar/ })).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+    }
   });
 
-  it('keeps the CTA above the footer on desktop and preserves its mobile bottom offset', async () => {
+  it('keeps the CTA in the layout stacking context on mobile', async () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    try {
+      const { container } = render(<DetailsLayout opportunity={mecOpp()} />);
+      await act(async () => {});
+
+      const cta = screen.getByTestId('floating-apply-cta');
+      expect(container.contains(cta)).toBe(true);
+      expect(cta.parentElement).toBe(container);
+      expect(cta.parentElement).not.toBe(document.body);
+      expect(document.querySelectorAll('[data-testid="floating-apply-cta"]')).toHaveLength(1);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+    }
+  });
+
+  it('moves one CTA between the layout and portal when resizing across the breakpoint', async () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    try {
+      const { container } = render(<DetailsLayout opportunity={mecOpp()} />);
+      await act(async () => {});
+      expect(container.contains(screen.getByTestId('floating-apply-cta'))).toBe(true);
+
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 768 });
+      await act(async () => {
+        fireEvent.resize(window);
+      });
+      expect(screen.getByTestId('floating-apply-cta').parentElement).toBe(document.body);
+      expect(document.querySelectorAll('[data-testid="floating-apply-cta"]')).toHaveLength(1);
+
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 767 });
+      await act(async () => {
+        fireEvent.resize(window);
+      });
+      expect(container.contains(screen.getByTestId('floating-apply-cta'))).toBe(true);
+      expect(document.querySelectorAll('[data-testid="floating-apply-cta"]')).toHaveLength(1);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+    }
+  });
+
+  it('keeps the CTA above the footer on desktop and restores inline mobile positioning', async () => {
     const originalWidth = window.innerWidth;
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
     const footer = document.createElement('footer');
@@ -173,7 +223,7 @@ describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
     );
 
     try {
-      render(<DetailsLayout opportunity={mecOpp()} />);
+      const { container } = render(<DetailsLayout opportunity={mecOpp()} />);
       await act(async () => {});
       const cta = screen.getByTestId('floating-apply-cta');
       vi.spyOn(cta, 'getBoundingClientRect').mockReturnValue({ height: 56 } as DOMRect);
@@ -197,7 +247,10 @@ describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
         fireEvent.resize(window);
         await vi.advanceTimersByTimeAsync(20);
       });
-      expect(cta).toHaveStyle({ bottom: '24px', visibility: 'visible' });
+      const mobileCta = screen.getByTestId('floating-apply-cta');
+      expect(container.contains(mobileCta)).toBe(true);
+      expect(mobileCta.style.bottom).toBe('');
+      expect(mobileCta.style.visibility).toBe('');
     } finally {
       footer.remove();
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
