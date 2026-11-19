@@ -453,7 +453,7 @@ export default function DetailsLayout({
 
   React.useEffect(() => {
     const cta = floatingCtaRef.current;
-    if (!isOpen || !shouldPortalCta || !cta) return;
+    if (!isOpen || !cta) return;
 
     const footer = document.querySelector('footer');
     let frame = 0;
@@ -1048,10 +1048,12 @@ export default function DetailsLayout({
           ref={floatingCtaRef}
           data-testid="floating-apply-cta"
           className={`${floatShell} ${shouldPortalCta ? 'md:visible' : 'md:invisible'}`}
-          style={shouldPortalCta ? {
+          style={{
             bottom: floatingCtaPosition.bottom,
-            visibility: floatingCtaPosition.visible ? 'visible' : 'hidden',
-          } : undefined}
+            ...(shouldPortalCta || (portalTarget !== null && !isDesktop)
+              ? { visibility: floatingCtaPosition.visible ? 'visible' : 'hidden' }
+              : {}),
+          }}
         >
           {applyError && <p className="text-center text-xs text-red-500 font-medium bg-white px-3 py-1 rounded-full shadow-md">{applyError}</p>}
           <button

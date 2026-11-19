@@ -212,6 +212,62 @@ describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
     }
   });
 
+  it.each([
+    { width: 440, height: 956, footerFar: 1000, footerNear: 500, footerTooClose: 60 },
+    { width: 390, height: 844, footerFar: 900, footerNear: 300, footerTooClose: 60 },
+  ])('moves the mobile CTA above the footer at $width x $height', async ({
+    width, height, footerFar, footerNear, footerTooClose,
+  }) => {
+    const originalWidth = window.innerWidth;
+    const originalHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
+    const footer = document.createElement('footer');
+    document.body.appendChild(footer);
+    let footerTop = footerFar;
+    vi.spyOn(footer, 'getBoundingClientRect').mockImplementation(() =>
+      ({ top: footerTop } as DOMRect),
+    );
+
+    try {
+      const { container } = render(<DetailsLayout opportunity={mecOpp()} />);
+      await act(async () => {});
+      const cta = screen.getByTestId('floating-apply-cta');
+      vi.spyOn(cta, 'getBoundingClientRect').mockReturnValue({ height: 56 } as DOMRect);
+      vi.useFakeTimers();
+
+      const updatePosition = async () => {
+        await act(async () => {
+          fireEvent.scroll(window);
+          await vi.advanceTimersByTimeAsync(20);
+        });
+      };
+
+      await updatePosition();
+      expect(cta.parentElement).toBe(container);
+      expect(cta).toHaveStyle({ bottom: '24px', visibility: 'visible' });
+
+      footerTop = footerNear;
+      await updatePosition();
+      expect(cta).toHaveStyle({
+        bottom: `${height - footerNear + 24}px`,
+        visibility: 'visible',
+      });
+
+      footerTop = footerTooClose;
+      await updatePosition();
+      expect(cta).toHaveStyle({
+        bottom: `${height - footerTooClose + 24}px`,
+        visibility: 'hidden',
+      });
+      expect(document.querySelectorAll('[data-testid="floating-apply-cta"]')).toHaveLength(1);
+    } finally {
+      footer.remove();
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalHeight });
+    }
+  });
+
   it('keeps the CTA above the footer on desktop and restores inline mobile positioning', async () => {
     const originalWidth = window.innerWidth;
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
@@ -249,8 +305,12 @@ describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
       });
       const mobileCta = screen.getByTestId('floating-apply-cta');
       expect(container.contains(mobileCta)).toBe(true);
-      expect(mobileCta.style.bottom).toBe('');
-      expect(mobileCta.style.visibility).toBe('');
+      vi.spyOn(mobileCta, 'getBoundingClientRect').mockReturnValue({ height: 56 } as DOMRect);
+      await act(async () => {
+        fireEvent.scroll(window);
+        await vi.advanceTimersByTimeAsync(20);
+      });
+      expect(mobileCta).toHaveStyle({ bottom: '742px', visibility: 'hidden' });
     } finally {
       footer.remove();
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
