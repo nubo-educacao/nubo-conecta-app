@@ -151,6 +151,172 @@ async function renderAndClick(opp: IUnifiedOpportunity, props: { sourceSurface?:
 // ─── Suite ───────────────────────────────────────────────────────────────────
 
 describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
+  it('renders the single floating CTA through a body portal with the desktop content width', async () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
+    try {
+      render(<DetailsLayout opportunity={mecOpp()} />);
+      await act(async () => {});
+
+      const cta = screen.getByTestId('floating-apply-cta');
+      expect(cta.parentElement).toBe(document.body);
+      expect(document.querySelectorAll('[data-testid="floating-apply-cta"]')).toHaveLength(1);
+      expect(cta.className).toContain('md:max-w-[1200px]');
+      expect(cta.className).toContain('md:left-1/2');
+      expect(screen.getByRole('button', { name: /Quero me Candidatar/ })).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+    }
+  });
+
+  it('keeps the CTA in the layout stacking context on mobile', async () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    try {
+      const { container } = render(<DetailsLayout opportunity={mecOpp()} />);
+      await act(async () => {});
+
+      const cta = screen.getByTestId('floating-apply-cta');
+      expect(container.contains(cta)).toBe(true);
+      expect(cta.parentElement).toBe(container);
+      expect(cta.parentElement).not.toBe(document.body);
+      expect(document.querySelectorAll('[data-testid="floating-apply-cta"]')).toHaveLength(1);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+    }
+  });
+
+  it('moves one CTA between the layout and portal when resizing across the breakpoint', async () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    try {
+      const { container } = render(<DetailsLayout opportunity={mecOpp()} />);
+      await act(async () => {});
+      expect(container.contains(screen.getByTestId('floating-apply-cta'))).toBe(true);
+
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 768 });
+      await act(async () => {
+        fireEvent.resize(window);
+      });
+      expect(screen.getByTestId('floating-apply-cta').parentElement).toBe(document.body);
+      expect(document.querySelectorAll('[data-testid="floating-apply-cta"]')).toHaveLength(1);
+
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 767 });
+      await act(async () => {
+        fireEvent.resize(window);
+      });
+      expect(container.contains(screen.getByTestId('floating-apply-cta'))).toBe(true);
+      expect(document.querySelectorAll('[data-testid="floating-apply-cta"]')).toHaveLength(1);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+    }
+  });
+
+  it.each([
+    { width: 440, height: 956, footerFar: 1000, footerNear: 500, footerTooClose: 60 },
+    { width: 390, height: 844, footerFar: 900, footerNear: 300, footerTooClose: 60 },
+  ])('moves the mobile CTA above the footer at $width x $height', async ({
+    width, height, footerFar, footerNear, footerTooClose,
+  }) => {
+    const originalWidth = window.innerWidth;
+    const originalHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
+    const footer = document.createElement('footer');
+    document.body.appendChild(footer);
+    let footerTop = footerFar;
+    vi.spyOn(footer, 'getBoundingClientRect').mockImplementation(() =>
+      ({ top: footerTop } as DOMRect),
+    );
+
+    try {
+      const { container } = render(<DetailsLayout opportunity={mecOpp()} />);
+      await act(async () => {});
+      const cta = screen.getByTestId('floating-apply-cta');
+      vi.spyOn(cta, 'getBoundingClientRect').mockReturnValue({ height: 56 } as DOMRect);
+      vi.useFakeTimers();
+
+      const updatePosition = async () => {
+        await act(async () => {
+          fireEvent.scroll(window);
+          await vi.advanceTimersByTimeAsync(20);
+        });
+      };
+
+      await updatePosition();
+      expect(cta.parentElement).toBe(container);
+      expect(cta).toHaveStyle({ bottom: '24px', visibility: 'visible' });
+
+      footerTop = footerNear;
+      await updatePosition();
+      expect(cta).toHaveStyle({
+        bottom: `${height - footerNear + 24}px`,
+        visibility: 'visible',
+      });
+
+      footerTop = footerTooClose;
+      await updatePosition();
+      expect(cta).toHaveStyle({
+        bottom: `${height - footerTooClose + 24}px`,
+        visibility: 'hidden',
+      });
+      expect(document.querySelectorAll('[data-testid="floating-apply-cta"]')).toHaveLength(1);
+    } finally {
+      footer.remove();
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalHeight });
+    }
+  });
+
+  it('keeps the CTA above the footer on desktop and restores inline mobile positioning', async () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
+    const footer = document.createElement('footer');
+    document.body.appendChild(footer);
+    let footerTop = 500;
+    vi.spyOn(footer, 'getBoundingClientRect').mockImplementation(() =>
+      ({ top: footerTop } as DOMRect),
+    );
+
+    try {
+      const { container } = render(<DetailsLayout opportunity={mecOpp()} />);
+      await act(async () => {});
+      const cta = screen.getByTestId('floating-apply-cta');
+      vi.spyOn(cta, 'getBoundingClientRect').mockReturnValue({ height: 56 } as DOMRect);
+      vi.useFakeTimers();
+
+      await act(async () => {
+        fireEvent.scroll(window);
+        await vi.advanceTimersByTimeAsync(20);
+      });
+      expect(cta).toHaveStyle({ bottom: '292px', visibility: 'visible' });
+
+      footerTop = 50;
+      await act(async () => {
+        fireEvent.scroll(window);
+        await vi.advanceTimersByTimeAsync(20);
+      });
+      expect(cta).toHaveStyle({ visibility: 'hidden' });
+
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+      await act(async () => {
+        fireEvent.resize(window);
+        await vi.advanceTimersByTimeAsync(20);
+      });
+      const mobileCta = screen.getByTestId('floating-apply-cta');
+      expect(container.contains(mobileCta)).toBe(true);
+      vi.spyOn(mobileCta, 'getBoundingClientRect').mockReturnValue({ height: 56 } as DOMRect);
+      await act(async () => {
+        fireEvent.scroll(window);
+        await vi.advanceTimersByTimeAsync(20);
+      });
+      expect(mobileCta).toHaveStyle({ bottom: '742px', visibility: 'hidden' });
+    } finally {
+      footer.remove();
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+    }
+  });
+
   it('pré-abre a janela no gesto, grava o evento e SÓ ENTÃO navega para o portal', async () => {
     await renderAndClick(mecOpp());
 
