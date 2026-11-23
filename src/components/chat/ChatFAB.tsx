@@ -6,6 +6,7 @@ import Image from 'next/image';
 import ChatDrawer from './ChatDrawer';
 import { useSystemIntents } from '@/hooks/useSystemIntents';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChatVisibility } from '@/contexts/ChatVisibilityContext';
 import { type ChatMessage } from '@/services/chatService';
 
 const SESSION_KEY = 'nubo_chat_session';
@@ -24,7 +25,7 @@ export default function ChatFAB() {
 
   // Snapshot das mensagens pendentes capturado no momento da abertura
   const [drawerMessages, setDrawerMessages] = useState<ChatMessage[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, setIsOpen } = useChatVisibility();
 
   // pendingMessagesRef: sempre tem o value mais atual do pendingMessages
   // Usado pelo onOpen para leitura síncrona sem depender de closure
@@ -54,7 +55,7 @@ export default function ChatFAB() {
       setIsOpen(true);
       setShouldOpenDrawer(false);
     }
-  }, [shouldOpenDrawer, setShouldOpenDrawer]);
+  }, [shouldOpenDrawer, setShouldOpenDrawer, setIsOpen]);
 
   function handleToggle() {
     if (isOpen) {

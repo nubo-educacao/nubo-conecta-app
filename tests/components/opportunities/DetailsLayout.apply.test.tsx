@@ -8,7 +8,8 @@
 //   - reabrir uma candidatura parceira `redirected` NÃO grava outro redirect.
 
 import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
-import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, cleanup, act, waitFor } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import * as jestDomMatchers from '@testing-library/jest-dom/matchers';
 import { expect as vitestExpect } from 'vitest';
 vitestExpect.extend(jestDomMatchers);
@@ -69,8 +70,32 @@ vi.mock('@/services/redirectService', () => ({
 vi.mock('@/components/opportunities/OpportunityCard', () => ({ default: () => null }));
 vi.mock('@/components/home/OpportunityCarousel', () => ({ default: () => null }));
 
+let mockShouldOpenDrawer = false;
+const mockSetShouldOpenDrawer = vi.fn((value: boolean) => { mockShouldOpenDrawer = value; });
+vi.mock('@/hooks/useSystemIntents', () => ({
+  useSystemIntents: () => ({
+    pendingMessages: [],
+    unreadCount: 0,
+    hasPriorityMessage: false,
+    shouldOpenDrawer: mockShouldOpenDrawer,
+    setShouldOpenDrawer: mockSetShouldOpenDrawer,
+    consumeMessages: vi.fn(),
+  }),
+}));
+vi.mock('@/components/chat/ChatDrawer', () => ({
+  default: ({ onClose }: { onClose: () => void }) => (
+    <button onClick={onClose}>Fechar drawer</button>
+  ),
+}));
+
 import DetailsLayout from '@/components/opportunities/DetailsLayout';
+import ChatFAB from '@/components/chat/ChatFAB';
+import { ChatVisibilityProvider } from '@/contexts/ChatVisibilityContext';
 import type { IUnifiedOpportunity } from '@/types/opportunities';
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: ChatVisibilityProvider });
+}
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -112,9 +137,17 @@ const order: string[] = [];
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockShouldOpenDrawer = false;
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    if (this.dataset.testid === 'opportunity-cards-area') {
+      return { left: 100, width: 800 } as DOMRect;
+    }
+    return { top: 0, height: 0, left: 0, width: 0 } as DOMRect;
+  });
   order.length = 0;
   mockUser = { id: 'auth-user-001' };
   mockGetExistingApplication.mockResolvedValue(null);
+  mockCreateApplication.mockReset();
   mockTrackAndRedirect.mockImplementation(async () => {
     order.push('track');
     return { url: PORTAL };
@@ -136,6 +169,7 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 async function renderAndClick(opp: IUnifiedOpportunity, props: { sourceSurface?: string } = {}) {
@@ -151,6 +185,53 @@ async function renderAndClick(opp: IUnifiedOpportunity, props: { sourceSurface?:
 // ─── Suite ───────────────────────────────────────────────────────────────────
 
 describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
+  it('aligns the desktop CTA with the padded cards area after resizing', async () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
+    let observer: TestResizeObserver | undefined;
+    class TestResizeObserver implements ResizeObserver {
+      constructor(private callback: ResizeObserverCallback) { observer = this; }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+      trigger() { this.callback([], this); }
+    }
+    vi.stubGlobal('ResizeObserver', TestResizeObserver);
+    try {
+      render(<DetailsLayout opportunity={mecOpp()} />);
+      const area = screen.getByTestId('opportunity-cards-area');
+      area.style.paddingLeft = '24px';
+      area.style.paddingRight = '32px';
+      let rect = { left: 120, width: 1200 };
+      vi.spyOn(area, 'getBoundingClientRect').mockImplementation(() => rect as DOMRect);
+      fireEvent.resize(window);
+      const cta = screen.getByTestId('floating-apply-cta');
+      await waitFor(() => expect(cta).toHaveStyle({ left: '144px', width: '1144px' }));
+
+      rect = { left: 24, width: 976 };
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
+      fireEvent.resize(window);
+      await waitFor(() => expect(cta).toHaveStyle({ left: '48px', width: '920px' }));
+
+      rect = { left: 40, width: 900 };
+      observer?.trigger();
+      await waitFor(() => expect(cta).toHaveStyle({ left: '64px', width: '844px' }));
+
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+      fireEvent.resize(window);
+      await waitFor(() => expect(screen.getByTestId('floating-apply-cta').style.width).toBe(''));
+      rect = { left: 30, width: 708 };
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 768 });
+      fireEvent.resize(window);
+      await waitFor(() => expect(screen.getByTestId('floating-apply-cta')).toHaveStyle({
+        left: '54px', width: '652px', visibility: 'visible',
+      }));
+      expect(document.querySelectorAll('[data-testid="floating-apply-cta"]')).toHaveLength(1);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+    }
+  });
+
   it('renders the single floating CTA through a body portal with the desktop content width', async () => {
     const originalWidth = window.innerWidth;
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
@@ -161,8 +242,7 @@ describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
       const cta = screen.getByTestId('floating-apply-cta');
       expect(cta.parentElement).toBe(document.body);
       expect(document.querySelectorAll('[data-testid="floating-apply-cta"]')).toHaveLength(1);
-      expect(cta.className).toContain('md:max-w-[1200px]');
-      expect(cta.className).toContain('md:left-1/2');
+      await waitFor(() => expect(cta).toHaveStyle({ left: '100px', width: '800px', visibility: 'visible' }));
       expect(screen.getByRole('button', { name: /Quero me Candidatar/ })).toBeInTheDocument();
     } finally {
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
@@ -234,12 +314,10 @@ describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
       await act(async () => {});
       const cta = screen.getByTestId('floating-apply-cta');
       vi.spyOn(cta, 'getBoundingClientRect').mockReturnValue({ height: 56 } as DOMRect);
-      vi.useFakeTimers();
-
       const updatePosition = async () => {
         await act(async () => {
           fireEvent.scroll(window);
-          await vi.advanceTimersByTimeAsync(20);
+          await new Promise(resolve => setTimeout(resolve, 30));
         });
       };
 
@@ -247,17 +325,29 @@ describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
       expect(cta.parentElement).toBe(container);
       expect(cta).toHaveStyle({ bottom: '24px', visibility: 'visible' });
 
+      footerTop = height;
+      await updatePosition();
+      expect(cta).toHaveStyle({ bottom: '40px', visibility: 'visible' });
+
       footerTop = footerNear;
       await updatePosition();
       expect(cta).toHaveStyle({
-        bottom: `${height - footerNear + 24}px`,
+        bottom: `${height - footerNear + 40}px`,
         visibility: 'visible',
       });
+
+      footerTop = 97;
+      await updatePosition();
+      expect(cta).toHaveStyle({ visibility: 'visible' });
+
+      footerTop = 96;
+      await updatePosition();
+      expect(cta).toHaveStyle({ visibility: 'hidden' });
 
       footerTop = footerTooClose;
       await updatePosition();
       expect(cta).toHaveStyle({
-        bottom: `${height - footerTooClose + 24}px`,
+        bottom: `${height - footerTooClose + 40}px`,
         visibility: 'hidden',
       });
       expect(document.querySelectorAll('[data-testid="floating-apply-cta"]')).toHaveLength(1);
@@ -283,34 +373,32 @@ describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
       await act(async () => {});
       const cta = screen.getByTestId('floating-apply-cta');
       vi.spyOn(cta, 'getBoundingClientRect').mockReturnValue({ height: 56 } as DOMRect);
-      vi.useFakeTimers();
-
       await act(async () => {
         fireEvent.scroll(window);
-        await vi.advanceTimersByTimeAsync(20);
+        await new Promise(resolve => setTimeout(resolve, 30));
       });
-      expect(cta).toHaveStyle({ bottom: '292px', visibility: 'visible' });
+      expect(cta).toHaveStyle({ bottom: '308px', visibility: 'visible' });
 
       footerTop = 50;
       await act(async () => {
         fireEvent.scroll(window);
-        await vi.advanceTimersByTimeAsync(20);
+        await new Promise(resolve => setTimeout(resolve, 30));
       });
       expect(cta).toHaveStyle({ visibility: 'hidden' });
 
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
       await act(async () => {
         fireEvent.resize(window);
-        await vi.advanceTimersByTimeAsync(20);
+        await new Promise(resolve => setTimeout(resolve, 30));
       });
       const mobileCta = screen.getByTestId('floating-apply-cta');
       expect(container.contains(mobileCta)).toBe(true);
       vi.spyOn(mobileCta, 'getBoundingClientRect').mockReturnValue({ height: 56 } as DOMRect);
       await act(async () => {
         fireEvent.scroll(window);
-        await vi.advanceTimersByTimeAsync(20);
+        await new Promise(resolve => setTimeout(resolve, 30));
       });
-      expect(mobileCta).toHaveStyle({ bottom: '742px', visibility: 'hidden' });
+      expect(mobileCta).toHaveStyle({ bottom: '758px', visibility: 'hidden' });
     } finally {
       footer.remove();
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
@@ -364,7 +452,6 @@ describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
     await act(async () => {});
     const cta = await screen.findByRole('button', { name: /Quero me Candidatar/ });
 
-    vi.useFakeTimers();
     await act(async () => {
       fireEvent.click(cta);
     });
@@ -373,7 +460,7 @@ describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
     expect(popup.location.href).toBe('about:blank');
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1500);
+      await new Promise(resolve => setTimeout(resolve, 1600));
     });
     expect(popup.location.href).toBe(PORTAL);
   });
@@ -393,6 +480,110 @@ describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
 
     expect(openSpy).not.toHaveBeenCalled();
     expect(mockTrackAndRedirect).not.toHaveBeenCalled();
+  });
+});
+
+describe('floating CTA and Cloudinha', () => {
+  it.each([
+    ['SiSU', mecOpp(), 'Quero me Candidatar', '#3092bb'],
+    ['ProUni', mecOpp({ type: 'prouni', opportunity_type: 'prouni' }), 'Quero me Candidatar', '#3092bb'],
+    ['parceira', partnerOpp(), 'Candidatar Agora', '#7030C2'],
+  ])('preserves the CTA color for %s after the chat closes', async (_type, opportunity, label, color) => {
+    render(<><DetailsLayout opportunity={opportunity} /><ChatFAB /></>);
+    const button = await screen.findByRole('button', { name: label });
+    expect(button).toHaveStyle({ background: color });
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir Cloudinha' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar drawer' }));
+    expect(button).toBeVisible();
+    expect(button).toHaveStyle({ background: color });
+  });
+
+  it.each([
+    ['SUBMITTED', 'Já Candidatado', true],
+    ['IN_REVIEW', 'Já Candidatado', true],
+    ['APPROVED', 'Já Candidatado', true],
+    ['REJECTED', 'Tentar Novamente', false],
+    ['redirected', 'Acessar Link de Inscrição', false],
+  ])('preserves application status %s after the chat closes', async (status, label, disabled) => {
+    mockGetExistingApplication.mockResolvedValue({ id: 'app-1', status });
+    render(<><DetailsLayout opportunity={partnerOpp()} /><ChatFAB /></>);
+    const button = await screen.findByRole('button', { name: label });
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir Cloudinha' }));
+    expect(button).not.toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar drawer' }));
+    expect(button).toBeVisible();
+    if (disabled) expect(button).toBeDisabled();
+    else expect(button).toBeEnabled();
+  });
+
+  it('preserves loading and error feedback when the chat opens and closes', async () => {
+    let rejectApplication: (reason: Error) => void = () => {};
+    mockCreateApplication.mockReturnValue(new Promise((_resolve, reject) => {
+      rejectApplication = reject;
+    }));
+    render(<><DetailsLayout opportunity={partnerOpp()} /><ChatFAB /></>);
+    const button = await screen.findByRole('button', { name: 'Candidatar Agora' });
+    fireEvent.click(button);
+    expect(button).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir Cloudinha' }));
+    expect(button).not.toBeVisible();
+    await act(async () => rejectApplication(new Error('test failure')));
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar drawer' }));
+    expect(button).toBeEnabled();
+    expect(button).toHaveTextContent('Candidatar Agora');
+    expect(screen.getByText('Erro ao iniciar candidatura. Tente novamente.')).toBeVisible();
+  });
+
+  it.each([390, 1024])('hides and restores the existing application state on manual and automatic opening at %ipx', async (width) => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    mockGetExistingApplication.mockResolvedValue({ id: 'app-1', status: 'DRAFT' });
+    const ui = <><DetailsLayout opportunity={partnerOpp()} /><ChatFAB /></>;
+    try {
+      const view = render(ui);
+      const button = await screen.findByRole('button', { name: 'Continuar Rascunho' });
+      const cta = screen.getByTestId('floating-apply-cta');
+      fireEvent.click(screen.getByRole('button', { name: 'Abrir Cloudinha' }));
+      expect(cta).toHaveStyle({ visibility: 'hidden', pointerEvents: 'none' });
+      expect(button).not.toBeVisible();
+      fireEvent.click(screen.getByRole('button', { name: 'Fechar Cloudinha' }));
+      expect(cta).toBeVisible();
+      expect(button).toHaveTextContent('Continuar Rascunho');
+
+      mockShouldOpenDrawer = true;
+      view.rerender(<><DetailsLayout opportunity={partnerOpp()} /><ChatFAB /></>);
+      await waitFor(() => expect(cta).toHaveStyle({ visibility: 'hidden', pointerEvents: 'none' }));
+      expect(mockSetShouldOpenDrawer).toHaveBeenCalledWith(false);
+      fireEvent.click(screen.getByRole('button', { name: 'Fechar drawer' }));
+      expect(cta).toBeVisible();
+      expect(button).toHaveTextContent('Continuar Rascunho');
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+    }
+  });
+
+  it('keeps the CTA hidden near the footer after closing the chat', async () => {
+    const footer = document.createElement('footer');
+    document.body.appendChild(footer);
+    vi.spyOn(footer, 'getBoundingClientRect').mockReturnValue({ top: 10 } as DOMRect);
+    try {
+      render(<><DetailsLayout opportunity={mecOpp()} /><ChatFAB /></>);
+      const cta = screen.getByTestId('floating-apply-cta');
+      await waitFor(() => expect(cta).toHaveStyle({
+        bottom: `${window.innerHeight - 10 + 40}px`, visibility: 'hidden',
+      }));
+      fireEvent.click(screen.getByRole('button', { name: 'Abrir Cloudinha' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Fechar drawer' }));
+      expect(cta).toHaveStyle({ visibility: 'hidden' });
+    } finally {
+      footer.remove();
+    }
+  });
+
+  it('does not render a floating CTA for closed opportunities', async () => {
+    render(<><DetailsLayout opportunity={mecOpp({ status: 'closed' })} /><ChatFAB /></>);
+    await act(async () => {});
+    expect(screen.queryByTestId('floating-apply-cta')).not.toBeInTheDocument();
   });
 });
 
