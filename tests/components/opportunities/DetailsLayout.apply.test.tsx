@@ -325,17 +325,29 @@ describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
       expect(cta.parentElement).toBe(container);
       expect(cta).toHaveStyle({ bottom: '24px', visibility: 'visible' });
 
+      footerTop = height;
+      await updatePosition();
+      expect(cta).toHaveStyle({ bottom: '40px', visibility: 'visible' });
+
       footerTop = footerNear;
       await updatePosition();
       expect(cta).toHaveStyle({
-        bottom: `${height - footerNear + 24}px`,
+        bottom: `${height - footerNear + 40}px`,
         visibility: 'visible',
       });
+
+      footerTop = 97;
+      await updatePosition();
+      expect(cta).toHaveStyle({ visibility: 'visible' });
+
+      footerTop = 96;
+      await updatePosition();
+      expect(cta).toHaveStyle({ visibility: 'hidden' });
 
       footerTop = footerTooClose;
       await updatePosition();
       expect(cta).toHaveStyle({
-        bottom: `${height - footerTooClose + 24}px`,
+        bottom: `${height - footerTooClose + 40}px`,
         visibility: 'hidden',
       });
       expect(document.querySelectorAll('[data-testid="floating-apply-cta"]')).toHaveLength(1);
@@ -365,7 +377,7 @@ describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
         fireEvent.scroll(window);
         await new Promise(resolve => setTimeout(resolve, 30));
       });
-      expect(cta).toHaveStyle({ bottom: '292px', visibility: 'visible' });
+      expect(cta).toHaveStyle({ bottom: '308px', visibility: 'visible' });
 
       footerTop = 50;
       await act(async () => {
@@ -386,7 +398,7 @@ describe('CTA MEC "Quero me Candidatar" — redirect rastreado', () => {
         fireEvent.scroll(window);
         await new Promise(resolve => setTimeout(resolve, 30));
       });
-      expect(mobileCta).toHaveStyle({ bottom: '742px', visibility: 'hidden' });
+      expect(mobileCta).toHaveStyle({ bottom: '758px', visibility: 'hidden' });
     } finally {
       footer.remove();
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
@@ -558,7 +570,7 @@ describe('floating CTA and Cloudinha', () => {
       render(<><DetailsLayout opportunity={mecOpp()} /><ChatFAB /></>);
       const cta = screen.getByTestId('floating-apply-cta');
       await waitFor(() => expect(cta).toHaveStyle({
-        bottom: `${window.innerHeight - 10 + 24}px`, visibility: 'hidden',
+        bottom: `${window.innerHeight - 10 + 40}px`, visibility: 'hidden',
       }));
       fireEvent.click(screen.getByRole('button', { name: 'Abrir Cloudinha' }));
       fireEvent.click(screen.getByRole('button', { name: 'Fechar drawer' }));

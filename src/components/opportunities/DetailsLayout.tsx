@@ -481,10 +481,10 @@ export default function DetailsLayout({
 
         const footerTop = footer.getBoundingClientRect().top;
         const ctaHeight = cta.getBoundingClientRect().height;
-        const gap = 24;
+        const footerGap = 40;
         setFloatingCtaPosition({
-          bottom: Math.max(gap, window.innerHeight - footerTop + gap),
-          visible: footerTop > ctaHeight + gap,
+          bottom: Math.max(24, window.innerHeight - footerTop + footerGap),
+          visible: footerTop > ctaHeight + footerGap,
         });
       });
     };
@@ -1028,7 +1028,7 @@ export default function DetailsLayout({
 
         // 'opened' → floating pill rendered below as sibling, add padding to avoid overlap
         if (isOpen) {
-          return <div className="pb-28" />;
+          return <div className="pb-32" />;
         }
 
         return null;
