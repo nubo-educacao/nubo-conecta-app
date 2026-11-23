@@ -11,6 +11,7 @@ import Script from "next/script";
 import Footer from "@/components/layout/Footer";
 import { ConsentProvider } from "@/components/consent/ConsentProvider";
 import ConsentBanner from "@/components/consent/ConsentBanner";
+import { ChatVisibilityProvider } from "@/contexts/ChatVisibilityContext";
 import { GTM_CONTAINER_ID } from "@/lib/analytics";
 
 const montserrat = Montserrat({ subsets: ["latin"] });
@@ -150,14 +151,16 @@ export default function RootLayout({
         <AuthProvider>
           <ProfileProvider>
             <FavoritesProvider>
-              <div className="relative z-10 min-h-screen flex flex-col">
-                <main className="flex-grow">
-                  {children}
-                </main>
-                <Footer />
-              </div>
-              <ChatFAB />
-              <GlobalAuthModal />
+              <ChatVisibilityProvider>
+                <div className="relative z-10 min-h-screen flex flex-col">
+                  <main className="flex-grow">
+                    {children}
+                  </main>
+                  <Footer />
+                </div>
+                <ChatFAB />
+                <GlobalAuthModal />
+              </ChatVisibilityProvider>
             </FavoritesProvider>
           </ProfileProvider>
         </AuthProvider>

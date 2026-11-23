@@ -25,6 +25,7 @@ import { supabase } from '@/lib/supabase';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { useChatVisibility } from '@/contexts/ChatVisibilityContext';
 import { createApplication, getExistingApplication } from '@/app/(app)/oportunidades/[id]/actions';
 import { trackRedirectFailOpen, navigateToDestination } from '@/services/mecRedirect';
 import { SURFACES, applySource } from '@/lib/surfaces';
@@ -84,6 +85,7 @@ export default function DetailsLayout({
   const router = useRouter();
   const { activeProfileId } = useProfile();
   const { user, openAuthModal } = useAuth();
+  const { isOpen: isChatOpen } = useChatVisibility();
   const { isFavorited: isFavoritedContext, toggleFavorite } = useFavorites();
   const isActuallyFavorited = isFavorited !== undefined ? isFavorited : isFavoritedContext(opportunity.id);
   const [pendingApply, setPendingApply] = React.useState(false);
@@ -100,7 +102,9 @@ export default function DetailsLayout({
   const [loadingApplication, setLoadingApplication] = React.useState(false);
   const [portalTarget, setPortalTarget] = React.useState<HTMLElement | null>(null);
   const [floatingCtaPosition, setFloatingCtaPosition] = React.useState({ bottom: 24, visible: true });
+  const [floatingCtaBounds, setFloatingCtaBounds] = React.useState<{ left: number; width: number } | null>(null);
   const floatingCtaRef = React.useRef<HTMLDivElement>(null);
+  const cardsAreaRef = React.useRef<HTMLDivElement>(null);
   const isDesktop = React.useSyncExternalStore(
     subscribeToDesktopBreakpoint,
     getDesktopBreakpointSnapshot,
@@ -452,14 +456,24 @@ export default function DetailsLayout({
   const isOpen = effectiveStatus === 'opened' || effectiveStatus === 'approved';
 
   React.useEffect(() => {
+    if (!shouldPortalCta) setFloatingCtaBounds(null);
     const cta = floatingCtaRef.current;
     if (!isOpen || !cta) return;
 
     const footer = document.querySelector('footer');
+    const cardsArea = cardsAreaRef.current;
     let frame = 0;
     const updatePosition = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
+        if (shouldPortalCta && cardsArea) {
+          const rect = cardsArea.getBoundingClientRect();
+          const style = window.getComputedStyle(cardsArea);
+          const leftPadding = parseFloat(style.paddingLeft) || 0;
+          const rightPadding = parseFloat(style.paddingRight) || 0;
+          const width = Math.max(0, rect.width - leftPadding - rightPadding);
+          setFloatingCtaBounds({ left: rect.left + leftPadding, width });
+        }
         if (!footer) {
           setFloatingCtaPosition({ bottom: 24, visible: true });
           return;
@@ -483,6 +497,7 @@ export default function DetailsLayout({
       : new ResizeObserver(updatePosition);
     resizeObserver?.observe(cta);
     if (footer) resizeObserver?.observe(footer);
+    if (cardsArea) resizeObserver?.observe(cardsArea);
 
     return () => {
       cancelAnimationFrame(frame);
@@ -727,7 +742,7 @@ export default function DetailsLayout({
       </section>
 
       {/* ── Statistics / Program Specifics ── */}
-      <div className="px-6 mt-8 space-y-8">
+      <div ref={cardsAreaRef} data-testid="opportunity-cards-area" className="px-6 mt-8 space-y-8">
         {!isPartner ? (
           <>
             <SisuProuniCard
@@ -1022,7 +1037,7 @@ export default function DetailsLayout({
 
     {/* ══ Floating CTA — only when registrations are OPEN ══ */}
     {isOpen && (() => {
-      const floatShell = "fixed left-4 right-4 bottom-6 md:left-1/2 md:right-auto md:w-[calc(100%-3rem)] md:max-w-[1200px] md:-translate-x-1/2 z-[200] flex flex-col items-stretch gap-2";
+      const floatShell = "fixed left-4 right-4 bottom-6 z-[200] flex flex-col items-stretch gap-2";
       const btnBase = "w-full h-14 rounded-full font-black text-base flex items-center justify-center gap-2 transition-all duration-200";
       const shadow = isPartner ? 'shadow-[#7030C2]/40' : 'shadow-[#3092bb]/40';
       
@@ -1050,9 +1065,13 @@ export default function DetailsLayout({
           className={`${floatShell} ${shouldPortalCta ? 'md:visible' : 'md:invisible'}`}
           style={{
             bottom: floatingCtaPosition.bottom,
-            ...(shouldPortalCta || (portalTarget !== null && !isDesktop)
-              ? { visibility: floatingCtaPosition.visible ? 'visible' : 'hidden' }
+            ...(shouldPortalCta && floatingCtaBounds
+              ? { left: floatingCtaBounds.left, right: 'auto', width: floatingCtaBounds.width }
               : {}),
+            ...(shouldPortalCta || (portalTarget !== null && !isDesktop)
+              ? { visibility: floatingCtaPosition.visible && !isChatOpen && (!shouldPortalCta || (floatingCtaBounds !== null && floatingCtaBounds.width > 0)) ? 'visible' : 'hidden' }
+              : {}),
+            ...(isChatOpen ? { visibility: 'hidden', pointerEvents: 'none' } : {}),
           }}
         >
           {applyError && <p className="text-center text-xs text-red-500 font-medium bg-white px-3 py-1 rounded-full shadow-md">{applyError}</p>}
